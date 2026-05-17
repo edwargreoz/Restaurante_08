@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard - Restaurant{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Panel Principal</h1>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Tarjeta: Mesas -->
+    <div class="col-md-3">
+        <div class="card text-bg-primary mb-3">
+            <div class="card-header">Mesas</div>
+            <div class="card-body">
+                <h5 class="card-title">{% now "H:i" %}</h5>
+                <p class="card-text">Gestion de mesas del salon</p>
+                <a href="{% url 'plano_mesas' %}" class="btn btn-light">Ver Plano</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjeta: Pedidos -->
+    <div class="col-md-3">
+        <div class="card text-bg-success mb-3">
+            <div class="card-header">Pedidos</div>
+            <div class="card-body">
+                <p class="card-text">Comandas activas del turno</p>
+                <a href="#" class="btn btn-light">Ver Pedidos</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjeta: Cocina -->
+    <div class="col-md-3">
+        <div class="card text-bg-warning mb-3">
+            <div class="card-header">Cocina (KDS)</div>
+            <div class="card-body">
+                <p class="card-text">Platos en preparacion</p>
+                <a href="#" class="btn btn-light">Ver KDS</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjeta: Caja -->
+    <div class="col-md-3">
+        <div class="card text-bg-info mb-3">
+            <div class="card-header">Caja</div>
+            <div class="card-body">
+                <p class="card-text">Cobros y cierre de turno</p>
+                <a href="#" class="btn btn-light">Ir a Caja</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Plano del Salon{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Plano del Salon</h1>
+    <div>
+        <span class="badge bg-success">Libre</span>
+        <span class="badge bg-danger">Ocupada</span>
+        <span class="badge bg-warning text-dark">Reservada</span>
+        <span class="badge bg-secondary">Limpieza</span>
+    </div>
+</div>
+
+<div class="row">
+    {% for mesa in mesas %}
+    <div class="col-md-3 mb-3">
+        <div class="card
+            {% if mesa.estado == 'LIBRE' %}border-success
+            {% elif mesa.estado == 'OCUPADA' %}border-danger
+            {% elif mesa.estado == 'RESERVADA' %}border-warning
+            {% else %}border-secondary{% endif %}">
+            <div class="card-body text-center">
+                <h5 class="card-title">Mesa {{ mesa.numero }}</h5>
+                <p class="card-text">Capacidad: {{ mesa.capacidad }}</p>
+                <span class="badge
+                    {% if mesa.estado == 'LIBRE' %}bg-success
+                    {% elif mesa.estado == 'OCUPADA' %}bg-danger
+                    {% elif mesa.estado == 'RESERVADA' %}bg-warning text-dark
+                    {% else %}bg-secondary{% endif %}">
+                    {{ mesa.get_estado_display }}
+                </span>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info">
+            No hay mesas registradas. Agregalas desde el panel de administracion.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

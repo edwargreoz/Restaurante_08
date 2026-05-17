@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mesa {{ mesa.numero }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Mesa {{ mesa.numero }}</h1>
+    <a href="{% url 'plano_mesas' %}" class="btn btn-secondary">Volver al Plano</a>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                Informacion de la Mesa
+            </div>
+            <div class="card-body">
+                <p><strong>Numero:</strong> {{ mesa.numero }}</p>
+                <p><strong>Capacidad:</strong> {{ mesa.capacidad }} personas</p>
+                <p><strong>Estado:</strong>
+                    <span class="badge
+                        {% if mesa.estado == 'LIBRE' %}bg-success
+                        {% elif mesa.estado == 'OCUPADA' %}bg-danger
+                        {% elif mesa.estado == 'RESERVADA' %}bg-warning text-dark
+                        {% else %}bg-secondary{% endif %}">
+                        {{ mesa.get_estado_display }}
+                    </span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                Comanda Activa
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Sin comanda activa</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
