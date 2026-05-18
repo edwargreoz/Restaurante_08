@@ -6,15 +6,17 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
-from .views import MesaViewSet
+from .views import MesaViewSet, UnionMesaViewSet, ComandaViewSet
 
 # Router principal para ViewSets
 # Los ViewSets se registran con: router.register('nombre', ViewSet)
 router = DefaultRouter()
 router.register(r'mesas', MesaViewSet)
+router.register(r'uniones-mesas',UnionMesaViewSet)
+router.register(r'comandas',ComandaViewSet)
 
 urlpatterns = [
-    # Autenticacion JWT (Sesion 06)
+    # Autenticacion JWT 
     # POST /api/v1/auth/token/  -> {username, password} -> {access, refresh}
     path('auth/token/',TokenObtainPairView.as_view(),name='token_obtain'),
 
