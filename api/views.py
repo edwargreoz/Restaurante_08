@@ -44,34 +44,34 @@ class ComandaViewSet(viewsets.ModelViewSet):
 
     @action(detail=False,methods=['post'])
     def abrir(self,request):
-         """
+        """
         POST /api/v1/comandas/abrir/
         Crea una comanda nueva en una mesa.
         Body: {"mesa_id": 1}
         """
-         mesa_id = request.data.get('mesa_id')
-         if not mesa_id:
-             return Response(
-                 {'error' : 'mesa_id es obligatorio'},
-                 status= status.HTTP_400_BAD_REQUEST
-             )
-         mesa = Mesa.objects.filter(id=mesa_id).first()
-         if not mesa:
-             return Response(
-                 {'error':'Mesa no encontrada'},
-                 status= status.HTTP_404_NOT_FOUND
-             )
-         if mesa.estado != 'LIBRE':
-             return Response(
-                 {'error' : 'La mesa no esta libre'},
-                 status= status.HTTP_400_BAD_REQUEST
-             )
-         comanda = Comanda.objects.create(
-             mesa = mesa,
-             mozo = request.user
-         )
-         mesa.estado = 'OCUPADA'
-         mesa.save()
+        mesa_id = request.data.get('mesa_id')
+        if not mesa_id:
+            return Response(
+                {'error' : 'mesa_id es obligatorio'},
+                status= status.HTTP_400_BAD_REQUEST)
+        
+        mesa = Mesa.objects.filter(id=mesa_id).first()
+        if not mesa:
+            return Response(
+                {'error':'Mesa no encontrada'},
+                status= status.HTTP_404_NOT_FOUND)
+        
+        if mesa.estado != 'LIBRE':
+            return Response(
+                {'error' : 'La mesa no esta libre'},
+                status= status.HTTP_400_BAD_REQUEST)
+        
+        comanda = Comanda.objects.create(
+            mesa = mesa,
+            mozo = request.user)
+        
+        mesa.estado = 'OCUPADA'
+        mesa.save()
 
-         serializer = self.get_serializer(comanda)
-         return Response(serializer.data , status=status.HTTP_201_CREATED)
+        serializer = self.get_serializer(comanda)
+        return Response(serializer.data , status=status.HTTP_201_CREATED)
