@@ -58,7 +58,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error' : 'mesa_id es obligatorio'},
                 status= status.HTTP_400_BAD_REQUEST)
         with transaction.atomic():
-            mesa = Mesa.objects.select_for_update(id=mesa_id).first()
+            mesa = Mesa.objects.select_for_update().filter(id=mesa_id).first()
             if not mesa:
                 return Response(
                     {'error':'Mesa no encontrada'},
