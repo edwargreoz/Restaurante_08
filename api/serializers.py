@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from mesas.models import Mesa, UnionMesa
 from pedidos.models import Comanda, LineaComanda
+
 class MesaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mesa
@@ -14,7 +15,7 @@ class UnionMesaSerializer(serializers.ModelSerializer):
     mesas = MesaSerializer(
         many=True,
         read_only=True,
-        source='Mesa'
+        source='mesas'
     )
     capacidad_total = serializers.SerializerMethodField()
     class Meta:
@@ -60,3 +61,12 @@ class ComandaSerializer(serializers.ModelSerializer):
             linea.plato.precio * linea.cantidad
             for linea in obj.lineas.all()
         )
+
+class AgregarPlatoSerializer(serializers.Serializer):
+    plato_id= serializers.IntegerField()
+    cantidad= serializers.IntegerField(min_value = 1 , default = 1)
+    observacion = serializers.CharField(required=False, allow_blank=True, default='')
+
+class AgregarPlatosRequestSerializer(serializers.Serializer):
+    platos= AgregarPlatoSerializer(many= True,allow_empty= False)
+

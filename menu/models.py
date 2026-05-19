@@ -1,5 +1,6 @@
 
 from django.db import models
+from django.core.validators import MinValueValidator
 
 class Categoria(models.Model):
 
@@ -42,6 +43,7 @@ class Plato(models.Model):
     precio = models.DecimalField(
         max_digits=10,
         decimal_places=2,
+        validators=[MinValueValidator(0)],
         verbose_name='Precio (S/.)'
     )
 

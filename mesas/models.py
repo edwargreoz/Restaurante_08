@@ -1,7 +1,6 @@
 
-
 from django.db import models
-
+from django.core.validators import MinValueValidator
 
 class Mesa(models.Model):
     """
@@ -29,6 +28,7 @@ class Mesa(models.Model):
     )
 
     capacidad = models.IntegerField(
+        validators= [MinValueValidator(1)],
         verbose_name='Capacidad maxima de personas'
     )
 
@@ -57,41 +57,39 @@ class Mesa(models.Model):
         return f'Mesa {self.numero} ({self.get_estado_display()})'
 
 class UnionMesa(models.Model):
-        """Con esta clase vamos a poder unir mesas 
-        fisicamente para un grupo de comenzales
-        no existe un limite de mesas unidas sino un limite 
-        de capacidad es decir podemos unir 4 mesas de 3 como
-        tambien 2 de 5 y una de 2. La idea es tener solo 
-        un maximo de 12 comenzales por cliente"""
-        Mesa = models.ManyToManyField(
-            'Mesa',
-            related_name='uniones',
-            verbose_name='Mesas que componen la union'
-        )
-        activa = models.BooleanField(
-            default=True,
-            verbose_name='¿La union esta activa?'
-        )
-
-        fecha_creacion= models.DateTimeField(
-            auto_now_add=True,
-            verbose_name='Fecha de Creacion'
-        )   
-        class Meta:
-             verbose_name= 'Union de Mesas'
-             verbose_name_plural='Uniones de Mesas'
+    """Con esta clase vamos a poder unir mesas 
+    fisicamente para un grupo de comenzales
+    """
+    mesas = models.ManyToManyField(
+        'Mesa',
+        related_name='uniones',
+        verbose_name='Mesas que componen la union'
+    )
+           
+    activa = models.BooleanField(
+        default=True,
+        verbose_name='¿La union esta activa?'
+    )
     
-        def capacidad_total(self):
-             return sum(m.capacidad for m in self.Mesa.all())
+    fecha_creacion= models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Fecha de Creacion'
+    )   
+    class Meta:
+        verbose_name= 'Union de Mesas'
+        verbose_name_plural='Uniones de Mesas'
+    
+    def capacidad_total(self):
+        return sum(m.capacidad for m in self.mesas.all())
         
-        def ocupantes_maximos(self):
-             return min(self.capacidad_total(), 12)
+    def ocupantes_maximos(self):
+        return min(self.capacidad_total(), 12)
         
-        def __str__(self):
-             mesas_str = ' + '.join(
-                  [f'Mesa {m.numero}' for m in self.Mesa.all()]
-             )
-             return f'{mesas_str} ({self.ocupantes_maximos} pax)'
+    def __str__(self):
+        mesas_str = ' + '.join(
+            [f'Mesa {m.numero}' for m in self.mesas.all()]
+        )
+        return f'{mesas_str} ({self.ocupantes_maximos()} pax)'
 
 
 

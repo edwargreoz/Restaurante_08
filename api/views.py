@@ -1,11 +1,14 @@
 
-from rest_framework import viewsets, generics, status
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from mesas.models import Mesa , UnionMesa
-from .serializers import MesaSerializer , UnionMesaSerializer,ComandaSerializer
-from pedidos.models import Comanda
+from pedidos.models import Comanda, LineaComanda
+from menu.models import Plato
+from inventario.models import RecetaInsumo
+from .serializers import MesaSerializer , UnionMesaSerializer,ComandaSerializer,AgregarPlatosRequestSerializer
+from django.db import transaction
+
 
 
 class MesaViewSet(viewsets.ReadOnlyModelViewSet):
@@ -39,7 +42,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
     ViewSet para gestionar comandas.
     Incluye @action abrir para crear comandas nuevas.
     """
-    queryset = Comanda.objects.all()
+    queryset = Comanda.objects.prefetch_related('lineas__plato')
     serializer_class = ComandaSerializer
 
     @action(detail=False,methods=['post'])
@@ -54,24 +57,90 @@ class ComandaViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error' : 'mesa_id es obligatorio'},
                 status= status.HTTP_400_BAD_REQUEST)
+        with transaction.atomic():
+            mesa = Mesa.objects.select_for_update(id=mesa_id).first()
+            if not mesa:
+                return Response(
+                    {'error':'Mesa no encontrada'},
+                    status= status.HTTP_404_NOT_FOUND)
         
-        mesa = Mesa.objects.filter(id=mesa_id).first()
-        if not mesa:
-            return Response(
-                {'error':'Mesa no encontrada'},
-                status= status.HTTP_404_NOT_FOUND)
+            if mesa.estado != 'LIBRE':
+                return Response(
+                    {'error' : 'La mesa no esta libre'},
+                    status= status.HTTP_400_BAD_REQUEST)
         
-        if mesa.estado != 'LIBRE':
-            return Response(
-                {'error' : 'La mesa no esta libre'},
-                status= status.HTTP_400_BAD_REQUEST)
+            comanda = Comanda.objects.create(
+                mesa = mesa,
+                mozo = request.user)
         
-        comanda = Comanda.objects.create(
-            mesa = mesa,
-            mozo = request.user)
-        
-        mesa.estado = 'OCUPADA'
-        mesa.save()
-
+            mesa.estado = 'OCUPADA'
+            mesa.save()
         serializer = self.get_serializer(comanda)
         return Response(serializer.data , status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['POST'])
+    def agregar_platos(self,request,pk=None):
+        """
+        POST /api/v1/comandas/{id}/platos/
+        Body: {"platos": [{"plato_id": 1, "cantidad": 2, "observacion": "sin sal"}, ...]}
+        Agrega platos a una comanda verificando stock de insumos.
+        """
+        comanda = self.get_object()
+
+        if comanda.estado != 'ABIERTA':
+            return Response(
+                {'error': 'La comanda no esta abierta'},
+                status= status.HTTP_400_BAD_REQUEST
+            )
+        serializer = AgregarPlatosRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        platos_data = serializer.validated_data['platos']
+        errores = []
+        platos_a_crear= []
+
+        with transaction.atomic():
+            for item in platos_data:
+                plato = Plato.objects.filter(id=item['plato_id']).first()
+                if not plato:
+                    errores.append({'plato_id': item['plato_id'], 'error':'Plato no encontrado'})   
+                    continue
+                if not plato.disponible:
+                    errores.append({'plato_id': item['plato_id'], 'error': 'Plato no dispoible'})
+                    continue
+
+                #Verificacion de stock para receta de insumos
+
+                recetas = RecetaInsumo.objects.filter(plato=plato)
+                faltantes=[]
+                for receta in recetas:
+                    necesario= receta.cantidad_por_porcion * item['cantidad']
+                    if receta.insumo.stock_actual < necesario:
+                        faltantes.append(
+                            f"{receta.insumo.nombre}: disponible {receta.insumo.stock_actual}, necesario {necesario}"
+                        )
+                if faltantes:
+                    errores.append({
+                        'plato_id': item['plato_id'],
+                        'plato': plato.nombre,
+                        'error': 'stock insuficiente',
+                        'detalle' : faltantes
+                    })
+                    continue
+                platos_a_crear.append(LineaComanda(
+                    comanda=comanda,
+                    plato=plato,
+                    cantidad = item['cantidad'],
+                    observacion =item.get('observacion',''),
+                ))
+            if errores:
+                transaction.set_rollback(True)
+                return Response({'errores': errores}, status=status.HTTP_400_BAD_REQUEST)
+            LineaComanda.objects.bulk_create(platos_a_crear)
+        
+        serializer = self.get_serializer(comanda)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+
+

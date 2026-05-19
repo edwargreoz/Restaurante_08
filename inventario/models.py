@@ -1,6 +1,7 @@
 
 
 from django.db import models
+from django.core.validators import MinValueValidator
 
 
 class Insumo(models.Model):
@@ -29,6 +30,7 @@ class Insumo(models.Model):
         max_digits=10,
         decimal_places=2,
         default=0,
+        validators=[MinValueValidator(0)],
         verbose_name='Stock actual'
     )
 
@@ -43,6 +45,7 @@ class Insumo(models.Model):
         max_digits=10,
         decimal_places=2,
         default=0,
+        validators=[MinValueValidator(0)],
         verbose_name='Costo unitario (S/.)'
     )
 

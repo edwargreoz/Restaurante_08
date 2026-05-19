@@ -111,34 +111,34 @@ LOGOUT_REDIRECT_URL = 'login'
 
 
 REST_FRAMEWORK = {
-    # Autenticacion via JWT (Sesion 06 - JWT Authentication)
+    # Autenticacion via JWT 
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
 
-    # Permisos por defecto (Sesion 06 - Permissions)
+    # Permisos por defecto 
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
 
-    # Paginacion global (Sesion 06 - Pagination)
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    # Paginacion global 
+    'DEFAULT_PAGINATION_CLASS': 'api.pagination.PaginacionRestaurant',
     'PAGE_SIZE': 15,
 
-    # Backends de filtros (Sesion 06 - django-filter)
+    # Backends de filtros 
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
 
-    # Versionamiento de API (Sesion 06 - API Versioning)
+    # Versionamiento de API 
     'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',
     'ALLOWED_VERSIONS': ['v1'],
     'DEFAULT_VERSION': 'v1',
     'VERSION_PARAM': 'version',
 
-    # Throttling - limite de peticiones (Sesion 06 - Throttling)
+    # Throttling - limite de peticiones 
     'DEFAULT_THROTTLE_CLASSES': [
         'rest_framework.throttling.AnonRateThrottle',
         'rest_framework.throttling.UserRateThrottle',
