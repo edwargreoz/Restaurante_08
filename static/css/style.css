@@ -1,0 +1,170 @@
+/* === Reset y base === */
+body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background-color: #f5f6fa;
+    color: #2c3e50;
+}
+/* === Navbar === */
+
+
+.navbar {
+    background-color: #1a1a2e;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.navbar-brand {
+    color: #fff;
+    font-size: 1.3rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+.navbar-links a {
+    color: #ccc;
+    text-decoration: none;
+    margin-left: 1.5rem;
+    transition: color 0.2s;
+}
+.navbar-links a:hover {
+    color: #fff;
+}
+.navbar-user {
+    color: #7f8fa6;
+    font-size: 0.9rem;
+    margin-left: 1.5rem;
+}
+/* === Layout === */
+.container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+}
+/* === Cards del Dashboard === */
+
+.card-icon{
+    font-size: 2rem;
+    width: 55px;
+    height: 55px;
+    object-fit: cover;
+    margin-bottom: 0.5rem;
+}
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+.card {
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+.card-number {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 0.3rem 0;
+}
+.card-label {
+    font-size: 0.9rem;
+    opacity: 0.85;
+    margin: 0;
+}
+.card-link {
+    display: inline-block;
+    margin-top: 0.8rem;
+    color: inherit;
+    opacity: 0.8;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+.card-link:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+/* === Colores de cards === */
+.card-green { background: linear-gradient(135deg, #00b894, #55efc4); color: #fff; }
+.card-red { background: linear-gradient(135deg, #d63031, #ff7675); color: #fff; }
+.card-orange { background: linear-gradient(135deg, #e17055, #fab1a0); color: #fff; }
+.card-blue { background: linear-gradient(135deg, #0984e3, #74b9ff); color: #fff; }
+.card-purple { background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: #fff; }
+
+/* === Formularios === */
+.form-group {
+    margin-bottom: 1.2rem;
+}
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 0.4rem;
+}
+.form-group input {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+.form-group input:focus {
+    outline: none;
+    border-color: #0984e3;
+}
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s, transform 0.1s;
+}
+.btn:active {
+    transform: scale(0.97);
+}
+.btn-primary {
+    background: #0984e3;
+    color: #fff;
+    width: 100%;
+}
+.btn-primary:hover {
+    background: #0773c5;
+}
+/* === Alertas === */
+.alert {
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+.alert-error {
+    background: #ffeaa7;
+    color: #d63031;
+    border: 1px solid #fdcb6e;
+}
+/* === Page header === */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+.page-header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0;
+}

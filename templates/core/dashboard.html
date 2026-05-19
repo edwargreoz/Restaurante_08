@@ -1,59 +1,36 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block title %}Dashboard - Restaurant{% endblock %}
-
 {% block content %}
-<div class="row">
-    <div class="col-12">
-        <h1 class="mb-4">Panel Principal</h1>
-    </div>
+<div class="page-header">
+    <h1>Panel Principal</h1>
+    <span style="color: #7f8fa6;">Bienvenido, {{ request.user.get_full_name|default:request.user.username }}
+    </span>
 </div>
-
-<div class="row">
-    <!-- Tarjeta: Mesas -->
-    <div class="col-md-3">
-        <div class="card text-bg-primary mb-3">
-            <div class="card-header">Mesas</div>
-            <div class="card-body">
-                <h5 class="card-title">{% now "H:i" %}</h5>
-                <p class="card-text">Gestion de mesas del salon</p>
-                <a href="{% url 'plano_mesas' %}" class="btn btn-light">Ver Plano</a>
-            </div>
-        </div>
+<div class="card-grid">
+    <div class="card card-green">
+        <img src="{% static 'icons/MesasLibres.png' %}" class="card-icon" alt="Mesas libres">
+        <p class="card-label">Mesas libres</p>
+        <p class="card-number">{{ mesas_libres }}</p>
+        <a href="{% url 'plano_mesas' %}" class="card-link">Ver plano →</a>
     </div>
-
-    <!-- Tarjeta: Pedidos -->
-    <div class="col-md-3">
-        <div class="card text-bg-success mb-3">
-            <div class="card-header">Pedidos</div>
-            <div class="card-body">
-                <p class="card-text">Comandas activas del turno</p>
-                <a href="#" class="btn btn-light">Ver Pedidos</a>
-            </div>
-        </div>
+    <div class="card card-red">
+        <img src="{% static 'icons/MesasOcupadas.png' %}" class="card-icon" alt="Mesas ocupadas">
+        <p class="card-label">Mesas ocupadas</p>
+        <p class="card-number">{{ mesas_ocupadas }}</p>
+        <a href="{% url 'plano_mesas' %}" class="card-link">Ver plano →</a>
     </div>
-
-    <!-- Tarjeta: Cocina -->
-    <div class="col-md-3">
-        <div class="card text-bg-warning mb-3">
-            <div class="card-header">Cocina (KDS)</div>
-            <div class="card-body">
-                <p class="card-text">Platos en preparacion</p>
-                <a href="#" class="btn btn-light">Ver KDS</a>
-            </div>
-        </div>
+    <div class="card card-orange">
+        <img src="{% static 'icons/comandaActiva.png' %}" class="card-icon" alt="Comandas activas">
+        <p class="card-label">Comandas activas</p>
+        <p class="card-number">{{ comandas_activas }}</p>
+        <a href="#" class="card-link">Ver pedidos →</a>
     </div>
-
-    <!-- Tarjeta: Caja -->
-    <div class="col-md-3">
-        <div class="card text-bg-info mb-3">
-            <div class="card-header">Caja</div>
-            <div class="card-body">
-                <p class="card-text">Cobros y cierre de turno</p>
-                <a href="#" class="btn btn-light">Ir a Caja</a>
-            </div>
-        </div>
+    <div class="card card-blue">
+        <img src="{% static 'icons/Alertastock.png' %}" class="card-icon" alt="Alertas de stock">
+        <p class="card-label">Alertas de stock</p>
+        <p class="card-number">{{ alertas_stock }}</p>
+        <a href="#" class="card-link">Ver inventario →</a>
     </div>
 </div>
 {% endblock %}

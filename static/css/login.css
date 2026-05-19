@@ -1,0 +1,341 @@
+/* ============================================
+   LOGIN MINIMALISTA - RESTAURANTE POS
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --color-cream:        #f8f1e7;
+    --color-cream-alt:    #f7f1e8;
+    --color-accent:       #d6a354;
+    --color-accent-dark:  #b77a2f;
+    --color-accent-deep:  #c08a3e;
+    --color-text-dark:    #222;
+    --color-text-body:    #333;
+    --color-text-muted:   #777;
+    --color-border:       #ddd6cc;
+    --shadow-card:        0 24px 60px rgba(40, 28, 12, 0.16);
+    --shadow-button:      0 12px 24px rgba(183, 122, 47, 0.32);
+    --transition:         all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+    margin: 0;
+    font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+    color: var(--color-text-body);
+    -webkit-font-smoothing: antialiased;
+}
+
+.login-page {
+    min-height: 100vh;
+    display: flex;
+    background: var(--color-cream-alt);
+}
+
+/* ============================================
+   LADO IZQUIERDO - MARCA
+   ============================================ */
+.login-brand {
+    flex: 6;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: url("../img/fondoLogin.png") center / cover no-repeat;
+    color: #fff;
+    text-align: center;
+    padding: 3rem;
+    overflow: hidden;
+    animation: fadeInLeft 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Velo oscuro sobre la imagen */
+.login-brand::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 10, 18, 0.62);
+}
+
+.login-brand img,
+.login-brand h1,
+.login-brand p {
+    position: relative;
+    z-index: 1;
+}
+
+.login-brand img {
+    width: 230px;
+    height: auto;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.35));
+    animation: float 6s ease-in-out infinite;
+}
+
+.login-brand h1 {
+    font-family: 'Cinzel', serif;
+    font-size: 5rem;
+    font-weight: 400;
+    letter-spacing: 10px;
+    margin: 0;
+    line-height: 1.1;
+}
+
+.login-brand p {
+    font-size: 1.1rem;
+    letter-spacing: 5px;
+    color: var(--color-accent);
+    margin-top: 1rem;
+    text-transform: uppercase;
+    font-weight: 400;
+}
+
+/* ============================================
+   LADO DERECHO - FORMULARIO
+   ============================================ */
+.login-form {
+    flex: 4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    background: var(--color-cream);
+    animation: fadeInRight 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 430px;
+    padding: 3rem;
+    border-radius: 26px;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: var(--shadow-card);
+    position: relative;
+}
+
+/* Acento dorado sutil en el borde superior de la card */
+.login-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 55px;
+    height: 3px;
+    background: var(--color-accent);
+    border-radius: 0 0 4px 4px;
+}
+
+.login-card h2 {
+    margin: 0 0 0.4rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.2rem;
+    font-weight: 600;
+    color: var(--color-text-dark);
+    text-align: center;
+    letter-spacing: -0.01em;
+}
+
+.login-card .subtitle {
+    margin: 0 0 2rem;
+    color: var(--color-text-muted);
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 400;
+}
+
+/* === Campos === */
+.login-card .form-group,
+.login-card .mb-3,
+.login-card .input-group {
+    margin-bottom: 0;
+}
+
+.login-card label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--color-text-body);
+    font-size: 0.9rem;
+}
+
+.login-card input[type="text"],
+.login-card input[type="password"],
+.login-card input[type="email"],
+.login-card .form-control {
+    width: 100%;
+    height: 52px;
+    padding: 0 1rem;
+    margin-bottom: 1.3rem;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95rem;
+    color: var(--color-text-dark);
+    outline: none;
+    transition: var(--transition);
+}
+
+.login-card input::placeholder {
+    color: #b8b0a3;
+    font-weight: 300;
+}
+
+.login-card input:focus,
+.login-card .form-control:focus {
+    border-color: var(--color-accent-deep);
+    box-shadow: 0 0 0 4px rgba(192, 138, 62, 0.15);
+}
+
+.login-card input:hover:not(:focus) {
+    border-color: #c9bfaf;
+}
+
+/* === Botón === */
+.login-card button[type="submit"],
+.login-card .btn-primary,
+.login-card .btn-login,
+.login-card button {
+    width: 100%;
+    height: 54px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Brillo sutil al hover */
+.login-card button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+    transition: left 0.6s ease;
+}
+
+.login-card button:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-button);
+}
+
+.login-card button:hover::before {
+    left: 100%;
+}
+
+.login-card button:active {
+    transform: translateY(0);
+}
+
+/* === Mensajes de error / alerta === */
+.login-card .alert,
+.login-card .error-message {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    color: #b91c1c;
+    font-size: 0.88rem;
+    text-align: center;
+}
+
+/* === Enlaces (recuperar contraseña, etc.) === */
+.login-card a {
+    color: var(--color-accent-dark);
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.login-card a:hover {
+    color: var(--color-text-dark);
+    text-decoration: underline;
+}
+
+/* ============================================
+   ANIMACIONES
+   ============================================ */
+@keyframes fadeInLeft {
+    from { opacity: 0; transform: translateX(-30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeInRight {
+    from { opacity: 0; transform: translateX(30px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-8px); }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 900px) {
+    .login-page {
+        flex-direction: column;
+    }
+
+    .login-brand {
+        min-height: 40vh;
+        padding: 2.5rem 2rem;
+    }
+
+    .login-brand img {
+        width: 150px;
+    }
+
+    .login-brand h1 {
+        font-size: 3rem;
+        letter-spacing: 6px;
+    }
+
+    .login-brand p {
+        font-size: 0.95rem;
+        letter-spacing: 3px;
+    }
+
+    .login-form {
+        min-height: 60vh;
+        padding: 2rem;
+    }
+
+    .login-card {
+        padding: 2.25rem 1.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-brand img {
+        width: 110px;
+    }
+
+    .login-brand h1 {
+        font-size: 2.2rem;
+        letter-spacing: 4px;
+    }
+
+    .login-card h2 {
+        font-size: 1.75rem;
+    }
+}
