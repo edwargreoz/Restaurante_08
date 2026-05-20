@@ -76,3 +76,24 @@ class PagarRequestSerializer(serializers.Serializer):
     monto = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0.01)
     vuelto = serializers.DecimalField(max_digits=10,decimal_places=2,required=False,default=0)
     referencia = serializers.CharField(required=False, allow_blank=True, default='')
+
+class CocinaLineaSerializer(serializers.ModelSerializer):
+    nombre_plato = serializers.CharField(source='plato.nombre', read_only=True)
+    tiempo_prep = serializers.IntegerField(source = 'plato.tiempo_preparacion_min',read_only=True)
+    subtotal= serializers.SerializerMethodField()
+
+    class Meta:
+        model = LineaComanda
+        fields = ['id','plato','nombre_plato','cantidad','tiempo_prep','subtotal','observacion','estado']
+
+    def get_subtotal(self,obj):
+        return obj.cantidad * obj.plato.precio
+    
+class CocinaComandaSerializer(serializers.ModelSerializer):
+    lineas = CocinaLineaSerializer(many=True,read_only=True, source='lineas')
+    numero_mesa= serializers.CharField(source='mesa.numero', read_only= True)
+    mozo_nombre= serializers.CharField(source ='mozo.get_full_name',read_only=True)
+
+    class Meta:
+        model = Comanda
+        fields= ['id','numero_mesa','mozo_nombre','estado','fecha_apertura','lineas']

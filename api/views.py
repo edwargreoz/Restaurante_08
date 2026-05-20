@@ -4,6 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Q
 
 from mesas.models import Mesa , UnionMesa
 from pedidos.models import Comanda, LineaComanda
@@ -11,7 +12,9 @@ from menu.models import Plato
 from inventario.models import RecetaInsumo
 from caja.models import Pago
 
-from .serializers import MesaSerializer , UnionMesaSerializer,ComandaSerializer,AgregarPlatosRequestSerializer,PagarRequestSerializer,LineaComandaSerializer
+
+from .serializers import MesaSerializer , UnionMesaSerializer,ComandaSerializer
+from .serializers import AgregarPlatosRequestSerializer,PagarRequestSerializer,LineaComandaSerializer,CocinaComandaSerializer
 
 
 
@@ -236,4 +239,15 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
                 comanda.save(update_fields = ['estado'])
         serializer = self.get_serializer(linea)
         return Response(serializer.data)
+
+class CocinaViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Comanda.objects.filter(
+        Q(estado = 'EN_PREPARACION') | Q(lineas__estado__in = ['PENDIENTE','EN_PREP'])
+    ).prefetch_related(
+        'lineas__plato'
+    ).distinct().order_by('fecha_apertura')
+    
+    serializer_class = CocinaComandaSerializer
+    permission_classes = []
+
 
