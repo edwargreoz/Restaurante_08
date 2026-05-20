@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from mesas.models import Mesa, UnionMesa
 from pedidos.models import Comanda, LineaComanda
+from caja.models import Pago
 
 class MesaSerializer(serializers.ModelSerializer):
     class Meta:
@@ -70,3 +71,8 @@ class AgregarPlatoSerializer(serializers.Serializer):
 class AgregarPlatosRequestSerializer(serializers.Serializer):
     platos= AgregarPlatoSerializer(many= True,allow_empty= False)
 
+class PagarRequestSerializer(serializers.Serializer):
+    metodo = serializers.ChoiceField(choices=Pago.METODOS)
+    monto = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0.01)
+    vuelto = serializers.DecimalField(max_digits=10,decimal_places=2,required=False,default=0)
+    referencia = serializers.CharField(required=False, allow_blank=True, default='')

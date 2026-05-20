@@ -2,12 +2,16 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django.utils import timezone
+from django.db import transaction
+
 from mesas.models import Mesa , UnionMesa
 from pedidos.models import Comanda, LineaComanda
 from menu.models import Plato
 from inventario.models import RecetaInsumo
-from .serializers import MesaSerializer , UnionMesaSerializer,ComandaSerializer,AgregarPlatosRequestSerializer
-from django.db import transaction
+from caja.models import Pago
+
+from .serializers import MesaSerializer , UnionMesaSerializer,ComandaSerializer,AgregarPlatosRequestSerializer,PagarRequestSerializer
 
 
 
@@ -85,13 +89,15 @@ class ComandaViewSet(viewsets.ModelViewSet):
         Body: {"platos": [{"plato_id": 1, "cantidad": 2, "observacion": "sin sal"}, ...]}
         Agrega platos a una comanda verificando stock de insumos.
         """
+
         comanda = self.get_object()
 
-        if comanda.estado != 'ABIERTA':
+        if comanda.estado not in ('ABIERTA','LISTA'):
             return Response(
                 {'error': 'La comanda no esta abierta'},
                 status= status.HTTP_400_BAD_REQUEST
             )
+
         serializer = AgregarPlatosRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -137,10 +143,56 @@ class ComandaViewSet(viewsets.ModelViewSet):
             if errores:
                 transaction.set_rollback(True)
                 return Response({'errores': errores}, status=status.HTTP_400_BAD_REQUEST)
-            LineaComanda.objects.bulk_create(platos_a_crear)
-        
+            LineaComanda.objects.bulk_create(platos_a_crear)    
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
+    @action(detail=True, methods=['post'])
+    def pagar(self,request, pk=None):
+        comanda = self.get_object()
+        if comanda.estado not in ('ABIERTA','LISTA'):
+            return Response(
+                {'error': 'La comanda no esta lista para pagar'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        serializer = PagarRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        data = serializer.validated_data
+
+        with transaction.atomic():
+            comanda = Comanda.objects.select_for_update().get(id=comanda.id)
+
+            if comanda.estado not in ('ABIERTA','LISTA'):
+                return Response(
+                    {'error':'La comanda ya fue cobrada o anulada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            for linea in comanda.lineas.all():
+                recetas = RecetaInsumo.objects.filter(plato = linea.plato)
+                for receta in recetas:
+                    insumo = receta.insumo
+                    cantidad_a_descontar= receta.cantidad_por_porcion * linea.cantidad
+                    insumo.stock_actual -= cantidad_a_descontar
+                    insumo.save()
+            Pago.objects.create(
+                comanda = comanda,
+                metodo = data['metodo'],
+                monto = data ['monto'],
+                vuelto = data.get('vuelto', 0),
+                referencia =data.get('referencia','')
+            )
+
+            comanda.estado= 'COBRADA'
+            comanda.fecha_cierre = timezone.now()
+            comanda.save()
+
+            mesa = comanda.mesa
+            mesa.estado = 'LIBRE'
+            mesa.save()
+
+        serializer = self.get_serializer(comanda)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
