@@ -12,7 +12,7 @@ from menu.models import Plato
 from inventario.models import RecetaInsumo
 from caja.models import Pago
 
-
+from .filters import ComandaFilter
 from .serializers import MesaSerializer , UnionMesaSerializer,ComandaSerializer
 from .serializers import AgregarPlatosRequestSerializer,PagarRequestSerializer,LineaComandaSerializer,CocinaComandaSerializer
 
@@ -51,6 +51,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
     """
     queryset = Comanda.objects.prefetch_related('lineas__plato')
     serializer_class = ComandaSerializer
+    filterset_class = ComandaFilter
 
     @action(detail=False,methods=['post'])
     def abrir(self,request):
