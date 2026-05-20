@@ -7,7 +7,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from .views import MesaViewSet, UnionMesaViewSet, ComandaViewSet, LineaComandaViewSet,CocinaViewSet
-
+from .views import ReportesViewSet
 # Router principal para ViewSets
 # Los ViewSets se registran con: router.register('nombre', ViewSet)
 router = DefaultRouter()
@@ -16,6 +16,8 @@ router.register(r'uniones-mesas',UnionMesaViewSet)
 router.register(r'comandas',ComandaViewSet)
 router.register(r'lineas-comanda',LineaComandaViewSet)
 router.register(r'cocina', CocinaViewSet, basename='cocina')
+router.register(r'reportes',ReportesViewSet,basename='reportes')
+
 
 urlpatterns = [
     # Autenticacion JWT 

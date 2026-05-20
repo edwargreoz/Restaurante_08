@@ -5,17 +5,18 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db import transaction
 from django.db.models import Q
+from django.db.models import Sum, Count
 
 from mesas.models import Mesa , UnionMesa
 from pedidos.models import Comanda, LineaComanda
 from menu.models import Plato
-from inventario.models import RecetaInsumo
-from caja.models import Pago
+from inventario.models import RecetaInsumo,Insumo
+from caja.models import Caja,Pago
 
 from .filters import ComandaFilter
 from .serializers import MesaSerializer , UnionMesaSerializer,ComandaSerializer
 from .serializers import AgregarPlatosRequestSerializer,PagarRequestSerializer,LineaComandaSerializer,CocinaComandaSerializer
-
+from .permissions import EsMozo, EsCocinero , EsCajero, EsAdmin
 
 
 class MesaViewSet(viewsets.ReadOnlyModelViewSet):
@@ -24,6 +25,7 @@ class MesaViewSet(viewsets.ReadOnlyModelViewSet):
     ReadOnlyModelViewSet: solo GET (list + retrieve),
     no permite crear, editar ni eliminar desde la API.
     """
+    permission_classes = [EsMozo | EsAdmin]
     queryset = Mesa.objects.all()
     serializer_class = MesaSerializer
 
@@ -41,6 +43,7 @@ class MesaViewSet(viewsets.ReadOnlyModelViewSet):
 class UnionMesaViewSet(viewsets.ModelViewSet):
     """Crud completo para el tema de union de mesas
     Aqui vamos a crear, leer , actualizar y elimanr uniones"""
+    permission_classes = [EsMozo | EsAdmin]
     queryset = UnionMesa.objects.all()
     serializer_class = UnionMesaSerializer
 
@@ -49,6 +52,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
     ViewSet para gestionar comandas.
     Incluye @action abrir para crear comandas nuevas.
     """
+    permission_classes = [EsMozo | EsCajero|EsAdmin]
     queryset = Comanda.objects.prefetch_related('lineas__plato')
     serializer_class = ComandaSerializer
     filterset_class = ComandaFilter
@@ -117,7 +121,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                     errores.append({'plato_id': item['plato_id'], 'error':'Plato no encontrado'})   
                     continue
                 if not plato.disponible:
-                    errores.append({'plato_id': item['plato_id'], 'error': 'Plato no dispoible'})
+                    errores.append({'plato_id': item['plato_id'], 'error': 'Plato no disponible'})
                     continue
 
                 #Verificacion de stock para receta de insumos
@@ -173,13 +177,23 @@ class ComandaViewSet(viewsets.ModelViewSet):
                     {'error':'La comanda ya fue cobrada o anulada'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            insumo_ids=[]
             for linea in comanda.lineas.all():
-                recetas = RecetaInsumo.objects.filter(plato = linea.plato)
-                for receta in recetas:
-                    insumo = receta.insumo
-                    cantidad_a_descontar= receta.cantidad_por_porcion * linea.cantidad
-                    insumo.stock_actual -= cantidad_a_descontar
-                    insumo.save()
+                for receta in RecetaInsumo.objects.filter(plato = linea.plato):
+                    insumo_ids.append(receta.insumo_id)
+            insumos_bloqueados = Insumo.objects.select_for_update().filter(
+                id__in=insumo_ids
+            )
+            for insumo in insumos_bloqueados:
+                for linea in comanda.lineas.all():
+                    recetas = RecetaInsumo.objects.filter(
+                        plato = linea.plato, insumo = insumo
+                    )
+                    for receta in recetas:
+                        cantidad = receta.cantidad_por_porcion * linea.cantidad
+                        insumo.stock_actual -= cantidad
+                        insumo.save()
+
             Pago.objects.create(
                 comanda = comanda,
                 metodo = data['metodo'],
@@ -200,6 +214,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class LineaComandaViewSet(viewsets.ModelViewSet):
+    permission_classes = [EsCocinero | EsAdmin]
     queryset = LineaComanda.objects.select_related('plato','comanda__mesa')
     serializer_class = LineaComandaSerializer
     filterset_fields= ['estado','comanda','plato']
@@ -210,7 +225,7 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
         linea = self.get_object()
         if linea.estado != 'PENDIENTE':
             return Response(
-                {'error': 'Solo se puede mandar comentario a cocina en el estad PENDIENTE'},
+                {'error': 'Solo se puede enviar a cocina en estado PENDIENTE'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         with transaction.atomic():
@@ -247,8 +262,41 @@ class CocinaViewSet(viewsets.ReadOnlyModelViewSet):
     ).prefetch_related(
         'lineas__plato'
     ).distinct().order_by('fecha_apertura')
-    
+    permission_classes =[EsCocinero |EsAdmin]
     serializer_class = CocinaComandaSerializer
-    permission_classes = []
 
+class ReportesViewSet(viewsets.ViewSet):
+    permission_classes = [EsCajero|EsAdmin]
+
+    @action(detail=False,methods=['get'])
+    def ventas_turno(self, request):
+        caja_id= request.query_params.get('caja_id')
+        fecha_desde = request.query_params.get('fecha_desde')
+        fecha_hasta = request.query_params.get('fecha_hasta')    
+
+        pagos = Pago.objects.all()
+
+        if caja_id:
+            caja  = Caja.objects.filter(id=caja_id).first()
+
+            if caja:
+                pagos = pagos.filter(
+                    fecha__date__gte=caja.fecha_apertura.date()
+                )
+        if fecha_desde:
+            pagos = pagos.filter(fecha__date__gte=fecha_desde)
+        if fecha_hasta:
+            pagos = pagos.filter(fecha__date__lte=fecha_hasta)
+
+        totales_metodo = pagos.values('metodo').annotate(
+            total = Sum('monto'),
+            cantidad = Count('id')
+        )
+        return Response({
+            'total_general':pagos.aggregate(total=Sum('monto'))[
+                'total'
+            ] or 0, 
+            'total_pagos' : pagos.count(),
+            'por_metodo': totales_metodo,
+        })
 
