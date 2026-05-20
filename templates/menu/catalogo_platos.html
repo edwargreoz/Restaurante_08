@@ -6,6 +6,7 @@
 {% block content %}
 <h1 class="mb-4">Catalogo de Platos</h1>
 
+{% if platos %}
 {% regroup platos by categoria as categorias %}
 {% for categoria in categorias %}
     <h2 class="mt-4">{{ categoria.grouper }}</h2>
@@ -36,4 +37,9 @@
 {% empty %}
 <div class="alert alert-info">No hay categorias o platos registrados.</div>
 {% endfor %}
+{% else %}
+<div class="alert alert-info">
+    El modulo de menu esta en construccion. Vuelve pronto.
+</div>
+{% endif %}
 {% endblock %}

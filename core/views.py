@@ -52,8 +52,8 @@ def dashboard_view(request):
         fecha__date__lt=manana
     ).aggregate(total=models.Sum('monto'))['total'] or 0 #si no hay ventas, total sera None, por eso usamos 'or 0' para mostrar 0 en vez de None
 
-    #
-    caja_actual=Caja.objects.filter(estado='ABIERTA').last()
+    
+    caja_actual=Caja.objects.filter(estado='ABIERTA').first()
 
     ultimas_comandas=Comanda.objects.filter(
         estado__in=['ABIERTA', 'EN_PREPARACION']
