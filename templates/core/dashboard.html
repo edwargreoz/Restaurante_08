@@ -2,35 +2,117 @@
 {% load static %}
 {% block title %}Dashboard - Restaurant{% endblock %}
 {% block content %}
+<!-- Header -->
 <div class="page-header">
     <h1>Panel Principal</h1>
-    <span style="color: #7f8fa6;">Bienvenido, {{ request.user.get_full_name|default:request.user.username }}
-    </span>
+    <span class="page-user">{{ request.user.get_full_name|default:request.user.username }}</span>
 </div>
+<!-- === Fila de tarjertas === -->
 <div class="card-grid">
+    <!-- Mesas libres -->
     <div class="card card-green">
-        <img src="{% static 'icons/MesasLibres.png' %}" class="card-icon" alt="Mesas libres">
+        <img src="{% static 'icons/MesasLibres.png' %}" class="card-icon" alt="">
         <p class="card-label">Mesas libres</p>
         <p class="card-number">{{ mesas_libres }}</p>
-        <a href="{% url 'plano_mesas' %}" class="card-link">Ver plano →</a>
+        <a href="{% url 'plano_mesas' %}" class="card-link">Ver plano →</a> <!-- Redirige al plano de mesas -->
     </div>
+    <!-- Mesas ocupadas -->
     <div class="card card-red">
-        <img src="{% static 'icons/MesasOcupadas.png' %}" class="card-icon" alt="Mesas ocupadas">
+        <img src="{% static 'icons/MesasOcupadas.png' %}" class="card-icon" alt="">
         <p class="card-label">Mesas ocupadas</p>
         <p class="card-number">{{ mesas_ocupadas }}</p>
-        <a href="{% url 'plano_mesas' %}" class="card-link">Ver plano →</a>
+        <a href="{% url 'plano_mesas' %}" class="card-link">Ver plano →</a> 
     </div>
+    <!-- Comandas activas -->
     <div class="card card-orange">
-        <img src="{% static 'icons/comandaActiva.png' %}" class="card-icon" alt="Comandas activas">
+        <img src="{% static 'icons/comandaActiva.png' %}" class="card-icon" alt="">
         <p class="card-label">Comandas activas</p>
         <p class="card-number">{{ comandas_activas }}</p>
         <a href="#" class="card-link">Ver pedidos →</a>
     </div>
+    <!-- Alertas de stock -->
     <div class="card card-blue">
-        <img src="{% static 'icons/Alertastock.png' %}" class="card-icon" alt="Alertas de stock">
+        <img src="{% static 'icons/Alertastock.png' %}" class="card-icon" alt="">
         <p class="card-label">Alertas de stock</p>
         <p class="card-number">{{ alertas_stock }}</p>
         <a href="#" class="card-link">Ver inventario →</a>
     </div>
+    <!-- Ventas hoy -->
+    <div class="card card-purple">
+        <img src="{% static 'icons/ventasHoy.png' %}" class="card-icon" alt="">
+        <p class="card-label">Ventas hoy</p>
+        <p class="card-number">S/ {{ ventas_hoy|floatformat:2 }}</p>
+        <a href="#" class="card-link">Ver reportes →</a>
+    </div>
+    <!-- Caja actual -->
+    <div class="card" style="background: linear-gradient(135deg, #2d3436, #636e72); color: #fff;">
+        <img src="{% static 'icons/caja.png' %}" class="card-icon" alt="">
+        <p class="card-label">Caja — {{ caja_actual.turno|default:"Sin turno" }}</p>
+        <p class="card-number" style="font-size: 1.8rem;">
+            {% if caja_actual %}
+                {{ caja_actual.get_estado_display }}
+            {% else %}
+                Cerrada
+            {% endif %}
+        </p>
+        <a href="#" class="card-link">Ir a caja →</a>
+    </div>
+</div>
+<!-- === Últimas Comandas === -->
+<div class="section-title">Últimas comandas activas</div>
+<div class="table-wrapper">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Mesa</th>
+                <th>Mozo</th>
+                <th>Desde</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for comanda in ultimas_comandas %}
+            <tr>
+                <td><strong>Mesa {{ comanda.mesa.numero }}</strong></td>
+                <td>{{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</td>
+                <td>{{ comanda.fecha_apertura|timesince }}</td>
+                <td>
+                    <span class="badge {% if comanda.estado == 'ABIERTA' %}badge-blue{% else %}badge-orange{% endif %}">
+                        {{ comanda.get_estado_display }}
+                    </span>
+                </td>
+                <td><a href="#" class="table-link">Ver →</a></td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="empty-row">No hay comandas activas</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<!-- === Alertas de Stock === -->
+<div class="section-title">Alertas de stock</div>
+<div class="alert-list">
+    {% for insumo in alertas_detalle %}
+    <div class="alert-item {% if insumo.stock_actual == 0 %}alert-item-danger{% else %}alert-item-warning{% endif %}">
+        <div class="alert-item-icon">
+            {% if insumo.stock_actual == 0 %}🔴{% else %}🟡{% endif %}
+        </div>
+        <div class="alert-item-info">
+            <strong>{{ insumo.nombre }}</strong>
+            <span>{{ insumo.stock_actual }} {{ insumo.get_unidad_display }} (mín {{ insumo.stock_minimo }} {{ insumo.get_unidad_display }})</span>
+        </div>
+    </div>
+    {% empty %}
+    <div class="alert-item alert-item-success">
+        <div class="alert-item-icon">✅</div>
+        <div class="alert-item-info">
+            <strong>Todo en orden</strong>
+            <span>No hay insumos por debajo del stock mínimo</span>
+        </div>
+    </div>
+    {% endfor %}
 </div>
 {% endblock %}

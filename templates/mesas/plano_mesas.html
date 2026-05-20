@@ -16,25 +16,32 @@
 
 <div class="row">
     {% for mesa in mesas %}
-    <div class="col-md-3 mb-3">
-        <div class="card
+<div class="col-md-3 mb-3">
+    {% if mesa.estado == 'OCUPADA' %}
+    <a href="{% url 'detalle_mesa' mesa.id %}" class="card-link-mesa">  <!-- detalle_mesa nombre de la url del detalle de mesa en mesas/urls.py -->
+    {% endif %}
+        <div class="card card-mesa
             {% if mesa.estado == 'LIBRE' %}border-success
-            {% elif mesa.estado == 'OCUPADA' %}border-danger
-            {% elif mesa.estado == 'RESERVADA' %}border-warning
-            {% else %}border-secondary{% endif %}">
+            {% elif mesa.estado == 'OCUPADA' %}border-danger                    
+            {% elif mesa.estado == 'RESERVADA' %}border-warning                                        
+            {% else %}border-secondary{% endif %}">                             
             <div class="card-body text-center">
                 <h5 class="card-title">Mesa {{ mesa.numero }}</h5>
                 <p class="card-text">Capacidad: {{ mesa.capacidad }}</p>
+                
                 <span class="badge
                     {% if mesa.estado == 'LIBRE' %}bg-success
-                    {% elif mesa.estado == 'OCUPADA' %}bg-danger
-                    {% elif mesa.estado == 'RESERVADA' %}bg-warning text-dark
+                    {% elif mesa.estado == 'OCUPADA' %}bg-danger                    
+                    {% elif mesa.estado == 'RESERVADA' %}bg-warning text-dark                                        
                     {% else %}bg-secondary{% endif %}">
-                    {{ mesa.get_estado_display }}
+                    {{ mesa.get_estado_display }}   
                 </span>
             </div>
         </div>
-    </div>
+    {% if mesa.estado == 'OCUPADA' %}
+    </a>
+    {% endif %}
+</div>
     {% empty %}
     <div class="col-12">
         <div class="alert alert-info">
