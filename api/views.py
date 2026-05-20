@@ -11,7 +11,7 @@ from menu.models import Plato
 from inventario.models import RecetaInsumo
 from caja.models import Pago
 
-from .serializers import MesaSerializer , UnionMesaSerializer,ComandaSerializer,AgregarPlatosRequestSerializer,PagarRequestSerializer
+from .serializers import MesaSerializer , UnionMesaSerializer,ComandaSerializer,AgregarPlatosRequestSerializer,PagarRequestSerializer,LineaComandaSerializer
 
 
 
@@ -195,4 +195,45 @@ class ComandaViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+class LineaComandaViewSet(viewsets.ModelViewSet):
+    queryset = LineaComanda.objects.select_related('plato','comanda__mesa')
+    serializer_class = LineaComandaSerializer
+    filterset_fields= ['estado','comanda','plato']
+    search_fields = ['plato__nombre','observacion']
+
+    @action(detail=True, methods=['post'])
+    def enviar_cocina (self, request, pk=None):
+        linea = self.get_object()
+        if linea.estado != 'PENDIENTE':
+            return Response(
+                {'error': 'Solo se puede mandar comentario a cocina en el estad PENDIENTE'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        with transaction.atomic():
+            linea.estado = 'EN_PREP'
+            linea.save(update_fields = ['estado'])
+            comanda = linea.comanda
+            if all(l.estado == 'EN_PREP' for l in comanda.lineas.all()):
+                comanda.estado = 'EN_PREPARACION'
+                comanda.save(update_fields=['estado'])
+        serializer = self.get_serializer(linea)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['patch'])
+    def marcar_listo(self,request,pk=None):
+        linea = self.get_object()
+        if linea.estado != 'EN_PREP':
+            return Response(
+                {'error': 'Solo se puede marcar LISTO una linea EN_PREPARACION'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        with transaction.atomic():
+            linea.estado = 'LISTO'
+            linea.save(update_fields = ['estado'])
+            comanda = linea.comanda
+            if all(l.estado == 'LISTO' for l in comanda.lineas.all()):
+                comanda.estado = 'LISTA'
+                comanda.save(update_fields = ['estado'])
+        serializer = self.get_serializer(linea)
+        return Response(serializer.data)
 
