@@ -1,57 +1,56 @@
 
 
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.exceptions import ValidationError
 from .models import Mesa
+from pedidos.models import Comanda
+from menu.models import Categoria
 
 
-def plano_mesas(request):
-    """
-    Vista del plano del salon (plano_mesas.html).
-
-    Obtiene todas las mesas y las pasa al template
-    para renderizar un grid visual donde cada mesa
-    se colorea segun su estado.
-
-    Colores:
-    - LIBRE (verde): disponible para asignar
-    - OCUPADA (rojo): tiene una comanda activa
-    - RESERVADA (amarillo): reservada para un cliente
-    - LIMPIEZA (gris): en proceso de limpieza
-
-    Al hacer clic en una mesa OCUPADA, abre la comanda activa.
-
-    Sesion 03 - Consultas ORM: Mesa.objects.all()
-    Sesion 04 - Render de templates con contextos.
-    """
+@login_required
+def plano_mesas(request): 
     mesas = Mesa.objects.all()
+    return render(request, 'mesas/plano_mesas.html', {'mesas':mesas})
 
-    context = {
-        'mesas': mesas,
-    }
-
-    return render(request, 'mesas/plano_mesas.html', context)
-
-
+@login_required
 def detalle_mesa(request, mesa_id):
-    """
-    Vista de detalle de una mesa.
-
-    Muestra la informacion de la mesa y su comanda activa
-    (si tiene una). Permite agregar platos a la comanda.
-
-    Parametros:
-    - mesa_id: ID de la mesa a consultar (desde la URL)
-
-    get_object_or_404: retorna 404 si la mesa no existe.
-    Sesion 03 - ORM: get_object_or_404 para busquedas seguras.
-    Sesion 04 - Contextos en templates.
-
-    Template: mesas/detalle_mesa.html
-    """
     mesa = get_object_or_404(Mesa, id=mesa_id)
-
-    context = {
+    comanda_activa = Comanda.objects.filter(
+        mesa=mesa, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
+    ).prefetch_related('lineas__plato').first()
+    categorias = Categoria.objects.prefetch_related('platos').all()
+    return render(request, 'mesas/detalle_mesa.html', {
         'mesa': mesa,
-    }
+        'comanda_activa': comanda_activa,
+        'categorias': categorias,
+    })
 
-    return render(request, 'mesas/detalle_mesa.html', context)
+@login_required
+def abrir_comanda(request, mesa_id):
+    if request.method == 'POST':
+        try:
+            Comanda.abrir(mesa_id, request.user)
+            messages.success(request, 'Comanda abierta')
+        except ValidationError as e:
+            messages.error(request, str(e))
+    return redirect('detalle_mesa', mesa_id=mesa_id)
+
+@login_required
+def agregar_plato(request, comanda_id):
+    if request.method=='POST':
+        comanda = get_object_or_404(Comanda, id=comanda_id)
+        try:
+            comanda.agregar_platos([{
+                'plato_id': int(request.POST.get('plato_id')),
+                'cantidad':int(request.POST.get('cantidad')),
+                'observacion': request.POST.get('observacion', ''),
+
+            }])
+            messages.success(request, 'Plato agregado')
+        except ValidationError as e:
+            for error in e.message_dict.get('errores',[str(e)]):
+                messages.error (request, error)
+    return redirect('detalle_mesa', mesa_id=comanda.mesa.id)
+            
