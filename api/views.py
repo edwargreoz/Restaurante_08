@@ -1,22 +1,21 @@
-
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.utils import timezone
 from django.db import transaction
 from django.db.models import Q
-from django.db.models import Sum, Count
+from django.core.exceptions import ValidationError
 
-from mesas.models import Mesa , UnionMesa
+from mesas.models import Mesa, UnionMesa
 from pedidos.models import Comanda, LineaComanda
-from menu.models import Plato
-from inventario.models import RecetaInsumo,Insumo
-from caja.models import Caja,Pago
-
+from caja.models import Pago
+    
 from .filters import ComandaFilter
-from .serializers import MesaSerializer , UnionMesaSerializer,ComandaSerializer
-from .serializers import AgregarPlatosRequestSerializer,PagarRequestSerializer,LineaComandaSerializer,CocinaComandaSerializer
-from .permissions import EsMozo, EsCocinero , EsCajero, EsAdmin
+from .serializers import (
+    MesaSerializer, UnionMesaSerializer, ComandaSerializer,
+    AgregarPlatosRequestSerializer, PagarRequestSerializer,
+    LineaComandaSerializer, CocinaComandaSerializer
+)
+from .permissions import EsMozo, EsCocinero, EsCajero, EsAdmin
 
 
 class MesaViewSet(viewsets.ReadOnlyModelViewSet):
@@ -80,13 +79,13 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 return Response(
                     {'error' : 'La mesa no esta libre'},
                     status= status.HTTP_400_BAD_REQUEST)
-        
-            comanda = Comanda.objects.create(
-                mesa = mesa,
-                mozo = request.user)
-        
-            mesa.estado = 'OCUPADA'
-            mesa.save()
+            try:
+                comanda = Comanda.abrir(mesa_id, request.user)
+            except ValidationError as e:
+                return Response(
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         serializer = self.get_serializer(comanda)
         return Response(serializer.data , status=status.HTTP_201_CREATED)
     
@@ -96,62 +95,20 @@ class ComandaViewSet(viewsets.ModelViewSet):
         POST /api/v1/comandas/{id}/platos/
         Body: {"platos": [{"plato_id": 1, "cantidad": 2, "observacion": "sin sal"}, ...]}
         Agrega platos a una comanda verificando stock de insumos.
-        """
-
+        """ 
         comanda = self.get_object()
-
-        if comanda.estado not in ('ABIERTA','LISTA'):
-            return Response(
-                {'error': 'La comanda no esta abierta'},
-                status= status.HTTP_400_BAD_REQUEST
-            )
-
+        
         serializer = AgregarPlatosRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        platos_data = serializer.validated_data['platos']
-        errores = []
-        platos_a_crear= []
-
-        with transaction.atomic():
-            for item in platos_data:
-                plato = Plato.objects.filter(id=item['plato_id']).first()
-                if not plato:
-                    errores.append({'plato_id': item['plato_id'], 'error':'Plato no encontrado'})   
-                    continue
-                if not plato.disponible:
-                    errores.append({'plato_id': item['plato_id'], 'error': 'Plato no disponible'})
-                    continue
-
-                #Verificacion de stock para receta de insumos
-
-                recetas = RecetaInsumo.objects.filter(plato=plato)
-                faltantes=[]
-                for receta in recetas:
-                    necesario= receta.cantidad_por_porcion * item['cantidad']
-                    if receta.insumo.stock_actual < necesario:
-                        faltantes.append(
-                            f"{receta.insumo.nombre}: disponible {receta.insumo.stock_actual}, necesario {necesario}"
-                        )
-                if faltantes:
-                    errores.append({
-                        'plato_id': item['plato_id'],
-                        'plato': plato.nombre,
-                        'error': 'stock insuficiente',
-                        'detalle' : faltantes
-                    })
-                    continue
-                platos_a_crear.append(LineaComanda(
-                    comanda=comanda,
-                    plato=plato,
-                    cantidad = item['cantidad'],
-                    observacion =item.get('observacion',''),
-                ))
-            if errores:
-                transaction.set_rollback(True)
-                return Response({'errores': errores}, status=status.HTTP_400_BAD_REQUEST)
-            LineaComanda.objects.bulk_create(platos_a_crear)    
+        try:
+            comanda.agregar_platos(serializer.validated_data['platos'])
+        except ValidationError as e:
+            return Response(
+                e.message_dict if hasattr(e, 'message_dict')
+                else {'error':str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
@@ -171,45 +128,44 @@ class ComandaViewSet(viewsets.ModelViewSet):
 
         with transaction.atomic():
             comanda = Comanda.objects.select_for_update().get(id=comanda.id)
-
-            if comanda.estado not in ('ABIERTA','LISTA'):
+            try:
+                comanda.pagar(
+                    metodo=data['metodo'],monto=data['monto'],
+                    vuelto = data.get('vuelto',0),
+                    referencia= data.get('referencia','')    
+                )
+            except ValidationError as e:
                 return Response(
-                    {'error':'La comanda ya fue cobrada o anulada'},
+                    {'error' :  str(e)},
+                    status=status.HTTP_400_BAD_REQUEST 
+                )
+        serializer = self.get_serializer(comanda)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'])
+    def pagar_split(self, request, pk=None):
+        comanda = self.get_object()
+        if comanda.estado not in ('ABIERTA', 'LISTA'):
+            return Response(
+                {'error': 'La comanda no esta lista para pagar'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        pagos_data = request.data.get('pagos', [])
+        if not pagos_data:
+            return Response(
+                {'error': 'Debe enviar al menos un pago'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        with transaction.atomic():
+            comanda = Comanda.objects.select_for_update().get(id=comanda.id)
+            try:
+                comanda.pagar_split(pagos_data)
+            except ValidationError as e:
+                return Response(
+                    e.message_dict if hasattr(e, 'message_dict')
+                    else {'error': str(e)},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            insumo_ids=[]
-            for linea in comanda.lineas.all():
-                for receta in RecetaInsumo.objects.filter(plato = linea.plato):
-                    insumo_ids.append(receta.insumo_id)
-            insumos_bloqueados = Insumo.objects.select_for_update().filter(
-                id__in=insumo_ids
-            )
-            for insumo in insumos_bloqueados:
-                for linea in comanda.lineas.all():
-                    recetas = RecetaInsumo.objects.filter(
-                        plato = linea.plato, insumo = insumo
-                    )
-                    for receta in recetas:
-                        cantidad = receta.cantidad_por_porcion * linea.cantidad
-                        insumo.stock_actual -= cantidad
-                        insumo.save()
-
-            Pago.objects.create(
-                comanda = comanda,
-                metodo = data['metodo'],
-                monto = data ['monto'],
-                vuelto = data.get('vuelto', 0),
-                referencia =data.get('referencia','')
-            )
-
-            comanda.estado= 'COBRADA'
-            comanda.fecha_cierre = timezone.now()
-            comanda.save()
-
-            mesa = comanda.mesa
-            mesa.estado = 'LIBRE'
-            mesa.save()
-
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -223,46 +179,34 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def enviar_cocina (self, request, pk=None):
         linea = self.get_object()
-        if linea.estado != 'PENDIENTE':
+        try:
+            linea.enviar_cocina()
+        except ValidationError as e:
             return Response(
-                {'error': 'Solo se puede enviar a cocina en estado PENDIENTE'},
+                {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
-            )
-        with transaction.atomic():
-            linea.estado = 'EN_PREP'
-            linea.save(update_fields = ['estado'])
-            comanda = linea.comanda
-            if all(l.estado == 'EN_PREP' for l in comanda.lineas.all()):
-                comanda.estado = 'EN_PREPARACION'
-                comanda.save(update_fields=['estado'])
+                )
         serializer = self.get_serializer(linea)
         return Response(serializer.data)
     
     @action(detail=True, methods=['patch'])
     def marcar_listo(self,request,pk=None):
         linea = self.get_object()
-        if linea.estado != 'EN_PREP':
+        try:
+            linea.marcar_listo()
+        except ValidationError as e:
             return Response(
-                {'error': 'Solo se puede marcar LISTO una linea EN_PREPARACION'},
+                {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
-            )
-        with transaction.atomic():
-            linea.estado = 'LISTO'
-            linea.save(update_fields = ['estado'])
-            comanda = linea.comanda
-            if all(l.estado == 'LISTO' for l in comanda.lineas.all()):
-                comanda.estado = 'LISTA'
-                comanda.save(update_fields = ['estado'])
+                )
         serializer = self.get_serializer(linea)
         return Response(serializer.data)
 
 class CocinaViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Comanda.objects.filter(
-        Q(estado = 'EN_PREPARACION') | Q(lineas__estado__in = ['PENDIENTE','EN_PREP'])
-    ).prefetch_related(
-        'lineas__plato'
-    ).distinct().order_by('fecha_apertura')
-    permission_classes =[EsCocinero |EsAdmin]
+        Q(estado='EN_PREPARACION') | Q(lineas__estado__in=['PENDIENTE', 'EN_PREP'])
+    ).prefetch_related('lineas__plato').distinct().order_by('fecha_apertura')
+    permission_classes = [EsCocinero | EsAdmin]
     serializer_class = CocinaComandaSerializer
 
 class ReportesViewSet(viewsets.ViewSet):
@@ -270,33 +214,10 @@ class ReportesViewSet(viewsets.ViewSet):
 
     @action(detail=False,methods=['get'])
     def ventas_turno(self, request):
-        caja_id= request.query_params.get('caja_id')
-        fecha_desde = request.query_params.get('fecha_desde')
-        fecha_hasta = request.query_params.get('fecha_hasta')    
-
-        pagos = Pago.objects.all()
-
-        if caja_id:
-            caja  = Caja.objects.filter(id=caja_id).first()
-
-            if caja:
-                pagos = pagos.filter(
-                    fecha__date__gte=caja.fecha_apertura.date()
-                )
-        if fecha_desde:
-            pagos = pagos.filter(fecha__date__gte=fecha_desde)
-        if fecha_hasta:
-            pagos = pagos.filter(fecha__date__lte=fecha_hasta)
-
-        totales_metodo = pagos.values('metodo').annotate(
-            total = Sum('monto'),
-            cantidad = Count('id')
+        data = Pago.objects.reporte_ventas(
+            caja_id=request.query_params.get('caja_id'),
+            fecha_desde=request.query_params.get('fecha_desde'),
+            fecha_hasta=request.query_params.get('fecha_hasta'),
         )
-        return Response({
-            'total_general':pagos.aggregate(total=Sum('monto'))[
-                'total'
-            ] or 0, 
-            'total_pagos' : pagos.count(),
-            'por_metodo': totales_metodo,
-        })
+        return Response(data)
 
