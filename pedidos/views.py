@@ -36,7 +36,10 @@ def agregar_platos_pedido(request, comanda_id):
             messages.success(request, 'Plato agregado')
         except ValidationError as e:
             for error in e.message_dict.get('errores', [str(e)]):
-                messages.error(request, error)
+                if isinstance(error, dict):
+                    messages.error(request, error.get('error', str(error)))
+                else:
+                    messages.error(request, error)
     return redirect('tomar_pedido', mesa_id=comanda.mesa.id)
 
 #kds cocina
