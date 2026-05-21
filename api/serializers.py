@@ -1,3 +1,4 @@
+from decimal import Decimal
 from rest_framework import serializers
 from mesas.models import Mesa, UnionMesa
 from pedidos.models import Comanda, LineaComanda
@@ -42,7 +43,7 @@ class LineaComandaSerializer(serializers.ModelSerializer):
         ]
 
     def get_subtotal(self, obj):
-        return obj.cantidad * obj.plato.precio
+        return obj.subtotal
     
 class ComandaSerializer(serializers.ModelSerializer):
     """Incluye las lineas anidadas y calcula el total general."""
@@ -58,10 +59,7 @@ class ComandaSerializer(serializers.ModelSerializer):
             'fecha_cierre', 'lineas', 'total'
         ]
     def get_total(self, obj):
-        return sum(
-            linea.plato.precio * linea.cantidad
-            for linea in obj.lineas.all()
-        )
+        return obj.total
 
 class AgregarPlatoSerializer(serializers.Serializer):
     plato_id= serializers.IntegerField()
@@ -73,7 +71,7 @@ class AgregarPlatosRequestSerializer(serializers.Serializer):
 
 class PagarRequestSerializer(serializers.Serializer):
     metodo = serializers.ChoiceField(choices=Pago.METODOS)
-    monto = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=0.01)
+    monto = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal('0.01'))
     vuelto = serializers.DecimalField(max_digits=10,decimal_places=2,required=False,default=0)
     referencia = serializers.CharField(required=False, allow_blank=True, default='')
 

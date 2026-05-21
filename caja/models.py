@@ -1,7 +1,29 @@
 
 from django.db import models
+from django.db.models import Sum, Count
 
-
+class PagoManager(models.Manager):
+    def reporte_ventas(self, caja_id=None, fecha_desde=None, fecha_hasta=None):
+        pagos = self.all()
+        if caja_id:
+            caja = Caja.objects.filter(id=caja_id).first()
+            if caja:
+                pagos = pagos.filter(
+                    fecha__date__gte=caja.fecha_apertura.date()
+                )
+        if fecha_desde:
+            pagos = pagos.filter(fecha__date__gte=fecha_desde)
+        if fecha_hasta:
+            pagos = pagos.filter(fecha__date__lte=fecha_hasta)
+        totales_metodo = pagos.values('metodo').annotate(
+            total=Sum('monto'), cantidad=Count('id')
+        )
+        return {
+            'total_general': pagos.aggregate(total=Sum('monto'))['total'] or 0,
+            'total_pagos': pagos.count(),
+            'por_metodo': totales_metodo,
+        }
+    
 class Caja(models.Model):
     """
     Registro de apertura y cierre de turno de caja.
@@ -56,6 +78,7 @@ class Caja(models.Model):
 
     def __str__(self):
         return f'{self.turno} - {self.cajero.username} ({self.get_estado_display()})'
+    
 
 
 class Pago(models.Model):
@@ -108,6 +131,7 @@ class Pago(models.Model):
         auto_now_add=True,
         verbose_name='Fecha del pago'
     )
+    objects = PagoManager()
 
     class Meta:
         ordering = ['-fecha']
