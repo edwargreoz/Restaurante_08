@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from .models import Mesa
+from .models import Mesa,UnionMesa
 from pedidos.models import Comanda
 from menu.models import Categoria
 
@@ -38,13 +38,13 @@ def abrir_comanda(request, mesa_id):
     return redirect('detalle_mesa', mesa_id=mesa_id)
 
 @login_required
-def agregar_plato(request, comanda_id):
+def agregar_plato_comanda(request, comanda_id):
     if request.method=='POST':
         comanda = get_object_or_404(Comanda, id=comanda_id)
         try:
             comanda.agregar_platos([{
                 'plato_id': int(request.POST.get('plato_id')),
-                'cantidad':int(request.POST.get('cantidad')),
+                'cantidad':int(request.POST.get('cantidad', 1)),
                 'observacion': request.POST.get('observacion', ''),
 
             }])
@@ -53,4 +53,29 @@ def agregar_plato(request, comanda_id):
             for error in e.message_dict.get('errores',[str(e)]):
                 messages.error (request, error)
     return redirect('detalle_mesa', mesa_id=comanda.mesa.id)
-            
+@login_required
+def unir_mesas(request):
+    mesas_libres = Mesa.objects.filter(estado='LIBRE')
+    uniones = UnionMesa.objects.filter(activa=True).prefetch_related('mesas')
+    if request.method == 'POST':
+        mesa_ids = request.POST.getlist('mesas')
+        if len(mesa_ids) >= 2:
+            union = UnionMesa.objects.create()
+            union.mesas.set(mesa_ids)
+            union.save()
+            messages.success(request, 'Unión creada')
+        else:
+            messages.error(request, 'Selecciona al menos 2 mesas')
+        return redirect('unir_mesas')
+    return render(request, 'mesas/unir_mesas.html', {
+        'mesas_libres': mesas_libres,
+        'uniones': uniones,
+    })
+@login_required
+def deshacer_union(request, union_id):
+    if request.method == 'POST':
+        union = get_object_or_404(UnionMesa, id=union_id, activa=True)
+        union.activa = False
+        union.save()
+        messages.success(request, 'Unión deshecha')
+    return redirect('unir_mesas')            
