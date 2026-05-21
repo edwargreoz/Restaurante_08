@@ -6,40 +6,33 @@
 {% block content %}
 <h1 class="mb-4">Catalogo de Platos</h1>
 
-{% if platos %}
-{% regroup platos by categoria as categorias %}
 {% for categoria in categorias %}
-    <h2 class="mt-4">{{ categoria.grouper }}</h2>
+    <h2 class="mt-4">{{ categoria.nombre }}</h2>
     <div class="row">
-        {% for plato in categoria.list %}
+        {% for plato in categoria.platos.all %}
         <div class="col-md-4 mb-3">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">{{ plato.nombre }}</h5>
                     <p class="card-text">{{ plato.descripcion|truncatewords:15 }}</p>
-                    <p class="card-text">
-                        <strong>S/ {{ plato.precio }}</strong>
-                    </p>
+                    <p class="card-text"><strong>S/ {{ plato.precio }}</strong></p>
+
                     {% if plato.disponible %}
                         <span class="badge bg-success">Disponible</span>
                     {% else %}
-                        <span class="badge bg-danger">No Disponible</span>
+                        <span class="badge bg-danger">No disponible</span>
                     {% endif %}
+
+                    </div>
                 </div>
             </div>
-        </div>
-        {% empty %}
-        <div class="col-12">
-            <p class="text-muted">No hay platos en esta categoria.</p>
-        </div>
+            {% empty %}
+            <div class="col-12">
+                <p class="text-muted">No hay platos disponibles en esta categoría.</p>
+            </div>
         {% endfor %}
     </div>
-{% empty %}
-<div class="alert alert-info">No hay categorias o platos registrados.</div>
-{% endfor %}
-{% else %}
-<div class="alert alert-info">
-    El modulo de menu esta en construccion. Vuelve pronto.
-</div>
-{% endif %}
+    {% empty %}
+    <div class="alert alert-info">No hay categorias o platos registrados.</div>
+    {% endfor %}
 {% endblock %}
