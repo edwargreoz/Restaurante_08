@@ -1,3 +1,63 @@
 
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from pedidos.models import Comanda
+from caja.models import Caja, Pago
 
-from django.shortcuts import render
+@login_required
+def cobrar_comanda(request, comanda_id):
+    comanda = get_object_or_404(
+        Comanda.objects.prefetch_related('lineas__plato','pagos'),
+        id=comanda_id, estado__in=['ABIERTA','LISTA']
+    )
+    if request.method == 'POST':
+        try:
+            comanda.pagar(
+                metodo=request.POST.get('metodo'),
+                monto = request.POST.get('monto'),
+                vuelto = request.POST.get('vuelto',0),
+                referencia=request.POST.get('referencia',''),
+            )
+            messages.success(request, 'Pago registrado correctamente')
+            return redirect('dashboard')
+        except ValidationError as e:
+            messages.error(request, str(e))
+    return render(request, 'caja/cobrar_comanda.html',{
+        'comanda': comanda,
+        'metodos': Pago.METODOS,
+    })
+@login_required
+def apertura_turno(request):
+    caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
+    if request.method == 'POST':
+        if 'abrir' in request.POST:
+            Caja.objects.create(
+                turno=request.POST.get('turno'),
+                cajero=request.user,
+                saldo_inicial=request.POST.get('saldo_inicial', 0),
+            )
+            messages.success(request, 'Turno abierto')
+        elif 'cerrar' in request.POST:
+            if caja_abierta:
+                caja_abierta.estado = 'CERRADA'
+                caja_abierta.fecha_cierre = timezone.now()
+                caja_abierta.save()
+                messages.success(request, 'Turno cerrado')
+        return redirect('apertura_turno')
+    return render(request, 'caja/apertura_turno.html', {'caja': caja_abierta})
+    
+@login_required
+def reportes_turno(request):
+    caja_id = request.GET.get('caja_id')
+    fecha_desde = request.GET.get('fecha_desde')
+    fecha_hasta = request.GET.get('fecha_hasta')
+    reporte = Pago.objects.reporte_ventas(caja_id, fecha_desde, fecha_hasta)
+    cajas = Caja.objects.all()
+    return render(request, 'reportes/reportes_turno.html', {
+        'reporte': reporte,
+        'cajas': cajas,
+    })
+

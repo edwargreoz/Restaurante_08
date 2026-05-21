@@ -3,6 +3,10 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from inventario.models import RecetaInsumo
+from mesas.models import Mesa, UnionMesa
+from caja.models import Pago
+from menu.models import Plato
 
 
 class Comanda(models.Model):
@@ -71,7 +75,6 @@ class Comanda(models.Model):
         )
     @classmethod
     def abrir(cls, mesa_id, usuario):
-        from mesas.models import Mesa, UnionMesa
         mesa = Mesa.objects.filter(id=mesa_id).first()
         if not mesa:
             raise ValidationError('Mesa no encontrada')
@@ -95,8 +98,7 @@ class Comanda(models.Model):
         return comanda
     
     def agregar_platos(self, platos_data):
-        from menu.models import Plato
-        from inventario.models import RecetaInsumo
+        
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta abierta')
         errores = []
@@ -138,9 +140,7 @@ class Comanda(models.Model):
         LineaComanda.objects.bulk_create(platos_a_crear)
         return platos_a_crear
     def pagar(self, metodo, monto, vuelto=0, referencia=''):
-        from caja.models import Pago
-        from inventario.models import RecetaInsumo
-        from mesas.models import UnionMesa
+        
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta lista para pagar')
         for linea in self.lineas.all():
@@ -165,9 +165,7 @@ class Comanda(models.Model):
                     m.save()
         return self
     def pagar_split(self, pagos_lista):
-        from caja.models import Pago
-        from inventario.models import RecetaInsumo
-        from mesas.models import UnionMesa
+        
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta lista para pagar')
         total_pagos = sum(p['monto'] for p in pagos_lista)
