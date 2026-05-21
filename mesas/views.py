@@ -50,8 +50,11 @@ def agregar_plato_comanda(request, comanda_id):
             }])
             messages.success(request, 'Plato agregado')
         except ValidationError as e:
-            for error in e.message_dict.get('errores',[str(e)]):
-                messages.error (request, error)
+            for error in e.message_dict.get('errores', [str(e)]):
+                if isinstance(error, dict):
+                    messages.error(request, error.get('error', str(error)))
+                else:
+                    messages.error(request, error)
     return redirect('detalle_mesa', mesa_id=comanda.mesa.id)
 @login_required
 def unir_mesas(request):
