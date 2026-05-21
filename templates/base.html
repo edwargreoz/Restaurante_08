@@ -21,11 +21,27 @@
         <button class="nav-toggle" id="navToggle">☰</button>
         <div class="nav-menu" id="navMenu">
             <div class="nav-links">
-                <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a> <!-- dashboard nombre de la url del dashboard en core/urls.py -->
-                <a href="{% url 'plano_mesas' %}" class="nav-link {% if request.resolver_match.url_name == 'plano_mesas' or request.resolver_match.url_name == 'detalle_mesa' %}active{% endif %}">Mesas</a> <!-- plano_mesas ombre de la url del plano de mesas en mesas/urls.py -->
-            <a href="#" class="nav-link">Menú</a>   <!--falta url del menu / vistas-->
-                <a href="#" class="nav-link">KDS</a>    <!--falta url del KDS / vistas-->
-                <a href="#" class="nav-link">Caja</a>   <!--falta url de caja / vistas-->
+                <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+                {% if user.groups.all.0.name == 'Mozo' or user.is_superuser %} <!-- Solo mozos y admin pueden ver esta sección -->
+
+                <a href="{% url 'plano_mesas' %}" class="nav-link {% if request.resolver_match.url_name == 'plano_mesas' or request.resolver_match.url_name == 'detalle_mesa' %}active{% endif %}">Mesas</a>
+                {% endif %} <!-- Solo mozos y admin pueden ver esta sección -->
+                
+                <a href="{% url 'catalogo_platos' %}" class="nav-link {% if request.resolver_match.url_name == 'catalogo_platos' %}active{% endif %}">Menú</a>
+                {% if user.groups.all.0.name == 'Cocinero' or user.is_superuser %} <!-- Solo cocineros y admin pueden ver esta sección -->
+
+                <a href="{% url 'kds_panel' %}" class="nav-link {% if request.resolver_match.url_name == 'kds_panel' %}active{% endif %}">KDS</a>
+                {% endif %} <!-- Solo cocineros y admin pueden ver esta sección -->
+
+                {% if user.groups.all.0.name == 'Cajero' or user.is_superuser %} <!-- Solo cajeros y admin pueden ver esta sección -->
+
+                <a href="{% url 'apertura_turno' %}" class="nav-link {% if request.resolver_match.url_name == 'apertura_turno' %}active{% endif %}">Caja</a>        <!--cambio de url temporalmente, era cobrar_comanda-->
+                {% endif %} 
+
+                {% if user.is_superuser %} 
+
+                <a href="{% url 'lista_insumos' %}"     class="nav-link {% if request.resolver_match.url_name == 'lista_insumos' %}active{% endif %}">Inventario</a>
+                {% endif %} 
             </div>
             <div class="nav-user">
                 <span class="nav-username">{{ user.get_full_name|default:user.username }}</span>
@@ -36,6 +52,16 @@
 </nav>
     {% endif %}
     <main class="{% block main_class %}container{% endblock %}">
+        {% if messages %}
+        <div class="container mt-3">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         {% block content %}{% endblock %}   
  </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> <!-- Agrega el script de Bootstrap para funcionalidades interactivas -->
