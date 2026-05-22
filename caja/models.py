@@ -6,11 +6,7 @@ class PagoManager(models.Manager):
     def reporte_ventas(self, caja_id=None, fecha_desde=None, fecha_hasta=None):
         pagos = self.all()
         if caja_id:
-            caja = Caja.objects.filter(id=caja_id).first()
-            if caja:
-                pagos = pagos.filter(
-                    fecha__date__gte=caja.fecha_apertura.date()
-                )
+            pagos = pagos.filter(caja_id=caja_id)
         if fecha_desde:
             pagos = pagos.filter(fecha__date__gte=fecha_desde)
         if fecha_hasta:
@@ -101,6 +97,11 @@ class Pago(models.Model):
         related_name='pagos',
         verbose_name='Comanda'
     )
+    caja = models.ForeignKey(
+        'Caja', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='pagos',
+        verbose_name='Turno de caja'
+    )   
 
     metodo = models.CharField(
         max_length=20,

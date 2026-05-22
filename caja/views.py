@@ -14,12 +14,14 @@ def cobrar_comanda(request, comanda_id):
         id=comanda_id, estado__in=['ABIERTA','LISTA']
     )
     if request.method == 'POST':
+        caja_activa = Caja.objects.filter(estado='ABIERTA').last()
         try:
             comanda.pagar(
                 metodo=request.POST.get('metodo'),
                 monto = request.POST.get('monto'),
                 vuelto = request.POST.get('vuelto',0),
                 referencia=request.POST.get('referencia',''),
+                caja=caja_activa,
             )
             messages.success(request, 'Pago registrado correctamente')
             return redirect('dashboard')

@@ -6,17 +6,52 @@ from django.db.models import Q
 from django.core.exceptions import ValidationError
 
 from mesas.models import Mesa, UnionMesa
+from menu.models import Categoria, Plato
+from inventario.models import Insumo, RecetaInsumo
+from reservas.models import Reserva
 from pedidos.models import Comanda, LineaComanda
 from caja.models import Pago
     
-from .filters import ComandaFilter
+from .filters import ComandaFilter, PlatoFilter
 from .serializers import (
     MesaSerializer, UnionMesaSerializer, ComandaSerializer,
     AgregarPlatosRequestSerializer, PagarRequestSerializer,
-    LineaComandaSerializer, CocinaComandaSerializer
+    LineaComandaSerializer, CocinaComandaSerializer,
+    CategoriaSerializer, PlatoSerializer,
+    InsumoSerializer, RecetaInsumoSerializer,
+    ReservaSerializer,
 )
 from .permissions import EsMozo, EsCocinero, EsCajero, EsAdmin
 
+
+class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [EsMozo | EsAdmin]
+    queryset = Categoria.objects.all()
+    serializer_class = CategoriaSerializer
+
+class PlatoViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [EsMozo | EsAdmin]
+    queryset = Plato.objects.select_related('categoria').all()
+    serializer_class = PlatoSerializer
+    filterset_class = PlatoFilter
+
+class InsumoViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [EsAdmin]
+    queryset = Insumo.objects.all()
+    serializer_class = InsumoSerializer
+
+class RecetaInsumoViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [EsAdmin]
+    queryset = RecetaInsumo.objects.select_related('plato', 'insumo').all()
+    serializer_class = RecetaInsumoSerializer
+
+class ReservaViewSet(viewsets.ModelViewSet):
+    permission_classes = [EsMozo | EsAdmin]
+    queryset = Reserva.objects.select_related('mesa', 'creado_por').all()
+    serializer_class = ReservaSerializer
+
+    def perform_destroy(self, instance):
+        instance.cancelar()
 
 class MesaViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -222,7 +257,7 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
 class CocinaViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Comanda.objects.filter(
         Q(estado='EN_PREPARACION') | Q(lineas__estado__in=['PENDIENTE', 'EN_PREP'])
-    ).prefetch_related('lineas__plato').distinct().order_by('fecha_apertura')
+    ).prefetch_related('lineas__plato').distinct('fecha_apertura', 'id').order_by('fecha_apertura')
     permission_classes = [EsCocinero | EsAdmin]
     serializer_class = CocinaComandaSerializer
 
