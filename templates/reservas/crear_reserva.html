@@ -33,7 +33,7 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="fecha">Fecha</label>
-                    <input type="date" name="fecha" id="fecha" class="form-control premium-input" required>
+                    <input type="date" name="fecha" id="fecha" class="form-control premium-input" min="{% now 'Y-m-d' %}" required>
                 </div>
             </div>
         </div>
