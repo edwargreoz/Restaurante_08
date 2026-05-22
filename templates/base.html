@@ -1,4 +1,5 @@
 {% load static %}
+{% load role_tags %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -22,27 +23,24 @@
         <div class="nav-menu" id="navMenu">
             <div class="nav-links">
                 <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
-                {% if user.groups.all.0.name == 'Mozo' or user.is_superuser %} <!-- Solo mozos y admin pueden ver esta sección -->
-
+                {% if user|has_group:'Mozo' %}
                 <a href="{% url 'plano_mesas' %}" class="nav-link {% if request.resolver_match.url_name == 'plano_mesas' or request.resolver_match.url_name == 'detalle_mesa' %}active{% endif %}">Mesas</a>
                 <a href="{% url 'lista_reservas' %}" class="nav-link {% if 'reserva' in request.resolver_match.url_name %}active{% endif %}">Reservas</a>
-                {% endif %} <!-- Solo mozos y admin pueden ver esta sección -->
-                
+                {% endif %}
+
                 <a href="{% url 'catalogo_platos' %}" class="nav-link {% if request.resolver_match.url_name == 'catalogo_platos' %}active{% endif %}">Menú</a>
-                {% if user.groups.all.0.name == 'Cocinero' or user.is_superuser %} <!-- Solo cocineros y admin pueden ver esta sección -->
 
+                {% if user|has_group:'Cocinero' %}
                 <a href="{% url 'kds_panel' %}" class="nav-link {% if request.resolver_match.url_name == 'kds_panel' %}active{% endif %}">KDS</a>
-                {% endif %} <!-- Solo cocineros y admin pueden ver esta sección -->
+                {% endif %}
 
-                {% if user.groups.all.0.name == 'Cajero' or user.is_superuser %} <!-- Solo cajeros y admin pueden ver esta sección -->
+                {% if user|has_group:'Cajero' %}
+                <a href="{% url 'apertura_turno' %}" class="nav-link {% if request.resolver_match.url_name == 'apertura_turno' %}active{% endif %}">Caja</a>
+                {% endif %}
 
-                <a href="{% url 'apertura_turno' %}" class="nav-link {% if request.resolver_match.url_name == 'apertura_turno' %}active{% endif %}">Caja</a>        <!--cambio de url temporalmente, era cobrar_comanda-->
-                {% endif %} 
-
-                {% if user.is_superuser %} 
-
-                <a href="{% url 'lista_insumos' %}"     class="nav-link {% if request.resolver_match.url_name == 'lista_insumos' %}active{% endif %}">Inventario</a>
-                {% endif %} 
+                {% if user|has_group:'Mozo' %}
+                <a href="{% url 'lista_insumos' %}" class="nav-link {% if request.resolver_match.url_name == 'lista_insumos' %}active{% endif %}">Inventario</a>
+                {% endif %}
             </div>
             <div class="nav-user">
                 <span class="nav-username">{{ user.get_full_name|default:user.username }}</span>

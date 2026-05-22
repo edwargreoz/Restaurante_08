@@ -1,13 +1,21 @@
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from pedidos.models import Comanda
 from caja.models import Caja, Pago
 
+
+def es_cajero_o_admin(user):
+    return user.is_superuser or user.groups.filter(name='Cajero').exists()
+
+def es_mozo_o_cajero(user):
+    return user.is_superuser or user.groups.filter(name__in=['Mozo', 'Cajero']).exists()
+
 @login_required
+@user_passes_test(es_mozo_o_cajero)
 def cobrar_comanda(request, comanda_id):
     comanda = get_object_or_404(
         Comanda.objects.prefetch_related('lineas__plato','pagos'),
@@ -32,6 +40,7 @@ def cobrar_comanda(request, comanda_id):
         'metodos': Pago.METODOS,
     })
 @login_required
+@user_passes_test(es_cajero_o_admin)
 def apertura_turno(request):
     caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
     if request.method == 'POST':
@@ -52,6 +61,7 @@ def apertura_turno(request):
     return render(request, 'caja/apertura_turno.html', {'caja': caja_abierta})
     
 @login_required
+@user_passes_test(es_cajero_o_admin)
 def reportes_turno(request):
     caja_id = request.GET.get('caja_id')
     fecha_desde = request.GET.get('fecha_desde')

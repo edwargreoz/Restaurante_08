@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}Dashboard - Restaurant{% endblock %}
 {% block content %}
 <!-- Header -->
@@ -37,6 +38,7 @@
         <p class="card-number">{{ alertas_stock }}</p>
         <a href="{% url 'lista_insumos' %}" class="card-link stretched-link">Ver inventario →</a>
     </div>
+    {% if user|has_group:'Cajero' %}
     <!-- Ventas hoy -->
     <div class="card card-purple">
         <img src="{% static 'icons/ventasHoy.png' %}" class="card-icon" alt="">
@@ -57,6 +59,7 @@
         </p>
         <a href="{% url 'apertura_turno' %}" class="card-link stretched-link">Ir a caja →</a>
     </div>
+    {% endif %}
 </div>
 <!-- === Últimas Comandas === -->
 <div class="section-title">Últimas comandas activas</div>

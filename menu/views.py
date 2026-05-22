@@ -3,8 +3,9 @@
 #Archivo: menu/views.py
 #parte del commit: feat: agrego navbar con permisos por rol, mensajes flash y catalogo de platos
 from django.shortcuts import render , redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
+from core.rol_utils import es_admin
 from menu.models import Categoria,Plato
 
 @login_required
@@ -14,11 +15,13 @@ def catalogo_platos(request):
                 {'categorias': categorias})
 
 @login_required
+@user_passes_test(es_admin)
 def gestion_menu(request):
     categorias = Categoria.objects.prefetch_related('platos').all()
     return render(request, 'menu/gestion_menu.html',{'categorias':
                                                      categorias})
 @login_required
+@user_passes_test(es_admin)
 def crear_categoria(request):
     if request.method=='POST':
         nombre = request.POST.get('nombre')
@@ -30,6 +33,7 @@ def crear_categoria(request):
     return redirect('gestion_menu')
 
 @login_required
+@user_passes_test(es_admin)
 def crear_plato(request):
     if request.method == 'POST':
         categoria = get_object_or_404(Categoria, id=request.POST.get('categoria'))
@@ -45,6 +49,7 @@ def crear_plato(request):
     return redirect('gestion_menu')
 
 @login_required
+@user_passes_test(es_admin)
 def editar_plato(request, plato_id):
     plato = get_object_or_404(Plato,id=plato_id)
     if request.method == 'POST':
@@ -62,6 +67,7 @@ def editar_plato(request, plato_id):
     return render(request, 'menu/gestion_menu.html', {'editar':plato, 'categorias': categorias
                                                       })
 @login_required
+@user_passes_test(es_admin)
 def eliminar_plato(request, plato_id):
     if request.method == 'POST':
         plato = get_object_or_404(Plato, id=plato_id)

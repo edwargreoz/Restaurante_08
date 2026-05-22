@@ -1,16 +1,18 @@
 
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from core.rol_utils import es_mozo
 from .models import Mesa,UnionMesa
 from pedidos.models import Comanda
 from menu.models import Categoria
 
 
 @login_required
+@user_passes_test(es_mozo)
 def plano_mesas(request): 
     mesas = Mesa.objects.all()
     uniones = UnionMesa.objects.filter(activa=True).prefetch_related('mesas')
@@ -30,6 +32,7 @@ def plano_mesas(request):
     })
 
 @login_required
+@user_passes_test(es_mozo)
 def detalle_mesa(request, mesa_id):
     mesa = get_object_or_404(Mesa, id=mesa_id)
     comanda_activa = Comanda.objects.filter(
@@ -59,6 +62,7 @@ def detalle_mesa(request, mesa_id):
     })
 
 @login_required
+@user_passes_test(es_mozo)
 def abrir_comanda(request, mesa_id):
     if request.method == 'POST':
         try:
@@ -69,6 +73,7 @@ def abrir_comanda(request, mesa_id):
     return redirect('detalle_mesa', mesa_id=mesa_id)
 
 @login_required
+@user_passes_test(es_mozo)
 def agregar_plato_comanda(request, comanda_id):
     if request.method=='POST':
         comanda = get_object_or_404(Comanda, id=comanda_id)
@@ -89,6 +94,7 @@ def agregar_plato_comanda(request, comanda_id):
     return redirect('detalle_mesa', mesa_id=comanda.mesa.id)
 
 @login_required
+@user_passes_test(es_mozo)
 def anular_comanda(request, comanda_id):
     comanda = get_object_or_404(Comanda, id=comanda_id)
     if request.method == 'POST':
@@ -100,6 +106,7 @@ def anular_comanda(request, comanda_id):
     return redirect('detalle_mesa', mesa_id=comanda.mesa.id)
 
 @login_required
+@user_passes_test(es_mozo)
 def unir_mesas(request):
     mesas = Mesa.objects.all()
     uniones = UnionMesa.objects.filter(activa=True).prefetch_related('mesas')
@@ -147,6 +154,7 @@ def unir_mesas(request):
         'mesas_disponibles': mesas_disponibles,
     })
 @login_required
+@user_passes_test(es_mozo)
 def agregar_mesa_union(request, union_id):
     if request.method == 'POST':
         union = get_object_or_404(UnionMesa, id=union_id, activa=True)
@@ -177,6 +185,7 @@ def agregar_mesa_union(request, union_id):
     return redirect('unir_mesas')
 
 @login_required
+@user_passes_test(es_mozo)
 def deshacer_union(request, union_id):
     if request.method == 'POST':
         union = get_object_or_404(UnionMesa, id=union_id, activa=True)

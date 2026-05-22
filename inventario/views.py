@@ -1,22 +1,26 @@
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
 from menu.models import Plato
+from core.rol_utils import es_admin, es_mozo
 from .models import Insumo, RecetaInsumo
 
 @login_required
+@user_passes_test(es_mozo)
 def lista_insumos(request):
     insumos= Insumo.objects.all()
     return render(request, 'inventario/lista_insumos.html',
                   {'insumos':insumos})
 @login_required
+@user_passes_test(es_admin)
 def gestion_insumos(request):
     insumos = Insumo.objects.all()
     return render(request, 'inventario/gestion_insumos.html', {'insumos': insumos})
 @login_required
+@user_passes_test(es_admin)
 def crear_insumo(request):
     if request.method == 'POST':
         try:
@@ -37,6 +41,7 @@ def crear_insumo(request):
     return redirect('gestion_insumos')
 
 @login_required
+@user_passes_test(es_admin)
 def editar_insumo(request, insumo_id):
     insumo = get_object_or_404(Insumo, id=insumo_id)
     if request.method == 'POST':
@@ -54,6 +59,7 @@ def editar_insumo(request, insumo_id):
     })
 
 @login_required
+@user_passes_test(es_admin)
 def eliminar_insumo(request, insumo_id):
     if request.method == 'POST':
         insumo = get_object_or_404(Insumo, id=insumo_id)
@@ -62,11 +68,13 @@ def eliminar_insumo(request, insumo_id):
     return redirect('gestion_insumos')
 
 @login_required
+@user_passes_test(es_admin)
 def lista_recetas(request):
     recetas = RecetaInsumo.objects.select_related('plato', 'insumo').all()
     return render(request, 'inventario/lista_recetas.html', {'recetas': recetas})
 
 @login_required
+@user_passes_test(es_admin)
 def crear_receta(request):
     if request.method == 'POST':
         try:
@@ -86,6 +94,7 @@ def crear_receta(request):
     })
 
 @login_required
+@user_passes_test(es_admin)
 def eliminar_receta(request, receta_id):
     receta = get_object_or_404(RecetaInsumo, id=receta_id)
     if request.method == 'POST':

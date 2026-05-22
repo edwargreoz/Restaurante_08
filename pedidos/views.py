@@ -1,14 +1,16 @@
 
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+from core.rol_utils import es_mozo, es_cocinero
 from pedidos.models import Comanda, LineaComanda
 from mesas.models import Mesa
 from menu.models import Categoria
 
 @login_required
+@user_passes_test(es_mozo)
 def tomar_pedido(request, mesa_id):
     mesa = get_object_or_404(Mesa, id=mesa_id)
     comanda = Comanda.objects.filter(
@@ -21,6 +23,7 @@ def tomar_pedido(request, mesa_id):
         'categorias':categorias
     })
 @login_required
+@user_passes_test(es_mozo)
 def agregar_platos_pedido(request, comanda_id):
     if request.method == 'POST':
         comanda = get_object_or_404(Comanda, id=comanda_id)
@@ -45,6 +48,7 @@ def agregar_platos_pedido(request, comanda_id):
 #kds cocina
 
 @login_required
+@user_passes_test(es_cocinero)
 def kds_panel(request):
     comandas= Comanda.objects.filter(
         Q(estado='EN_PREPARACION') | Q(lineas__estado__in=['PENDIENTE','EN_PREP'])
@@ -52,6 +56,7 @@ def kds_panel(request):
     
     return render(request, 'cocina/kds_panel.html',{'comandas':comandas})
 @login_required
+@user_passes_test(es_cocinero)
 def enviar_cocina(request, linea_id):
     if request.method == 'POST':
         linea = get_object_or_404(LineaComanda, id=linea_id)
@@ -63,6 +68,7 @@ def enviar_cocina(request, linea_id):
     return redirect('kds_panel')
 
 @login_required
+@user_passes_test(es_cocinero)
 def marcar_listo(request, linea_id):
     if request.method == 'POST':
         linea = get_object_or_404(LineaComanda, id = linea_id)

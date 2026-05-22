@@ -1,19 +1,22 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
+from core.rol_utils import es_mozo
 from mesas.models import Mesa
 from .models import Reserva
 
 
 @login_required
+@user_passes_test(es_mozo)
 def lista_reservas(request):
     reservas = Reserva.objects.select_related('mesa', 'creado_por').all()
     return render(request, 'reservas/lista_reservas.html', {'reservas': reservas})
 
 
 @login_required
+@user_passes_test(es_mozo)
 def crear_reserva(request):
     if request.method == 'POST':
         mesa_id = request.POST.get('mesa_id')
@@ -68,6 +71,7 @@ def crear_reserva(request):
 
 
 @login_required
+@user_passes_test(es_mozo)
 def cancelar_reserva(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
 

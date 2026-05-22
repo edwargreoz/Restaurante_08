@@ -15,6 +15,8 @@ from caja.models import Caja,Pago #para mostrar ingresos del dia en el dashboard
 
 
 def login_view(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
     if request.method == 'POST':
         # Obtener credenciales del formulario
         username = request.POST.get('username')
