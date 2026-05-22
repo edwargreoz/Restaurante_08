@@ -45,7 +45,7 @@
         <a href="{% url 'reportes_turno' %}" class="card-link">Ver reportes →</a>
     </div>
     <!-- Caja actual -->
-    <div class="card" style="background: linear-gradient(135deg, #2d3436, #636e72); color: #fff;">
+    <div class="card card-dark">
         <img src="{% static 'icons/caja.png' %}" class="card-icon" alt="">
         <p class="card-label">Caja — {{ caja_actual.turno|default:"Sin turno" }}</p>
         <p class="card-number" style="font-size: 1.8rem;">
