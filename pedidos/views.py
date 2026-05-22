@@ -48,9 +48,8 @@ def agregar_platos_pedido(request, comanda_id):
 def kds_panel(request):
     comandas= Comanda.objects.filter(
         Q(estado='EN_PREPARACION') | Q(lineas__estado__in=['PENDIENTE','EN_PREP'])
-    ).distinct().prefetch_related('lineas__plato','mozo','mesa').order_by(
-        'fecha_apertura'
-    )
+    ).distinct('fecha_apertura').prefetch_related('lineas__plato','mozo','mesa')
+    
     return render(request, 'cocina/kds_panel.html',{'comandas':comandas})
 @login_required
 def enviar_cocina(request, linea_id):

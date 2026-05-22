@@ -13,7 +13,7 @@ SECRET_KEY = config('SECRET_KEY')
 # Modo debug desde .env
 DEBUG = config('DEBUG', cast=bool, default=False)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*').split(',')
 
 INSTALLED_APPS = [
     # Django core
@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'inventario',   # Insumos y recetas
     'caja',         # Caja, pagos y turnos
     'api',          # Capa REST (ViewSets, Serializers)
+    'reservas',     # Reservas de mesas
 ]
 
 
