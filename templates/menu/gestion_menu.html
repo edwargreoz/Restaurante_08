@@ -7,7 +7,66 @@
   <div class="row">
     <!-- Columna izquierda: Formularios -->
     <div class="col-md-5">
-      <!-- Aquí irán los formularios para crear categoría y plato -->
+      <h2 class="mb-3">Administrar</h2>
+        <!-- Crear Categoría -->
+        <div class="card mb-3">
+        <div class="card-header">Crear Categoría</div>
+        <div class="card-body">
+            <form method="post" action="{% url 'crear_categoria' %}">
+            {% csrf_token %}
+            <div class="mb-3">
+                <input type="text" name="nombre" class="form-control" placeholder="Nombre de la categoría" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Crear Categoría</button>
+            </form>
+        </div>
+        </div>
+        Luego, el formulario de Crear/Editar Plato. Ahí tienes que contemplar los dos casos. Escríbelo justo debajo del formulario anterior:
+        <!-- Crear/Editar Plato -->
+        <div class="card mb-3">
+        <div class="card-header">
+            {% if editar %}Editar Plato: {{ editar.nombre }}{% else %}Crear Plato{% endif %}
+        </div>
+        <div class="card-body">
+            <form method="post" action="{% if editar %}{% url 'editar_plato' editar.id %}{% else %}{% url 'crear_plato' %}{% endif %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-3">
+                <select name="categoria" class="form-select" required>
+                <option value="">Seleccionar categoría</option>
+                {% for cat in categorias %}
+                    <option value="{{ cat.id }}" {% if editar and editar.categoria.id == cat.id %}selected{% endif %}>{{ cat.nombre }}</option>
+                {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <input type="text" name="nombre" class="form-control" placeholder="Nombre del plato" value="{{ editar.nombre|default:'' }}" required>
+            </div>
+            <div class="mb-3">
+                <input type="number" name="precio" class="form-control" placeholder="Precio S/" step="0.01" value="{{ editar.precio|default:'' }}" required>
+            </div>
+            <div class="mb-3">
+                <textarea name="descripcion" class="form-control" placeholder="Descripción">{{ editar.descripcion|default:'' }}</textarea>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" name="disponible" class="form-check-input" id="disponible" {% if editar.disponible or not editar %}checked{% endif %}>
+                <label class="form-check-label" for="disponible">Disponible</label>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Imagen</label>
+                <input type="file" name="imagen" class="form-control">
+                {% if editar and editar.imagen %}
+                <small class="text-muted">Actual: {{ editar.imagen.name }}</small>
+                {% endif %}
+            </div>
+            <button type="submit" class="btn btn-success">
+                {% if editar %}Guardar Cambios{% else %}Crear Plato{% endif %}
+            </button>
+            {% if editar %}
+                <a href="{% url 'gestion_menu' %}" class="btn btn-secondary">Cancelar</a>
+            {% endif %}
+            </form>
+        </div>
+        </div>
     </div>
     <!-- Columna derecha: Listado -->
     <div class="col-md-7">
