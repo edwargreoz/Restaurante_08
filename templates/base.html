@@ -25,6 +25,7 @@
                 {% if user.groups.all.0.name == 'Mozo' or user.is_superuser %} <!-- Solo mozos y admin pueden ver esta sección -->
 
                 <a href="{% url 'plano_mesas' %}" class="nav-link {% if request.resolver_match.url_name == 'plano_mesas' or request.resolver_match.url_name == 'detalle_mesa' %}active{% endif %}">Mesas</a>
+                <a href="{% url 'lista_reservas' %}" class="nav-link {% if 'reserva' in request.resolver_match.url_name %}active{% endif %}">Reservas</a>
                 {% endif %} <!-- Solo mozos y admin pueden ver esta sección -->
                 
                 <a href="{% url 'catalogo_platos' %}" class="nav-link {% if request.resolver_match.url_name == 'catalogo_platos' %}active{% endif %}">Menú</a>
