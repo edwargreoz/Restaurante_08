@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}Nueva Reserva - Restaurant{% endblock %}
+{% block title %}Editar Reserva - Restaurant{% endblock %}
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/reservas/reservas.css' %}">
@@ -9,13 +9,13 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Nueva Reserva</h1>
-        <span class="page-user">Registrar una nueva reserva en el sistema</span>
+        <h1>Editar Reserva</h1>
+        <span class="page-user">Modificar los detalles de la reserva de {{ reserva.cliente_nombre }}</span>
     </div>
 </div>
 
 <div class="form-card">
-    <form action="{% url 'crear_reserva' %}" method="post">
+    <form action="{% url 'editar_reserva' reserva.id %}" method="post">
         {% csrf_token %}
         
         <div class="row">
@@ -29,7 +29,7 @@
                                 <strong style="color: #d4af37; border-bottom: 1px solid #d4af37; display: block; margin-bottom: 8px;">{{ zona.grouper }}</strong>
                                 {% for mesa in zona.list %}
                                     <div style="display: flex; align-items: center; margin-left: 10px; margin-bottom: 5px;">
-                                        <input type="checkbox" name="mesas_ids" value="{{ mesa.id }}" id="mesa_{{ mesa.id }}" style="margin: 0; margin-right: 8px; width: 16px; height: 16px; flex-shrink: 0; cursor: pointer;">
+                                        <input type="checkbox" name="mesas_ids" value="{{ mesa.id }}" id="mesa_{{ mesa.id }}" {% if mesa.id|stringformat:"s" in mesas_actuales_ids %}checked{% endif %} style="margin: 0; margin-right: 8px; width: 16px; height: 16px; flex-shrink: 0; cursor: pointer;">
                                         <label for="mesa_{{ mesa.id }}" style="margin: 0; font-weight: normal; cursor: pointer;">
                                             Mesa {{ mesa.numero }} (Capacidad: {{ mesa.capacidad }} pax)
                                         </label>

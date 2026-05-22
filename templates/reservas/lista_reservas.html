@@ -31,7 +31,13 @@
         <tbody>
             {% for reserva in reservas %}
             <tr>
-                <td><strong>Mesa {{ reserva.mesa.numero }}</strong><br><small class="text-muted" style="color: #a0aec0;">{{ reserva.mesa.get_zona_display }}</small></td>
+                <td>
+                    {% if reserva.union_mesa %}
+                        <strong>Unión: {{ reserva.union_mesa }}</strong>
+                    {% else %}
+                        <strong>Mesa {{ reserva.mesa.numero }}</strong><br><small class="text-muted" style="color: #a0aec0;">{{ reserva.mesa.get_zona_display }}</small>
+                    {% endif %}
+                </td>
                 <td>{{ reserva.cliente_nombre }}</td>
                 <td>{{ reserva.cliente_contacto|default:"-" }}</td>
                 <td>{{ reserva.fecha|date:"d/m/Y" }} <br><small class="text-muted" style="color: #a0aec0;">{{ reserva.hora_inicio|time:"h:i A" }} - {{ reserva.hora_fin|time:"h:i A" }}</small></td>
@@ -44,14 +50,20 @@
                     {% endif %}
                 </td>
                 <td>
-                    {% if reserva.activa %}
-                        <form action="{% url 'cancelar_reserva' reserva.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de cancelar esta reserva?');">
-                            {% csrf_token %}
-                            <button type="submit" class="btn-cancel">Cancelar</button>
-                        </form>
-                    {% else %}
-                        <span class="text-muted" style="color: #a0aec0;">-</span>
-                    {% endif %}
+                    <div class="d-flex gap-2">
+                        {% if reserva.activa %}
+                            <a href="{% url 'editar_reserva' reserva.id %}" class="btn-cancel" style="border-color: #f39c12; color: #f39c12; text-decoration: none; padding: 4px 8px; line-height: normal; display: inline-block;">Editar</a>
+                            <form action="{% url 'cancelar_reserva' reserva.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de cancelar esta reserva?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-cancel">Cancelar</button>
+                            </form>
+                        {% else %}
+                            <form action="{% url 'eliminar_reserva' reserva.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de ELIMINAR permanentemente esta reserva?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-cancel" style="border-color: #d63031; color: #d63031;" title="Eliminar del sistema">Eliminar</button>
+                            </form>
+                        {% endif %}
+                    </div>
                 </td>
             </tr>
             {% empty %}
