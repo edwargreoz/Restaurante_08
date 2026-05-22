@@ -1,0 +1,68 @@
+/* === Reservas === */
+.reservas-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+.btn-gold {
+    background: #d4af37;
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.btn-gold:hover {
+    background: #c5a47e;
+    transform: translateY(-2px);
+    color: #fff;
+}
+.badge-active {
+    background: rgba(39, 174, 96, 0.1);
+    color: #27ae60;
+    border: 1px solid rgba(39, 174, 96, 0.3);
+}
+.badge-cancelled {
+    background: rgba(192, 57, 43, 0.1);
+    color: #c0392b;
+    border: 1px solid rgba(192, 57, 43, 0.3);
+}
+.btn-cancel {
+    background: none;
+    border: 1px solid #ff7675;
+    color: #d63031;
+    padding: 0.3rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-cancel:hover {
+    background: #fff5f5;
+    border-color: #d63031;
+}
+.form-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 2.5rem;
+    border: 1px solid #f0f0f0;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.04);
+    max-width: 800px;
+    margin: 0 auto;
+}
+.premium-input {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    background-color: #f8fafc;
+    transition: all 0.3s ease;
+}
+.premium-input:focus {
+    background-color: #ffffff;
+    border-color: #d4af37;
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+.btn-cancel-link:hover {
+    color: #2d3748 !important;
+}

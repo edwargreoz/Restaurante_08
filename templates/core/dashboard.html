@@ -14,35 +14,35 @@
         <img src="{% static 'icons/MesasLibres.png' %}" class="card-icon" alt="">
         <p class="card-label">Mesas libres</p>
         <p class="card-number">{{ mesas_libres }}</p>
-        <a href="{% url 'plano_mesas' %}" class="card-link">Ver plano →</a> <!-- Redirige al plano de mesas -->
+        <a href="{% url 'plano_mesas' %}" class="card-link stretched-link">Ver plano →</a> <!-- Redirige al plano de mesas -->
     </div>
     <!-- Mesas ocupadas -->
     <div class="card card-red">
         <img src="{% static 'icons/MesasOcupadas.png' %}" class="card-icon" alt="">
         <p class="card-label">Mesas ocupadas</p>
         <p class="card-number">{{ mesas_ocupadas }}</p>
-        <a href="{% url 'plano_mesas' %}" class="card-link">Ver plano →</a> 
+        <a href="{% url 'plano_mesas' %}" class="card-link stretched-link">Ver plano →</a> 
     </div>
     <!-- Comandas activas -->
     <div class="card card-orange">
         <img src="{% static 'icons/comandaActiva.png' %}" class="card-icon" alt="">
         <p class="card-label">Comandas activas</p>
         <p class="card-number">{{ comandas_activas }}</p>
-        <a href="{% url 'plano_mesas' %}" class="card-link">Ver pedidos →</a>
+        <a href="{% url 'plano_mesas' %}" class="card-link stretched-link">Ver pedidos →</a>
     </div>
     <!-- Alertas de stock -->
     <div class="card card-blue">
         <img src="{% static 'icons/Alertastock.png' %}" class="card-icon" alt="">
         <p class="card-label">Alertas de stock</p>
         <p class="card-number">{{ alertas_stock }}</p>
-        <a href="{% url 'lista_insumos' %}" class="card-link">Ver inventario →</a>
+        <a href="{% url 'lista_insumos' %}" class="card-link stretched-link">Ver inventario →</a>
     </div>
     <!-- Ventas hoy -->
     <div class="card card-purple">
         <img src="{% static 'icons/ventasHoy.png' %}" class="card-icon" alt="">
         <p class="card-label">Ventas hoy</p>
         <p class="card-number">S/ {{ ventas_hoy|floatformat:2 }}</p>
-        <a href="{% url 'reportes_turno' %}" class="card-link">Ver reportes →</a>
+        <a href="{% url 'reportes_turno' %}" class="card-link stretched-link">Ver reportes →</a>
     </div>
     <!-- Caja actual -->
     <div class="card card-dark">
@@ -55,7 +55,7 @@
                 Cerrada
             {% endif %}
         </p>
-        <a href="{% url 'apertura_turno' %}" class="card-link">Ir a caja →</a>
+        <a href="{% url 'apertura_turno' %}" class="card-link stretched-link">Ir a caja →</a>
     </div>
 </div>
 <!-- === Últimas Comandas === -->

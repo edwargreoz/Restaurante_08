@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Nueva Reserva - Restaurant{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/reservas/reservas.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Nueva Reserva</h1>
+        <span class="page-user">Registrar una nueva reserva en el sistema</span>
+    </div>
+</div>
+
+<div class="form-card">
+    <form action="{% url 'crear_reserva' %}" method="post">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="mesa_id">Mesa disponible</label>
+                    <select name="mesa_id" id="mesa_id" class="form-control premium-input" required>
+                        <option value="">Selecciona una mesa...</option>
+                        {% for mesa in mesas %}
+                            <option value="{{ mesa.id }}">Mesa {{ mesa.numero }} - {{ mesa.get_zona_display }} (Capacidad: {{ mesa.capacidad }} pax)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="fecha">Fecha</label>
+                    <input type="date" name="fecha" id="fecha" class="form-control premium-input" min="{% now 'Y-m-d' %}" required>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="cliente_nombre">Nombre del cliente</label>
+                    <input type="text" name="cliente_nombre" id="cliente_nombre" class="form-control premium-input" required placeholder="Ej: Juan Pérez">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="cliente_contacto">Contacto (Opcional)</label>
+                    <input type="text" name="cliente_contacto" id="cliente_contacto" class="form-control premium-input" placeholder="Teléfono o Email">
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="hora_inicio">Hora de inicio</label>
+                    <input type="time" name="hora_inicio" id="hora_inicio" class="form-control premium-input" required>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="hora_fin">Hora de fin</label>
+                    <input type="time" name="hora_fin" id="hora_fin" class="form-control premium-input" required>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label for="num_personas">Número de personas</label>
+                    <input type="number" name="num_personas" id="num_personas" class="form-control premium-input" required min="1" placeholder="Ej: 4">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="observacion">Observaciones (Opcional)</label>
+            <textarea name="observacion" id="observacion" rows="3" class="form-control premium-input" placeholder="Alergias, peticiones especiales..."></textarea>
+        </div>
+
+        <div class="form-actions mt-4 d-flex justify-content-between align-items-center">
+            <a href="{% url 'lista_reservas' %}" class="btn-cancel-link" style="color: #7f8fa6; text-decoration: none;">Cancelar y volver</a>
+            <button type="submit" class="btn btn-gold">Confirmar Reserva</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

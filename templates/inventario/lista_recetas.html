@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Recetas de Insumos{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/inventario/lista_recetas.css' %}">
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Recetas de Insumos</h1>
+    <div>
+        <a href="{% url 'lista_insumos' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">← Volver a Inventario</a>
+        <a href="{% url 'crear_receta' %}" class="btn btn-primary" style="width:auto;padding:0.6rem 1.5rem;">Nueva Receta</a>
+    </div>
+</div>
+<div class="table-wrapper">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Plato</th>
+                <th>Insumo</th>
+                <th>Cant. por Porción</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for receta in recetas %}
+            <tr>
+                <td class="receta-plato">{{ receta.plato.nombre }}</td>
+                <td class="receta-insumo">{{ receta.insumo.nombre }}</td>
+                <td class="receta-cantidad">{{ receta.cantidad_por_porcion|floatformat:2 }} {{ receta.insumo.get_unidad_display }}</td>
+                <td>
+                    <form method="POST" action="{% url 'eliminar_receta' receta.id %}" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-eliminar-receta"
+                                onclick="return confirm('¿Eliminar receta de {{ receta.plato.nombre }}?')">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="empty-row">No hay recetas registradas</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

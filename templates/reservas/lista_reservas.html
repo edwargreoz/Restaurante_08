@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Reservas - Restaurant{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/reservas/reservas.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-header reservas-header">
+    <div>
+        <h1>Gestión de Reservas</h1>
+        <span class="page-user">Administra las reservas del restaurante</span>
+    </div>
+    <a href="{% url 'crear_reserva' %}" class="btn btn-gold">+ Nueva Reserva</a>
+</div>
+
+<div class="table-wrapper">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Mesa</th>
+                <th>Cliente</th>
+                <th>Contacto</th>
+                <th>Fecha y Hora</th>
+                <th>Personas</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reserva in reservas %}
+            <tr>
+                <td><strong>Mesa {{ reserva.mesa.numero }}</strong><br><small class="text-muted" style="color: #a0aec0;">{{ reserva.mesa.get_zona_display }}</small></td>
+                <td>{{ reserva.cliente_nombre }}</td>
+                <td>{{ reserva.cliente_contacto|default:"-" }}</td>
+                <td>{{ reserva.fecha|date:"d/m/Y" }} <br><small class="text-muted" style="color: #a0aec0;">{{ reserva.hora_inicio|time:"h:i A" }} - {{ reserva.hora_fin|time:"h:i A" }}</small></td>
+                <td>{{ reserva.num_personas }} pax</td>
+                <td>
+                    {% if reserva.activa %}
+                        <span class="badge badge-active">Activa</span>
+                    {% else %}
+                        <span class="badge badge-cancelled">Cancelada</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if reserva.activa %}
+                        <form action="{% url 'cancelar_reserva' reserva.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de cancelar esta reserva?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-cancel">Cancelar</button>
+                        </form>
+                    {% else %}
+                        <span class="text-muted" style="color: #a0aec0;">-</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="empty-row">No hay reservas registradas en el sistema.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
