@@ -293,9 +293,14 @@ body {
 /* === Tabla === */
 .table-wrapper {
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(183, 122, 47, 0.05), 0 5px 15px rgba(0,0,0,0.03);
     overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.table-wrapper:hover {
+    box-shadow: 0 15px 40px rgba(183, 122, 47, 0.08), 0 8px 25px rgba(0,0,0,0.05);
 }
 .table {
     width: 100%;
@@ -313,10 +318,18 @@ body {
     border-bottom: 2px solid #e0e0e0;
 }
 .table td {
-    padding: 0.9rem 1.2rem;
-    font-size: 0.9rem;
+    padding: 1rem 1.5rem;
+    color: #4a4a4a;
     border-bottom: 1px solid #f0f0f0;
-    color: #2c3e50;
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(183, 122, 47, 0.04);
 }
 .table tr:last-child td {
     border-bottom: none;

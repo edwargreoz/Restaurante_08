@@ -33,11 +33,41 @@
             </div>
             <div class="form-group">
                 <label for="password">Contraseña</label>
-                <input type="password" name="password" id="password" 
-                placeholder="Ingresa tu contraseña" required>
+                <div class="password-wrapper">
+                    <input type="password" name="password" id="password" 
+                    placeholder="Ingresa tu contraseña" required>
+                    <button type="button" id="togglePassword" class="btn-toggle-pass" aria-label="Mostrar u ocultar contraseña" tabindex="-1">
+                        <img src="{% static 'icons/eyesclose.png' %}" id="eyeIcon" alt="Mostrar">
+                    </button>
+                </div>
             </div>
             <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
         </form>
     </div>
 </div>  
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const togglePassword = document.getElementById('togglePassword');
+        const password = document.getElementById('password');
+        const eyeIcon = document.getElementById('eyeIcon');
+        
+        const eyeOpen = "{% static 'icons/eyesopen.png' %}";
+        const eyeClose = "{% static 'icons/eyesclose.png' %}";
+
+        togglePassword.addEventListener('click', function (e) {
+            e.preventDefault();
+            const type = password.getAttribute('type') === 'password' ? 'text' : 'password';
+            password.setAttribute('type', type);
+            
+            if (type === 'text') {
+                eyeIcon.src = eyeOpen;
+                eyeIcon.classList.add('eye-active');
+            } else {
+                eyeIcon.src = eyeClose;
+                eyeIcon.classList.remove('eye-active');
+            }
+        });
+    });
+</script>
 {% endblock %}
