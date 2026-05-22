@@ -97,16 +97,37 @@ class ComandaViewSet(viewsets.ModelViewSet):
         serializer = AgregarPlatosRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            comanda.agregar_platos(serializer.validated_data['platos'])
-        except ValidationError as e:
-            return Response(
-                e.message_dict if hasattr(e, 'message_dict')
-                else {'error':str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        with transaction.atomic():
+            comanda = Comanda.objects.select_for_update().get(id=comanda.id)
+            try:
+                comanda.agregar_platos(serializer.validated_data['platos'], usuario=request.user)
+            except ValidationError as e:
+                return Response(
+                    e.message_dict if hasattr(e, 'message_dict')
+                    else {'error':str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['post'])
+    def anular(self, request, pk=None):
+        """
+        POST /api/v1/comandas/{id}/anular/
+        Anula una comanda y restaura el stock de insumos.
+        """
+        comanda = self.get_object()
+        with transaction.atomic():
+            comanda = Comanda.objects.select_for_update().get(id=comanda.id)
+            try:
+                comanda.anular(usuario=request.user)
+            except ValidationError as e:
+                return Response(
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        serializer = self.get_serializer(comanda)
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['post'])
     def pagar(self,request, pk=None):
