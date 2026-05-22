@@ -12,11 +12,15 @@
         {% for plato in categoria.platos.all %}
         <div class="col-md-4 mb-3">
             <div class="card">
+                <img class="card-img-top" src="
+                {% if plato.imagen %}
+                    {{ plato.imagen.url }}
+                {% else %}{% static 'arroz_con_pollo.jpg' %}{% endif %}" alt="{{ plato.nombre }}">
                 <div class="card-body">
                     <h5 class="card-title">{{ plato.nombre }}</h5>
                     <p class="card-text">{{ plato.descripcion|truncatewords:15 }}</p>
                     <p class="card-text"><strong>S/ {{ plato.precio }}</strong></p>
-
+                    <p class="card-text"><strong>Tiempo de preparación:</strong> {{ plato.tiempo_preparacion_min }} minutos</p>
                     {% if plato.disponible %}
                         <span class="badge bg-success">Disponible</span>
                     {% else %}

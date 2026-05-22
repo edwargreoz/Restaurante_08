@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Gestión del Menú{% endblock %}
+{% block content %}
+<div class="container mt-4">
+  <h1 class="mb-4">Gestión del Menú</h1>
+  <div class="row">
+    <!-- Columna izquierda: Formularios -->
+    <div class="col-md-5">
+      <!-- Aquí irán los formularios para crear categoría y plato -->
+    </div>
+    <!-- Columna derecha: Listado -->
+    <div class="col-md-7">
+      <h2 class="mb-3">Categorías y Platos</h2>
+        {% for categoria in categorias %}
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>{{ categoria.nombre }}</strong>
+            </div>
+            <div class="card-body p-0">
+            <table class="table table-striped mb-0">
+                <thead>
+                <tr>
+                    <th>Plato</th>
+                    <th>Precio</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for plato in categoria.platos.all %}
+                <tr>
+                    <td>{{ plato.nombre }}</td>
+                    <td>S/ {{ plato.precio }}</td>
+                    <td>
+                    <a href="{% url 'editar_plato' plato.id %}" class="btn btn-sm btn-warning">Editar</a>
+                    <form method="post" action="{% url 'eliminar_plato' plato.id %}" style="display:inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar {{ plato.nombre }}?')">Eliminar</button>
+                    </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" class="text-muted">Sin platos en esta categoría</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            </div>
+        </div>
+        {% empty %}
+        <div class="alert alert-info">No hay categorías registradas.</div>
+        {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
