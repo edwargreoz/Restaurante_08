@@ -30,40 +30,39 @@
     </div>
 <div class="col-md-8">
     {% if comanda %}
-
-        <div class="card mb-3">
-                <div class="card-header">Comanda Actual</div>
-                <div class="card-body">
-                    <p><strong>Mozo:</strong> {{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</p>
-                    <p><strong>Estado:</strong> <span class="badge bg-primary">{{ comanda.get_estado_display }}</span></p>
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>Plato</th>
-                                <th>Cant.</th>
-                                <th>Subtotal</th>
-                                <th>Estado</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for linea in comanda.lineas.all %}
-                            <tr>
-                                <td>{{ linea.plato.nombre }}</td>
-                                <td>{{ linea.cantidad }}</td>
-                                <td>S/ {{ linea.subtotal }}</td>
-                                <td><span class="badge bg-secondary">{{ linea.get_estado_display }}</span></td>
-                                <td>
-                                    {% if linea.estado == 'PENDIENTE' %}
-                                    <form method="post" action="{% url 'enviar_cocina' linea.id %}">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-warning">Enviar a Cocina</button>
-                                    </form>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
+    <div class="card mb-3">
+        <div class="card-header">Comanda Actual</div>
+            <div class="card-body">
+                <p><strong>Mozo:</strong> {{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</p>
+                <p><strong>Estado:</strong> <span class="badge bg-primary">{{ comanda.get_estado_display }}</span></p>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Plato</th>
+                            <th>Cant.</th>
+                            <th>Subtotal</th>
+                            <th>Estado</th>
+                            <th>Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for linea in comanda.lineas.all %}
+                        <tr>
+                            <td>{{ linea.plato.nombre }}</td>
+                            <td>{{ linea.cantidad }}</td>
+                            <td>S/ {{ linea.subtotal }}</td>
+                            <td><span class="badge bg-secondary">{{ linea.get_estado_display }}</span></td>
+                            <td>
+                        {% if linea.estado == 'PENDIENTE' %}
+                            <form method="post" action="{% url 'enviar_cocina' linea.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-warning">Enviar a Cocina</button>
+                            </form>
+                        {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
                         <tfoot>
                             <tr>
                                 <th colspan="2">Total</th>
@@ -72,6 +71,53 @@
                                 <th></th>
                             </tr>
                         </tfoot>
-                    </table>
+                </table>
+        </div>
+    </div>
+
+<div class="card mb-3">
+            <div class="card-header">Agregar Plato</div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'agregar_platos_pedido' comanda.id %}">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Plato</label>
+                                <select name="plato_id" class="form-select" required>
+                                    <option value="">Seleccionar...</option>
+                                    {% for categoria in categorias %}
+                                    <optgroup label="{{ categoria.nombre }}">
+                                        {% for plato in categoria.platos.all %}
+                                        <option value="{{ plato.id }}" {% if not plato.disponible %}disabled{% endif %}>
+                                            {{ plato.nombre }} - S/ {{ plato.precio }}
+                                        </option>
+                                        {% endfor %}
+                                    </optgroup>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2 mb-3">
+                                <label class="form-label">Cantidad</label>
+                                <input type="number" name="cantidad" class="form-control" value="1" min="1" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Observación</label>
+                                <input type="text" name="observacion" class="form-control" placeholder="ej: sin sal">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success">Agregar a Comanda</button>
+                    </form>
+                </div>
+    </div>
+
+    {% else %}
+            <div class="card">
+                <div class="card-body">
+                                <p class="text-muted">No hay comanda activa para esta mesa.</p>
+                                <p>Abra una comanda desde el <a href="{% url 'detalle_mesa' mesa.id %}">detalle de la mesa</a>.</p>
+                            </div>
+                        </div>
+                    {% endif %}
                 </div>
             </div>
+    {% endblock %}
