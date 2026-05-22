@@ -70,10 +70,9 @@ class Comanda(models.Model):
     
     @property
     def total(self):
-        return sum(
-            linea.cantidad * linea.plato.precio
-            for linea in self.lineas.all()
-        )
+        return self.lineas.aggregate(
+            total=models.Sum(models.F('cantidad') * models.F('plato__precio'))
+        )['total'] or 0
     @classmethod
     def abrir(cls, mesa_id, usuario):
         from django.db import transaction
@@ -232,13 +231,14 @@ class Comanda(models.Model):
                     m.save()
         return self
     
-    def pagar(self, metodo, monto, vuelto=0, referencia=''):
+    def pagar(self, metodo, monto, vuelto=0, referencia='', caja=None): 
         
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta lista para pagar')
         Pago.objects.create(
             comanda=self, metodo=metodo,
-            monto=monto, vuelto=vuelto, referencia=referencia
+            monto=monto, vuelto=vuelto, referencia=referencia,
+            caja=caja
         )
         self.estado = 'COBRADA'
         self.fecha_cierre = timezone.now()

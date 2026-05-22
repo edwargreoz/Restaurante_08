@@ -22,6 +22,8 @@ urlpatterns = [
     path('', include('inventario.urls')),
     # Vistas web de caja (cobrar, turno, reportes)
     path('', include('caja.urls')),
+    # Vistas web de reservas
+    path('', include('reservas.urls')),
 ]
 
 # Servir archivos media en modo desarrollo
