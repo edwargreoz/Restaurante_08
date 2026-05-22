@@ -83,7 +83,7 @@ class UnionMesa(models.Model):
         return sum(m.capacidad for m in self.mesas.all())
         
     def ocupantes_maximos(self):
-        return min(self.capacidad_total(), 12)
+        return self.capacidad_total()
         
     def __str__(self):
         mesas_str = ' + '.join(

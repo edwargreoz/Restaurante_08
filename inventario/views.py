@@ -1,5 +1,4 @@
 
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -17,14 +16,17 @@ def gestion_insumos(request):
 @login_required
 def crear_insumo(request):
     if request.method == 'POST':
-        Insumo.objects.create(
-            nombre=request.POST.get('nombre'),
-            unidad=request.POST.get('unidad'),
-            stock_actual=request.POST.get('stock_actual', 0),
-            stock_minimo=request.POST.get('stock_minimo', 0),
-            costo_unitario=request.POST.get('costo_unitario', 0),
-        )
-        messages.success(request, 'Insumo creado')
+        try:
+            Insumo.objects.create(
+                nombre=request.POST.get('nombre'),
+                unidad=request.POST.get('unidad'),
+                stock_actual=request.POST.get('stock_actual', 0),
+                stock_minimo=request.POST.get('stock_minimo', 0),
+                costo_unitario=request.POST.get('costo_unitario', 0),
+            )
+            messages.success(request, 'Insumo creado')
+        except Exception as e:
+            messages.error(request, f'Error al crear insumo: verifica los datos ingresados')
     return redirect('gestion_insumos')
 
 @login_required
