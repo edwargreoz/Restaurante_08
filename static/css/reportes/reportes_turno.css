@@ -1,0 +1,13 @@
+.filtros-card {
+    margin-bottom: 1.5rem;
+}
+.filtros-form {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+.filtros-form .form-group {
+    flex: 1;
+    min-width: 180px;
+}
