@@ -75,78 +75,102 @@ class Comanda(models.Model):
         )
     @classmethod
     def abrir(cls, mesa_id, usuario):
-        mesa = Mesa.objects.filter(id=mesa_id).first()
-        if not mesa:
-            raise ValidationError('Mesa no encontrada')
-        if mesa.estado != 'LIBRE':
-            raise ValidationError('La mesa no esta libre')
-        union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
-        if union:
-            for m in union.mesas.all():
-                if m.estado != 'LIBRE':
-                    raise ValidationError(
-                        f'La mesa {m.numero} de la union no esta libre'
-                    )
-        comanda = cls.objects.create(mesa=mesa, mozo=usuario)
-        mesa.estado = 'OCUPADA'
-        mesa.save()
-        if union:
-            for m in union.mesas.all():
-                if m.id != mesa.id:
-                    m.estado = 'OCUPADA'
-                    m.save()
-        return comanda
+        from django.db import transaction
+        with transaction.atomic():
+            mesa = Mesa.objects.select_for_update().filter(id=mesa_id).first()
+            if not mesa:
+                raise ValidationError('Mesa no encontrada')
+            comanda_existente = cls.objects.filter(
+                mesa=mesa, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
+            ).first()
+            if comanda_existente:
+                return comanda_existente
+            if mesa.estado != 'LIBRE':
+                raise ValidationError('La mesa no esta libre')
+            union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
+            if union:
+                for m in union.mesas.all():
+                    comanda_m = cls.objects.filter(
+                        mesa=m, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
+                    ).first()
+                    if comanda_m:
+                        return comanda_m
+                    if m.estado != 'LIBRE':
+                        raise ValidationError(
+                            f'La mesa {m.numero} de la union no esta libre'
+                        )
+            comanda = cls.objects.create(mesa=mesa, mozo=usuario)
+            mesa.estado = 'OCUPADA'
+            mesa.save()
+            if union:
+                for m in union.mesas.all():
+                    if m.id != mesa.id:
+                        m.estado = 'OCUPADA'
+                        m.save()
+            return comanda
     
     def agregar_platos(self, platos_data):
-        
+        from django.db import transaction
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta abierta')
-        errores = []
-        platos_a_crear = []
-        for item in platos_data:
-            plato_id = item.get('plato_id')
-            cantidad = item.get('cantidad', 1)
-            observacion = item.get('observacion', '')
-            plato = Plato.objects.filter(id=plato_id).first()
-            if not plato:
-                errores.append({'plato_id': plato_id, 'error': 'Plato no encontrado'})
-                continue
-            if not plato.disponible:
-                errores.append({'plato_id': plato_id, 'error': 'Plato no disponible'})
-                continue
-            recetas = RecetaInsumo.objects.filter(plato=plato)
-            faltantes = []
-            for receta in recetas:
-                necesario = receta.cantidad_por_porcion * cantidad
-                if receta.insumo.stock_actual < necesario:
-                    faltantes.append(
-                        f"{receta.insumo.nombre}: disponible "
-                        f"{receta.insumo.stock_actual}, necesario {necesario}"
-                    )
-            if faltantes:
-                errores.append({
-                    'plato_id': plato_id,
-                    'plato': plato.nombre,
-                    'error': 'Stock insuficiente',
-                    'detalle': faltantes
-                })
-                continue
-            platos_a_crear.append(LineaComanda(
-                comanda=self, plato=plato,
-                cantidad=cantidad, observacion=observacion,
-            ))
-        if errores:
-            raise ValidationError({'errores': errores})
-        LineaComanda.objects.bulk_create(platos_a_crear)
+        with transaction.atomic():
+            errores = []
+            platos_a_crear = []
+            for item in platos_data:
+                plato_id = item.get('plato_id')
+                cantidad = item.get('cantidad', 1)
+                observacion = item.get('observacion', '')
+                plato = Plato.objects.filter(id=plato_id).first()
+                if not plato:
+                    errores.append({'plato_id': plato_id, 'error': 'Plato no encontrado'})
+                    continue
+                if not plato.disponible:
+                    errores.append({'plato_id': plato_id, 'error': 'Plato no disponible'})
+                    continue
+                recetas = RecetaInsumo.objects.filter(plato=plato).select_related('insumo').select_for_update(of=('insumo',))
+                faltantes = []
+                for receta in recetas:
+                    necesario = receta.cantidad_por_porcion * cantidad
+                    if receta.insumo.stock_actual < necesario:
+                        faltantes.append(
+                            f"{receta.insumo.nombre}: disponible "
+                            f"{receta.insumo.stock_actual}, necesario {necesario}"
+                        )
+                if faltantes:
+                    errores.append({
+                        'plato_id': plato_id,
+                        'plato': plato.nombre,
+                        'error': 'Stock insuficiente',
+                        'detalle': faltantes
+                    })
+                    continue
+                for receta in recetas:
+                    necesario = receta.cantidad_por_porcion * cantidad
+                    receta.insumo.stock_actual -= necesario
+                    receta.insumo.save(update_fields=['stock_actual'])
+
+                platos_a_crear.append(LineaComanda(
+                    comanda=self, plato=plato,
+                    cantidad=cantidad, observacion=observacion,
+                ))
+            if errores:
+                raise ValidationError({'errores': errores})
+            LineaComanda.objects.bulk_create(platos_a_crear)
         return platos_a_crear
+    def fusionar(self, otra_comanda):
+        if self.estado in ('COBRADA', 'ANULADA'):
+            raise ValidationError('La comanda principal no esta activa')
+        if otra_comanda.estado in ('COBRADA', 'ANULADA'):
+            raise ValidationError('La comanda a fusionar no esta activa')
+        LineaComanda.objects.filter(comanda=otra_comanda).update(comanda=self)
+        otra_comanda.estado = 'ANULADA'
+        otra_comanda.fecha_cierre = timezone.now()
+        otra_comanda.save(update_fields=['estado', 'fecha_cierre'])
+    
     def pagar(self, metodo, monto, vuelto=0, referencia=''):
         
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta lista para pagar')
-        for linea in self.lineas.all():
-            for receta in RecetaInsumo.objects.filter(plato=linea.plato):
-                receta.insumo.stock_actual -= receta.cantidad_por_porcion * linea.cantidad
-                receta.insumo.save()
         Pago.objects.create(
             comanda=self, metodo=metodo,
             monto=monto, vuelto=vuelto, referencia=referencia
@@ -173,10 +197,6 @@ class Comanda(models.Model):
             raise ValidationError(
                 f'Suma de pagos ({total_pagos}) no coincide con total ({self.total})'
             )
-        for linea in self.lineas.all():
-            for receta in RecetaInsumo.objects.filter(plato=linea.plato):
-                receta.insumo.stock_actual -= receta.cantidad_por_porcion * linea.cantidad
-                receta.insumo.save()
         for pd in pagos_lista:
             Pago.objects.create(
                 comanda=self, metodo=pd['metodo'],

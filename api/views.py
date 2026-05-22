@@ -75,10 +75,6 @@ class ComandaViewSet(viewsets.ModelViewSet):
                     {'error':'Mesa no encontrada'},
                     status= status.HTTP_404_NOT_FOUND)
         
-            if mesa.estado != 'LIBRE':
-                return Response(
-                    {'error' : 'La mesa no esta libre'},
-                    status= status.HTTP_400_BAD_REQUEST)
             try:
                 comanda = Comanda.abrir(mesa_id, request.user)
             except ValidationError as e:
