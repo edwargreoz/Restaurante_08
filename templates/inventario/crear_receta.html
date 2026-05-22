@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Nueva Receta{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/inventario/crear_receta.css' %}">
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Nueva Receta</h1>
+    <a href="{% url 'lista_recetas' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Volver</a>
+</div>
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header"><strong>Asignar insumo a plato</strong></div>
+            <div class="card-body receta-form">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="plato_id">Plato</label>
+                        <select name="plato_id" id="plato_id" class="form-control" required>
+                            <option value="">--- Seleccionar ---</option>
+                            {% for plato in platos %}
+                            <option value="{{ plato.id }}">{{ plato.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="insumo_id">Insumo</label>
+                        <select name="insumo_id" id="insumo_id" class="form-control" required>
+                            <option value="">--- Seleccionar ---</option>
+                            {% for insumo in insumos %}
+                            <option value="{{ insumo.id }}">{{ insumo.nombre }} ({{ insumo.get_unidad_display }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cantidad_por_porcion">Cantidad por porción</label>
+                        <input type="number" name="cantidad_por_porcion" id="cantidad_por_porcion" step="0.01" min="0" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Crear Receta</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
