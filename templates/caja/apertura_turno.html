@@ -32,10 +32,6 @@
                 <form method="POST">
                     {% csrf_token %}
                     <div class="form-group">
-<<<<<<< HEAD
-                        <label for="turno">Nombre del turno</label>
-                        <input type="text" name="turno" id="turno" placeholder="Ej: MAÑANA, TARDE, NOCHE" required>
-=======
                         <label for="turno">Turno</label>
                         <select name="turno" id="turno" class="form-control" required>
                             <option value="">--- Seleccionar ---</option>
@@ -43,7 +39,6 @@
                             <option value="TARDE">TARDE</option>
                             <option value="NOCHE">NOCHE</option>
                         </select>
->>>>>>> a6db700298f1dc286e198ba55b841d33bad8601f
                     </div>
                     <div class="form-group">
                         <label for="saldo_inicial">Saldo inicial (S/)</label>

@@ -76,7 +76,11 @@ class Comanda(models.Model):
     @classmethod
     def abrir(cls, mesa_id, usuario):
         from django.db import transaction
+        from caja.models import Caja
         with transaction.atomic():
+            caja_abierta = Caja.objects.filter(estado='ABIERTA').exists()
+            if not caja_abierta:
+                raise ValidationError('No hay un turno de caja abierto. Abre caja primero.')
             mesa = Mesa.objects.select_for_update().filter(id=mesa_id).first()
             if not mesa:
                 raise ValidationError('Mesa no encontrada')
@@ -235,6 +239,16 @@ class Comanda(models.Model):
         
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta lista para pagar')
+        if metodo == 'TARJETA':
+            if not referencia or len(referencia.strip()) < 4:
+                raise ValidationError(
+                    'Para pagos con tarjeta ingresa los últimos 4 dígitos de la tarjeta'
+                )
+            digitos = ''.join(c for c in referencia if c.isdigit())
+            if len(digitos) < 4:
+                raise ValidationError(
+                    'La referencia debe contener al menos 4 dígitos de la tarjeta'
+                )
         Pago.objects.create(
             comanda=self, metodo=metodo,
             monto=monto, vuelto=vuelto, referencia=referencia,
@@ -263,6 +277,17 @@ class Comanda(models.Model):
                 f'Suma de pagos ({total_pagos}) no coincide con total ({self.total})'
             )
         for pd in pagos_lista:
+            if pd.get('metodo') == 'TARJETA':
+                ref = pd.get('referencia', '')
+                if not ref or len(ref.strip()) < 4:
+                    raise ValidationError(
+                        'Para pagos con tarjeta ingresa los últimos 4 dígitos de la tarjeta'
+                    )
+                digitos = ''.join(c for c in ref if c.isdigit())
+                if len(digitos) < 4:
+                    raise ValidationError(
+                        'La referencia debe contener al menos 4 dígitos de la tarjeta'
+                    )
             Pago.objects.create(
                 comanda=self, metodo=pd['metodo'],
                 monto=pd['monto'], vuelto=pd.get('vuelto', 0),

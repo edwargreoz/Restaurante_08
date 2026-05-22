@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load mesas_extras %}
 
 {% block title %}Plano del Salon{% endblock %}
 
@@ -12,6 +13,7 @@
         <span class="badge bg-danger">Ocupada</span>
         <span class="badge bg-warning text-dark">Reservada</span>
         <span class="badge bg-secondary">Limpieza</span>
+        <span class="badge" style="background:#b77a2f;color:#fff;">Unida</span>
         <a href="{% url 'unir_mesas' %}" class="btn btn-sm ms-3" style="border: 1px solid #b77a2f; color: #b77a2f; background: #fdf6ee;">Unir Mesas</a>
     </div>
 </div>
@@ -21,7 +23,8 @@
     <div class="col-md-3 mb-3">
         <a href="{% url 'detalle_mesa' mesa.id %}" class="card-link-mesa">
             <div class="card card-mesa
-                {% if mesa.estado == 'LIBRE' %}border-success
+                {% if mesa.id in union_mesas_ids %}border-dark
+                {% elif mesa.estado == 'LIBRE' %}border-success
                 {% elif mesa.estado == 'OCUPADA' %}border-danger                    
                 {% elif mesa.estado == 'RESERVADA' %}border-warning                                        
                 {% else %}border-secondary{% endif %}">
@@ -34,6 +37,11 @@
                     <p class="card-text">
                         <small class="text-muted">{{ mesa.get_zona_display }}</small>
                     </p>
+                    {% if mesa.id in union_mesas_ids %}
+                        <span class="badge mb-1" style="background:#b77a2f;color:#fff;">
+                            {{ union_labels|dict_key:mesa.id }}
+                        </span>
+                    {% endif %}
                     <span class="badge
                         {% if mesa.estado == 'LIBRE' %}bg-success
                         {% elif mesa.estado == 'OCUPADA' %}bg-danger                    

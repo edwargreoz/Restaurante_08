@@ -3,17 +3,34 @@ document.addEventListener('DOMContentLoaded', function () {
     const grupoVuelto = document.getElementById('vuelto-group');
     const inputVuelto = document.getElementById('vuelto');
     const inputMonto = document.getElementById('monto');
+    const inputRef = document.getElementById('referencia');
+    const grupoRef = document.getElementById('referencia-group');
+
+    function toggleCampos() {
+        const val = metodo.value;
+        if (val === 'EFECTIVO') {
+            grupoVuelto.classList.add('visible');
+            inputVuelto.required = true;
+            grupoRef.classList.remove('visible');
+            inputRef.required = false;
+        } else if (val === 'TARJETA') {
+            grupoVuelto.classList.remove('visible');
+            inputVuelto.required = false;
+            inputVuelto.value = '0';
+            grupoRef.classList.add('visible');
+            inputRef.required = true;
+        } else {
+            grupoVuelto.classList.remove('visible');
+            inputVuelto.required = false;
+            inputVuelto.value = '0';
+            grupoRef.classList.remove('visible');
+            inputRef.required = false;
+        }
+    }
+
     if (metodo) {
-        metodo.addEventListener('change', function () {
-            if (this.value === 'EFECTIVO') {
-                grupoVuelto.classList.add('visible');
-                inputVuelto.required = true;
-            } else {
-                grupoVuelto.classList.remove('visible');
-                inputVuelto.required = false;
-                inputVuelto.value = '0';
-            }
-        });
+        metodo.addEventListener('change', toggleCampos);
+        toggleCampos();
     }
     if (inputMonto) {
         inputMonto.addEventListener('input', function () {

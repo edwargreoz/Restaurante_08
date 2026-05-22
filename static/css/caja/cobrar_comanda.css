@@ -10,9 +10,11 @@
 .pago-metodo-selector {
     margin-bottom: 1.5rem;
 }
-.pago-vuelto-group {
+.pago-vuelto-group,
+#referencia-group {
     display: none;
 }
-.pago-vuelto-group.visible {
+.pago-vuelto-group.visible,
+#referencia-group.visible {
     display: block;
 }

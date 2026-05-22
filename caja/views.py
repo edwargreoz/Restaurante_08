@@ -58,8 +58,26 @@ def reportes_turno(request):
     fecha_hasta = request.GET.get('fecha_hasta')
     reporte = Pago.objects.reporte_ventas(caja_id, fecha_desde, fecha_hasta)
     cajas = Caja.objects.all()
+    pagos = Pago.objects.select_related('comanda__mesa', 'comanda__mozo', 'caja').all()
+    if caja_id:
+        pagos = pagos.filter(caja_id=caja_id)
+    if fecha_desde:
+        pagos = pagos.filter(fecha__date__gte=fecha_desde)
+    if fecha_hasta:
+        pagos = pagos.filter(fecha__date__lte=fecha_hasta)
+    pagos = pagos[:50]
+    for item in reporte['por_metodo']:
+        if reporte['total_general']:
+            item['porcentaje'] = int(item['total'] / reporte['total_general'] * 100)
+        else:
+            item['porcentaje'] = 0
+    ticket_promedio = 0
+    if reporte['total_pagos']:
+        ticket_promedio = reporte['total_general'] / reporte['total_pagos']
     return render(request, 'reportes/reportes_turno.html', {
         'reporte': reporte,
         'cajas': cajas,
+        'pagos': pagos,
+        'ticket_promedio': ticket_promedio,
     })
 

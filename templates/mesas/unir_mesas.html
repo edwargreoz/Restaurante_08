@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Unir Mesas{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/mesas/unir_mesas.css' %}">
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Unir Mesas</h1>
+    <a href="{% url 'plano_mesas' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">← Volver al Plano</a>
+</div>
+<div class="row">
+    <!-- Formulario para crear unión -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header"><strong>Selecciona las mesas a unir (mínimo 2)</strong></div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="row">
+                        {% for mesa in mesas %}
+                        <div class="col-md-4 col-6 mb-2">
+                            <label class="card card-mesa union-mesa-card p-3 text-center
+                                {% if mesa.id in union_mesas_ids %}border-dark opacity-50
+                                {% elif mesa.estado == 'LIBRE' %}border-success
+                                {% elif mesa.estado == 'OCUPADA' %}border-danger
+                                {% elif mesa.estado == 'RESERVADA' %}border-warning
+                                {% else %}border-secondary{% endif %}">
+                                <input type="checkbox" name="mesas" value="{{ mesa.id }}"
+                                    {% if mesa.id in union_mesas_ids %}disabled{% endif %}>
+                                <strong>Mesa {{ mesa.numero }}</strong>
+                                <small class="d-block text-muted">{{ mesa.get_zona_display }} · {{ mesa.capacidad }} pax</small>
+                                {% if mesa.id in union_mesas_ids %}
+                                    <span class="badge mt-1" style="background:#b77a2f;color:#fff;">Ya unida</span>
+                                {% else %}
+                                    <span class="badge mt-1
+                                        {% if mesa.estado == 'LIBRE' %}bg-success
+                                        {% elif mesa.estado == 'OCUPADA' %}bg-danger
+                                        {% elif mesa.estado == 'RESERVADA' %}bg-warning text-dark
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ mesa.get_estado_display }}
+                                    </span>
+                                {% endif %}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-primary mt-3" style="width:auto;padding:0.7rem 2rem;">Unir Mesas</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- Uniones activas -->
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header"><strong>Uniones activas</strong></div>
+            <div class="card-body">
+                {% for union in uniones %}
+                <div class="union-item" style="flex-direction:column;align-items:stretch;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+                        <div class="union-item-info">
+                            <span class="union-item-mesas">
+                                {% for m in union.mesas.all %}
+                                    Mesa {{ m.numero }}{% if not forloop.last %} + {% endif %}
+                                {% endfor %}
+                            </span>
+                            <span class="union-item-detalle">
+                                Capacidad total: {{ union.capacidad_total }} personas
+                                · {{ union.fecha_creacion|date:"d/m/Y H:i" }}
+                            </span>
+                        </div>
+                        <form method="POST" action="{% url 'deshacer_union' union.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-deshacer">Deshacer</button>
+                        </form>
+                    </div>
+                    <form method="POST" action="{% url 'agregar_mesa_union' union.id %}"
+                          style="display:flex;gap:0.5rem;align-items:center;">
+                        {% csrf_token %}
+                        <select name="mesa_id" class="form-control" style="flex:1;padding:0.4rem 0.6rem;font-size:0.85rem;" required>
+                            <option value="">Agregar mesa...</option>
+                            {% for m in mesas_disponibles %}
+                            <option value="{{ m.id }}">Mesa {{ m.numero }} ({{ m.get_zona_display }})</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-primary"
+                                style="width:auto;padding:0.4rem 0.8rem;font-size:0.85rem;">+</button>
+                    </form>
+                </div>
+                {% empty %}
+                <p class="text-muted text-center mb-0">No hay uniones activas</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+<script src="{% static 'js/mesas/unir_mesas.js' %}"></script>
+{% endblock %}

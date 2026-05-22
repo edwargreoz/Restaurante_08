@@ -1,0 +1,61 @@
+.union-checkbox {
+    transform: scale(1.2);
+    margin-right: 0.5rem;
+}
+.union-mesa-card {
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+.union-mesa-card:hover {
+    border-color: #b77a2f;
+    box-shadow: 0 4px 12px rgba(183, 122, 47, 0.15);
+}
+.union-mesa-card.selected {
+    border-color: #b77a2f;
+    background: #fdf6ee;
+    box-shadow: 0 4px 12px rgba(183, 122, 47, 0.2);
+}
+.union-mesa-card input[type="checkbox"] {
+    display: none;
+}
+.union-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.2rem;
+    background: #fff;
+    border-radius: 10px;
+    border-left: 4px solid #b77a2f;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    margin-bottom: 0.8rem;
+}
+.union-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.union-item-mesas {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.95rem;
+}
+.union-item-detalle {
+    font-size: 0.85rem;
+    color: #7f8fa6;
+}
+.btn-deshacer {
+    background: none;
+    border: 1px solid #e53e3e;
+    color: #e53e3e;
+    padding: 0.4rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-deshacer:hover {
+    background: #e53e3e;
+    color: #fff;
+}

@@ -29,6 +29,17 @@
                         {{ mesa.get_estado_display }}
                     </span>
                 </p>
+                {% if union_activa %}
+                <p><strong>Unión activa:</strong></p>
+                <div class="union-item" style="background:#fdf6ee;border-left:4px solid #b77a2f;padding:0.6rem 1rem;border-radius:8px;margin-top:0.3rem;">
+                    <span style="font-weight:600;">
+                        {% for m in union_activa.mesas.all %}
+                            Mesa {{ m.numero }}{% if not forloop.last %} + {% endif %}
+                        {% endfor %}
+                    </span>
+                    <small class="d-block text-muted">Capacidad total: {{ union_activa.capacidad_total }} personas</small>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -81,6 +92,10 @@
                     </div>
                     <div class="d-flex gap-2 mt-3">
                         <a href="{% url 'cobrar_comanda' comanda_activa.id %}" class="btn btn-primary">Ir a Cobrar</a>
+                        <form method="POST" action="{% url 'anular_comanda' comanda_activa.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('¿Anular comanda? Se liberará la mesa y se restaurará el stock.')">Cancelar comanda</button>
+                        </form>
                     </div>
                     {% else %}
                     <p class="text-muted">Sin comanda activa</p>

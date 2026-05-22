@@ -7,17 +7,23 @@
 {% block content %}
 <div class="page-header">
     <h1>Reporte de Ventas</h1>
+    <p class="page-subtitle">Consulta y analiza los ingresos del restaurante</p>
 </div>
+
 <div class="card filtros-card">
+    <div class="card-header">
+        <strong>Filtrar reporte</strong>
+        <small class="text-muted">Selecciona un turno, rango de fechas o ambos</small>
+    </div>
     <div class="card-body">
         <form method="GET" class="filtros-form">
             <div class="form-group">
                 <label for="caja_id">Turno de caja</label>
                 <select name="caja_id" id="caja_id" class="form-control">
-                    <option value="">--- Todos ---</option>
+                    <option value="">--- Todos los turnos ---</option>
                     {% for c in cajas %}
                     <option value="{{ c.id }}" {% if request.GET.caja_id|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
-                        {{ c.turno }} — {{ c.fecha_apertura|date:"d/m/Y" }}
+                        {{ c.get_estado_display }} · {{ c.turno }} · {{ c.fecha_apertura|date:"d/m/Y" }}
                     </option>
                     {% endfor %}
                 </select>
@@ -30,46 +36,112 @@
                 <label for="fecha_hasta">Hasta</label>
                 <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" value="{{ request.GET.fecha_hasta }}">
             </div>
-            <button type="submit" class="btn btn-primary" style="width:auto;padding:0.7rem 1.5rem;">Filtrar</button>
+            <div class="filtros-actions">
+                <button type="submit" class="btn btn-primary" style="width:auto;padding:0.7rem 1.5rem;">Aplicar filtros</button>
+                <a href="{% url 'reportes_turno' %}" class="btn btn-secondary" style="width:auto;padding:0.7rem 1.5rem;">Limpiar filtros</a>
+            </div>
         </form>
+        <div class="filtros-rapidos">
+            <span>Acceso rápido:</span>
+            <a href='?fecha_desde={% now "Y-m-d" %}&amp;fecha_hasta={% now "Y-m-d" %}' class="btn btn-sm btn-outline-primary">Hoy</a>
+            <a href='?fecha_desde={% now "Y-m" %}-01&amp;fecha_hasta={% now "Y-m-d" %}' class="btn btn-sm btn-outline-primary">Este mes</a>
+        </div>
     </div>
 </div>
-<div class="card-grid mb-4">
-    <div class="card card-purple">
-        <p class="card-label">Total General</p>
-        <p class="card-number">S/ {{ reporte.total_general|floatformat:2 }}</p>
+
+{% if reporte.total_pagos > 0 %}
+<div class="resumen-cards">
+    <div class="card resumen-card resumen-card-total">
+        <div class="resumen-info">
+            <span class="resumen-label">Ingresos totales</span>
+            <span class="resumen-valor">S/ {{ reporte.total_general|floatformat:2 }}</span>
+        </div>
     </div>
-    <div class="card card-blue">
-        <p class="card-label">Cantidad de Pagos</p>
-        <p class="card-number">{{ reporte.total_pagos }}</p>
+    <div class="card resumen-card resumen-card-cantidad">
+        <div class="resumen-info">
+            <span class="resumen-label">Pagos registrados</span>
+            <span class="resumen-valor">{{ reporte.total_pagos }}</span>
+        </div>
+    </div>
+    <div class="card resumen-card resumen-card-promedio">
+        <div class="resumen-info">
+            <span class="resumen-label">Ticket promedio</span>
+            <span class="resumen-valor">S/ {{ ticket_promedio|floatformat:2 }}</span>
+        </div>
     </div>
 </div>
+
 <div class="section-title">Desglose por método de pago</div>
+<div class="metodos-grid">
+    {% for item in reporte.por_metodo %}
+    <div class="card metodo-card">
+        <div class="metodo-header">
+            <span class="metodo-nombre">{{ item.metodo }}</span>
+        </div>
+        <div class="metodo-body">
+            <div class="metodo-monto">
+                <span class="metodo-monto-label">Total</span>
+                <span class="metodo-monto-valor">S/ {{ item.total|floatformat:2 }}</span>
+            </div>
+            <div class="metodo-cantidad">
+                <span class="metodo-cantidad-label">Pagos</span>
+                <span class="metodo-cantidad-valor">{{ item.cantidad }}</span>
+            </div>
+            <div class="metodo-bar">
+                <div class="metodo-bar-fill" style="width:{{ item.porcentaje }}%"></div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="section-title">Lista de pagos</div>
 <div class="table-wrapper">
     <table class="table">
         <thead>
-            <tr><th>Método</th><th>Total (S/)</th><th>Cantidad</th></tr>
+            <tr>
+                <th>#</th>
+                <th>Mesa</th>
+                <th>Mozo</th>
+                <th>Método</th>
+                <th>Monto</th>
+                <th>Vuelto</th>
+                <th>Referencia</th>
+                <th>Turno</th>
+                <th>Fecha</th>
+            </tr>
         </thead>
         <tbody>
-            {% for item in reporte.por_metodo %}
+            {% for pago in pagos %}
             <tr>
+                <td>{{ pago.comanda.id }}</td>
+                <td>Mesa {{ pago.comanda.mesa.numero }}</td>
+                <td>{{ pago.comanda.mozo.get_full_name|default:pago.comanda.mozo.username }}</td>
                 <td>
-                    <strong>
-                        {% if item.metodo == 'EFECTIVO' %}Efectivo
-                        {% elif item.metodo == 'TARJETA' %}Tarjeta
-                        {% elif item.metodo == 'YAPE' %}Yape
-                        {% elif item.metodo == 'PLIN' %}Plin
-                        {% else %}{{ item.metodo }}
-                        {% endif %}
-                    </strong>
+                    <span class="badge badge-pago badge-pago-{{ pago.metodo|lower }}">
+                        {{ pago.get_metodo_display }}
+                    </span>
                 </td>
-                <td>S/ {{ item.total|floatformat:2 }}</td>
-                <td>{{ item.cantidad }}</td>
+                <td><strong>S/ {{ pago.monto|floatformat:2 }}</strong></td>
+                <td>S/ {{ pago.vuelto|floatformat:2 }}</td>
+                <td>{{ pago.referencia|default:"—" }}</td>
+                <td>{{ pago.caja.turno|default:"—" }}</td>
+                <td>{{ pago.fecha|date:"d/m/Y H:i" }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="3" class="empty-row">No hay pagos registrados</td></tr>
+            <tr>
+                <td colspan="9" class="empty-row">No hay pagos registrados</td>
+            </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+{% else %}
+<div class="empty-state">
+    <h4>Sin resultados</h4>
+    <p>No se encontraron pagos con los filtros seleccionados.</p>
+    <p class="text-muted">Prueba con un rango de fechas diferente o selecciona otro turno.</p>
+    <a href="{% url 'reportes_turno' %}" class="btn btn-primary" style="width:auto;padding:0.7rem 1.5rem;margin-top:0.5rem;">Limpiar filtros</a>
+</div>
+{% endif %}
 {% endblock %}
