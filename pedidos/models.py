@@ -3,7 +3,8 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from inventario.models import RecetaInsumo
+from decimal import Decimal
+from inventario.models import RecetaInsumo, MovimientoInsumo, convertir_unidad
 from mesas.models import Mesa, UnionMesa
 from caja.models import Pago
 from menu.models import Plato
@@ -69,10 +70,9 @@ class Comanda(models.Model):
     
     @property
     def total(self):
-        return sum(
-            linea.cantidad * linea.plato.precio
-            for linea in self.lineas.all()
-        )
+        return self.lineas.aggregate(
+            total=models.Sum(models.F('cantidad') * models.F('plato__precio'))
+        )['total'] or 0
     @classmethod
     def abrir(cls, mesa_id, usuario):
         from django.db import transaction
@@ -109,13 +109,14 @@ class Comanda(models.Model):
                         m.save()
             return comanda
     
-    def agregar_platos(self, platos_data):
+    def agregar_platos(self, platos_data, usuario=None):
         from django.db import transaction
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta abierta')
         with transaction.atomic():
             errores = []
             platos_a_crear = []
+            movimientos = []
             for item in platos_data:
                 plato_id = item.get('plato_id')
                 cantidad = item.get('cantidad', 1)
@@ -127,15 +128,34 @@ class Comanda(models.Model):
                 if not plato.disponible:
                     errores.append({'plato_id': plato_id, 'error': 'Plato no disponible'})
                     continue
-                recetas = RecetaInsumo.objects.filter(plato=plato).select_related('insumo').select_for_update(of=('insumo',))
+                recetas = RecetaInsumo.objects.filter(
+                    plato=plato
+                ).select_related('insumo').select_for_update(of=('insumo',))
                 faltantes = []
+                deducciones = []
                 for receta in recetas:
-                    necesario = receta.cantidad_por_porcion * cantidad
-                    if receta.insumo.stock_actual < necesario:
+                    insumo = receta.insumo
+                    necesario = receta.cantidad_por_porcion * Decimal(str(cantidad))
+                    if insumo.stock_actual < necesario:
                         faltantes.append(
-                            f"{receta.insumo.nombre}: disponible "
-                            f"{receta.insumo.stock_actual}, necesario {necesario}"
+                            f"{insumo.nombre}: disponible "
+                            f"{insumo.stock_actual} {insumo.unidad}, "
+                            f"necesario {necesario} {insumo.unidad}"
                         )
+                        continue
+                    stock_anterior = insumo.stock_actual
+                    insumo.stock_actual -= necesario
+                    insumo.save(update_fields=['stock_actual'])
+                    deducciones.append(MovimientoInsumo(
+                        insumo=insumo,
+                        comanda=self,
+                        tipo='DEDUCCION',
+                        cantidad=necesario,
+                        stock_anterior=stock_anterior,
+                        stock_posterior=insumo.stock_actual,
+                        usuario=usuario,
+                        observacion=f"Plato: {plato.nombre} x{cantidad}"
+                    ))
                 if faltantes:
                     errores.append({
                         'plato_id': plato_id,
@@ -144,11 +164,7 @@ class Comanda(models.Model):
                         'detalle': faltantes
                     })
                     continue
-                for receta in recetas:
-                    necesario = receta.cantidad_por_porcion * cantidad
-                    receta.insumo.stock_actual -= necesario
-                    receta.insumo.save(update_fields=['stock_actual'])
-
+                movimientos.extend(deducciones)
                 platos_a_crear.append(LineaComanda(
                     comanda=self, plato=plato,
                     cantidad=cantidad, observacion=observacion,
@@ -156,6 +172,7 @@ class Comanda(models.Model):
             if errores:
                 raise ValidationError({'errores': errores})
             LineaComanda.objects.bulk_create(platos_a_crear)
+            MovimientoInsumo.objects.bulk_create(movimientos)
         return platos_a_crear
     def fusionar(self, otra_comanda):
         if self.estado in ('COBRADA', 'ANULADA'):
@@ -166,14 +183,62 @@ class Comanda(models.Model):
         otra_comanda.estado = 'ANULADA'
         otra_comanda.fecha_cierre = timezone.now()
         otra_comanda.save(update_fields=['estado', 'fecha_cierre'])
+
+    def anular(self, usuario=None):
+        from django.db import transaction
+        if self.estado == 'COBRADA':
+            raise ValidationError('No se puede anular una comanda ya cobrada')
+        if self.estado == 'ANULADA':
+            raise ValidationError('La comanda ya esta anulada')
+        with transaction.atomic():
+            lineas = self.lineas.select_related('plato').all()
+            movimientos = []
+            for linea in lineas:
+                recetas = RecetaInsumo.objects.filter(
+                    plato=linea.plato
+                ).select_related('insumo').select_for_update(of=('insumo',))
+                for receta in recetas:
+                    insumo = receta.insumo
+                    cantidad_a_restaurar = receta.cantidad_por_porcion * Decimal(str(linea.cantidad))
+                    stock_anterior = insumo.stock_actual
+                    insumo.stock_actual += cantidad_a_restaurar
+                    insumo.save(update_fields=['stock_actual'])
+                    movimientos.append(MovimientoInsumo(
+                        insumo=insumo,
+                        comanda=self,
+                        tipo='REPOSICION',
+                        cantidad=cantidad_a_restaurar,
+                        stock_anterior=stock_anterior,
+                        stock_posterior=insumo.stock_actual,
+                        usuario=usuario,
+                        observacion=f"Anulacion comanda #{self.id} - {linea.plato.nombre} x{linea.cantidad}"
+                    ))
+            MovimientoInsumo.objects.bulk_create(movimientos)
+            self.estado = 'ANULADA'
+            self.fecha_cierre = timezone.now()
+            self.save(update_fields=['estado', 'fecha_cierre'])
+            mesa = self.mesa
+            union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
+            mesas_a_liberar = [mesa]
+            if union:
+                mesas_a_liberar = list(union.mesas.all())
+            for m in mesas_a_liberar:
+                tiene_otra_comanda = self.__class__.objects.filter(
+                    mesa=m, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
+                ).exclude(id=self.id).exists()
+                if not tiene_otra_comanda:
+                    m.estado = 'LIBRE'
+                    m.save()
+        return self
     
-    def pagar(self, metodo, monto, vuelto=0, referencia=''):
+    def pagar(self, metodo, monto, vuelto=0, referencia='', caja=None): 
         
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta lista para pagar')
         Pago.objects.create(
             comanda=self, metodo=metodo,
-            monto=monto, vuelto=vuelto, referencia=referencia
+            monto=monto, vuelto=vuelto, referencia=referencia,
+            caja=caja
         )
         self.estado = 'COBRADA'
         self.fecha_cierre = timezone.now()

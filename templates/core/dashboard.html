@@ -28,24 +28,24 @@
         <img src="{% static 'icons/comandaActiva.png' %}" class="card-icon" alt="">
         <p class="card-label">Comandas activas</p>
         <p class="card-number">{{ comandas_activas }}</p>
-        <a href="#" class="card-link">Ver pedidos →</a>
+        <a href="{% url 'plano_mesas' %}" class="card-link">Ver pedidos →</a>
     </div>
     <!-- Alertas de stock -->
     <div class="card card-blue">
         <img src="{% static 'icons/Alertastock.png' %}" class="card-icon" alt="">
         <p class="card-label">Alertas de stock</p>
         <p class="card-number">{{ alertas_stock }}</p>
-        <a href="#" class="card-link">Ver inventario →</a>
+        <a href="{% url 'lista_insumos' %}" class="card-link">Ver inventario →</a>
     </div>
     <!-- Ventas hoy -->
     <div class="card card-purple">
         <img src="{% static 'icons/ventasHoy.png' %}" class="card-icon" alt="">
         <p class="card-label">Ventas hoy</p>
         <p class="card-number">S/ {{ ventas_hoy|floatformat:2 }}</p>
-        <a href="#" class="card-link">Ver reportes →</a>
+        <a href="{% url 'reportes_turno' %}" class="card-link">Ver reportes →</a>
     </div>
     <!-- Caja actual -->
-    <div class="card" style="background: linear-gradient(135deg, #2d3436, #636e72); color: #fff;">
+    <div class="card card-dark">
         <img src="{% static 'icons/caja.png' %}" class="card-icon" alt="">
         <p class="card-label">Caja — {{ caja_actual.turno|default:"Sin turno" }}</p>
         <p class="card-number" style="font-size: 1.8rem;">
@@ -55,7 +55,7 @@
                 Cerrada
             {% endif %}
         </p>
-        <a href="#" class="card-link">Ir a caja →</a>
+        <a href="{% url 'apertura_turno' %}" class="card-link">Ir a caja →</a>
     </div>
 </div>
 <!-- === Últimas Comandas === -->
@@ -82,7 +82,7 @@
                         {{ comanda.get_estado_display }}
                     </span>
                 </td>
-                <td><a href="#" class="table-link">Ver →</a></td>
+                <td><a href="{% url 'detalle_mesa' comanda.mesa.id %}" class="table-link">Ver →</a></td>
             </tr>
             {% empty %}
             <tr>

@@ -1,0 +1,24 @@
+.insumo-alerta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #ffeaa7;
+    color: #d63031;
+    padding: 0.25rem 0.7rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+.insumo-alerta img {
+    width: 16px;
+    height: 16px;
+}
+.insumo-ok {
+    display: inline-block;
+    background: #dfe6e9;
+    color: #27ae60;
+    padding: 0.25rem 0.7rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}

@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Inventario{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/inventario/lista_insumos.css' %}">
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Inventario de Insumos</h1>
+    <a href="{% url 'gestion_insumos' %}" class="btn btn-primary" style="width:auto;padding:0.6rem 1.5rem;">Ir a Gestión</a>
+</div>
+<div class="table-wrapper">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Insumo</th><th>Unidad</th><th>Stock Actual</th>
+                <th>Stock Mínimo</th><th>Costo Unit.</th><th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for insumo in insumos %}
+            <tr>
+                <td><strong>{{ insumo.nombre }}</strong></td>
+                <td>{{ insumo.get_unidad_display }}</td>
+                <td>{{ insumo.stock_actual|floatformat:2 }}</td>
+                <td>{{ insumo.stock_minimo|floatformat:2 }}</td>
+                <td>S/ {{ insumo.costo_unitario|floatformat:2 }}</td>
+                <td>
+                    {% if insumo.stock_actual < insumo.stock_minimo %}
+                    <span class="insumo-alerta">
+                        <img src="{% static 'icons/Alertastock.png' %}" alt="">
+                        Stock bajo
+                    </span>
+                    {% else %}
+                    <span class="insumo-ok">Ok</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="empty-row">No hay insumos registrados</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
