@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Reporte de Ventas{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/reportes/reportes_turno.css' %}">
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Reporte de Ventas</h1>
+</div>
+<div class="card filtros-card">
+    <div class="card-body">
+        <form method="GET" class="filtros-form">
+            <div class="form-group">
+                <label for="caja_id">Turno de caja</label>
+                <select name="caja_id" id="caja_id" class="form-control">
+                    <option value="">--- Todos ---</option>
+                    {% for c in cajas %}
+                    <option value="{{ c.id }}" {% if request.GET.caja_id|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
+                        {{ c.turno }} — {{ c.fecha_apertura|date:"d/m/Y" }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="fecha_desde">Desde</label>
+                <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" value="{{ request.GET.fecha_desde }}">
+            </div>
+            <div class="form-group">
+                <label for="fecha_hasta">Hasta</label>
+                <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" value="{{ request.GET.fecha_hasta }}">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:auto;padding:0.7rem 1.5rem;">Filtrar</button>
+        </form>
+    </div>
+</div>
+<div class="card-grid mb-4">
+    <div class="card card-purple">
+        <p class="card-label">Total General</p>
+        <p class="card-number">S/ {{ reporte.total_general|floatformat:2 }}</p>
+    </div>
+    <div class="card card-blue">
+        <p class="card-label">Cantidad de Pagos</p>
+        <p class="card-number">{{ reporte.total_pagos }}</p>
+    </div>
+</div>
+<div class="section-title">Desglose por método de pago</div>
+<div class="table-wrapper">
+    <table class="table">
+        <thead>
+            <tr><th>Método</th><th>Total (S/)</th><th>Cantidad</th></tr>
+        </thead>
+        <tbody>
+            {% for item in reporte.por_metodo %}
+            <tr>
+                <td>
+                    <strong>
+                        {% if item.metodo == 'EFECTIVO' %}Efectivo
+                        {% elif item.metodo == 'TARJETA' %}Tarjeta
+                        {% elif item.metodo == 'YAPE' %}Yape
+                        {% elif item.metodo == 'PLIN' %}Plin
+                        {% else %}{{ item.metodo }}
+                        {% endif %}
+                    </strong>
+                </td>
+                <td>S/ {{ item.total|floatformat:2 }}</td>
+                <td>{{ item.cantidad }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="empty-row">No hay pagos registrados</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

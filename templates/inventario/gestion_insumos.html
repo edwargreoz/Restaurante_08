@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Gestión de Insumos{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/inventario/gestion_insumos.css' %}">
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>{% if editar %}Editar Insumo{% else %}Gestión de Insumos{% endif %}</h1>
+    {% if not editar %}
+    <a href="{% url 'lista_insumos' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Ver Inventario</a>
+    {% endif %}
+</div>
+<div class="row">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">
+                <strong>{% if editar %}Editar: {{ editar.nombre }}{% else %}Nuevo Insumo{% endif %}</strong>
+            </div>
+            <div class="card-body gestion-form">
+                <form method="POST"
+                      action="{% if editar %}{% url 'editar_insumo' editar.id %}{% else %}{% url 'crear_insumo' %}{% endif %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="nombre">Nombre</label>
+                        <input type="text" name="nombre" id="nombre" value="{{ editar.nombre|default:'' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="unidad">Unidad de medida</label>
+                        <select name="unidad" id="unidad" class="form-control" required>
+                            <option value="">--- Seleccionar ---</option>
+                            {% with u=editar.unidad|default:'' %}
+                            <option value="UNIDAD" {% if u == 'UNIDAD' %}selected{% endif %}>Unidad</option>
+                            <option value="KG" {% if u == 'KG' %}selected{% endif %}>Kilogramo</option>
+                            <option value="GR" {% if u == 'GR' %}selected{% endif %}>Gramo</option>
+                            <option value="LT" {% if u == 'LT' %}selected{% endif %}>Litro</option>
+                            <option value="ML" {% if u == 'ML' %}selected{% endif %}>Mililitro</option>
+                            {% endwith %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="stock_actual">Stock actual</label>
+                        <input type="number" name="stock_actual" id="stock_actual" step="0.01" min="0"
+                               value="{{ editar.stock_actual|default:'' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="stock_minimo">Stock mínimo (alerta)</label>
+                        <input type="number" name="stock_minimo" id="stock_minimo" step="0.01" min="0"
+                               value="{{ editar.stock_minimo|default:'' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="costo_unitario">Costo unitario (S/)</label>
+                        <input type="number" name="costo_unitario" id="costo_unitario" step="0.01" min="0"
+                               value="{{ editar.costo_unitario|default:'' }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        {% if editar %}Guardar Cambios{% else %}Crear Insumo{% endif %}
+                    </button>
+                    {% if editar %}
+                    <a href="{% url 'gestion_insumos' %}" class="btn btn-secondary" style="width:auto;margin-top:0.5rem;">Cancelar</a>
+                    {% endif %}
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr><th>Insumo</th><th>Unidad</th><th>Stock</th><th>Min</th><th>Costo</th><th>Acciones</th></tr>
+                </thead>
+                <tbody>
+                    {% for insumo in insumos %}
+                    <tr>
+                        <td><strong>{{ insumo.nombre }}</strong></td>
+                        <td>{{ insumo.get_unidad_display }}</td>
+                        <td>{{ insumo.stock_actual|floatformat:2 }}</td>
+                        <td>{{ insumo.stock_minimo|floatformat:2 }}</td>
+                        <td>S/ {{ insumo.costo_unitario|floatformat:2 }}</td>
+                        <td class="gestion-acciones">
+                            <a href="{% url 'editar_insumo' insumo.id %}" class="table-link">Editar</a>
+                            <form method="POST" action="{% url 'eliminar_insumo' insumo.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-eliminar"
+                                        onclick="return confirm('¿Eliminar {{ insumo.nombre }}?')">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="empty-row">No hay insumos registrados</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

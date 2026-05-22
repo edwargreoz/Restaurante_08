@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Cobrar Comanda #{{ comanda.id }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/caja/cobrar_comanda.css' %}">
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Cobrar Comanda #{{ comanda.id }}</h1>
+    <a href="{% url 'plano_mesas' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Volver</a>
+</div>
+<div class="row">
+    <div class="col-md-7">
+        <div class="card mb-4">
+            <div class="card-header">
+                Mesa {{ comanda.mesa.numero }} — Mozo: {{ comanda.mozo.get_full_name|default:comanda.mozo.username }}
+            </div>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead>
+                        <tr><th>Plato</th><th>Cant.</th><th>P.Unit</th><th>Subtotal</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for linea in comanda.lineas.all %}
+                        <tr>
+                            <td>{{ linea.plato.nombre }}</td>
+                            <td>{{ linea.cantidad }}</td>
+                            <td>S/ {{ linea.plato.precio|floatformat:2 }}</td>
+                            <td>S/ {{ linea.subtotal|floatformat:2 }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr><th colspan="3">Total</th><th>S/ {{ comanda.total|floatformat:2 }}</th></tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        {% if comanda.pagos.exists %}
+        <div class="card">
+            <div class="card-header">Pagos registrados</div>
+            <div class="table-wrapper">
+                <table class="table">
+                    <thead><tr><th>Método</th><th>Monto</th><th>Vuelto</th><th>Ref.</th></tr></thead>
+                    <tbody>
+                        {% for pago in comanda.pagos.all %}
+                        <tr>
+                            <td>{{ pago.get_metodo_display }}</td>
+                            <td>S/ {{ pago.monto|floatformat:2 }}</td>
+                            <td>S/ {{ pago.vuelto|floatformat:2 }}</td>
+                            <td>{{ pago.referencia }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header"><strong>Registrar Pago</strong></div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="metodo">Método de pago</label>
+                        <select name="metodo" id="metodo" class="form-control" required>
+                            <option value="">--- Seleccionar ---</option>
+                            {% for key, label in metodos %}
+                            <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="monto">Monto recibido (S/)</label>
+                        <input type="number" name="monto" id="monto" step="0.01" min="0"
+                               data-total="{{ comanda.total }}" value="{{ comanda.total }}" required>
+                    </div>
+                    <div class="form-group pago-vuelto-group" id="vuelto-group">
+                        <label for="vuelto">Vuelto (S/)</label>
+                        <input type="number" name="vuelto" id="vuelto" step="0.01" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="referencia">Referencia (opcional)</label>
+                        <input type="text" name="referencia" id="referencia" placeholder="Ej: VISA ****1234">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Cobrar S/ {{ comanda.total|floatformat:2 }}</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="{% static 'js/caja/cobrar_comanda.js' %}"></script>
+{% endblock %}
