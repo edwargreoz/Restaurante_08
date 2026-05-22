@@ -1,0 +1,21 @@
+.gestion-form {
+    max-width: 100%;
+}
+.gestion-acciones {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.btn-eliminar {
+    background: none;
+    border: none;
+    color: #e53e3e;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+.btn-eliminar:hover {
+    text-decoration: underline;
+}

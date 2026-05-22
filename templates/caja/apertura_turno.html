@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Turno de Caja{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/caja/apertura_turno.css' %}">
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Turno de Caja</h1>
+</div>
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        {% if caja %}
+        <div class="card card-dark turno-card">
+            <div class="card-body">
+                <img src="{% static 'icons/caja.png' %}" class="turno-icono" alt="">
+                <p class="card-label">Turno: {{ caja.turno }}</p>
+                <p class="turno-estado" style="color:#fff;">{{ caja.get_estado_display }}</p>
+                <p class="turno-info"><strong>Cajero:</strong> {{ caja.cajero.get_full_name|default:caja.cajero.username }}</p>
+                <p class="turno-info"><strong>Saldo inicial:</strong> S/ {{ caja.saldo_inicial|floatformat:2 }}</p>
+                <p class="turno-info"><strong>Apertura:</strong> {{ caja.fecha_apertura|date:"d/m/Y H:i" }}</p>
+                <form method="POST" class="mt-3">
+                    {% csrf_token %}
+                    <button type="submit" name="cerrar" value="1" class="btn-cerrar">Cerrar Turno</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="card">
+            <div class="card-header"><strong>Abrir Turno</strong></div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="turno">Nombre del turno</label>
+                        <input type="text" name="turno" id="turno" placeholder="Ej: MAÑANA, TARDE, NOCHE" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="saldo_inicial">Saldo inicial (S/)</label>
+                        <input type="number" name="saldo_inicial" id="saldo_inicial" step="0.01" min="0" value="0" required>
+                    </div>
+                    <button type="submit" name="abrir" value="1" class="btn btn-primary">Abrir Turno</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

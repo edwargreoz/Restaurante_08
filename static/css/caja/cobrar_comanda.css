@@ -1,0 +1,18 @@
+.pago-resumen {
+    margin-bottom: 1.5rem;
+}
+.pago-total {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 0;
+}
+.pago-metodo-selector {
+    margin-bottom: 1.5rem;
+}
+.pago-vuelto-group {
+    display: none;
+}
+.pago-vuelto-group.visible {
+    display: block;
+}
