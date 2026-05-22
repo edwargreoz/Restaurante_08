@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Unir Mesas{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/mesas/mesas.css' %}">
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Unir Mesas</h1>
+    <a href="{% url 'plano_mesas' %}" class="btn btn-secondary">Volver al Plano</a>
+</div>
+<div class="card mb-4">
+    <div class="card-header">Selecciona las mesas a unir (mínimo 2)</div>
+    <div class="card-body">
+        <form method="POST" action="{% url 'unir_mesas' %}">
+            {% csrf_token %}
+            <div class="row">
+                {% for mesa in mesas %}
+                <div class="col-md-3 mb-2">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="mesas" value="{{ mesa.id }}" id="mesa_{{ mesa.id }}">
+                        <label class="form-check-label" for="mesa_{{ mesa.id }}">
+                            Mesa {{ mesa.numero }}
+                            <small class="text-muted">({{ mesa.capacidad }} pax - {{ mesa.get_zona_display }})</small>
+                            <span class="badge bg-{% if mesa.estado == 'LIBRE' %}success{% elif mesa.estado == 'OCUPADA' %}danger{% elif mesa.estado == 'RESERVADA' %}warning text-dark{% else %}secondary{% endif %}">
+                                {{ mesa.get_estado_display }}
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary mt-3">Unir Mesas</button>
+        </form>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header">Uniones Activas</div>
+    <div class="card-body">
+        {% if uniones %}
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Mesas</th>
+                        <th>Capacidad Total</th>
+                        <th>Fecha</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for union in uniones %}
+                    <tr>
+                        <td>
+                            {% for mesa in union.mesas.all %}
+                                Mesa {{ mesa.numero }}{% if not forloop.last %} + {% endif %}
+                            {% endfor %}
+                        </td>
+                        <td>{{ union.capacidad_total }} personas</td>
+                        <td>{{ union.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <form method="POST" action="{% url 'deshacer_union' union.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-sm">Deshacer Unión</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No hay uniones activas.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
