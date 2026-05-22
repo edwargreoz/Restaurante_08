@@ -421,17 +421,4 @@ body {
     color: #7f8fa6;
 }
 
-/* === Plano de Mesas === */
-.card-link-mesa {
-    text-decoration: none;
-    color: inherit;
-    display: block;
-}
-.card-link-mesa:hover .card {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-    cursor: pointer;
-}
-.card-mesa {
-    transition: transform 0.2s, box-shadow 0.2s;
-}
+
