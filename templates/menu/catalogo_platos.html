@@ -6,6 +6,12 @@
 {% block content %}
 <h1 class="mb-4">Catalogo de Platos</h1>
 
+{% if user.is_superuser %}
+<div class="mb-3">
+    <a href="{% url 'gestion_menu' %}" class="btn btn-primary">Gestionar Menú</a>
+</div>
+{% endif %}
+
 {% for categoria in categorias %}
     <h2 class="mt-4">{{ categoria.nombre }}</h2>
     <div class="row">
