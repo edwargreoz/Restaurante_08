@@ -121,18 +121,23 @@ def crear_usuario(request):
 @user_passes_test(es_admin)
 def editar_usuario(request, user_id):
     usuario = get_object_or_404(User, id=user_id)
-    
+
     if request.method == 'POST':
         form = UsuarioForm(request.POST, instance=usuario)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Usuario actualizado correctamente.')
-            return redirect('lista_usuarios')
+            if usuario.id == request.user.id and form.cleaned_data.get('is_active') is False:
+                messages.error(request, 'No puedes desactivar tu propio usuario.')
+            else:
+                form.save()
+                messages.success(request, 'Usuario actualizado correctamente.')
+                if usuario.id == request.user.id:
+                    return redirect('dashboard')
+                return redirect('lista_usuarios')
         else:
             messages.error(request, 'Error al actualizar el usuario.')
     else:
         form = UsuarioForm(instance=usuario)
-        
+
     return render(request, 'core/usuarios/form_usuario.html', {
         'form': form,
         'titulo': 'Editar Usuario',
@@ -144,10 +149,12 @@ def editar_usuario(request, user_id):
 def eliminar_usuario(request, user_id):
     usuario = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
-        # Soft delete (Desactivar)
+        if usuario.id == request.user.id:
+            messages.error(request, 'No puedes desactivar tu propio usuario.')
+            return redirect('lista_usuarios')
         usuario.is_active = False
         usuario.save()
         messages.success(request, f'El usuario {usuario.username} ha sido desactivado.')
         return redirect('lista_usuarios')
-        
+
     return redirect('lista_usuarios')

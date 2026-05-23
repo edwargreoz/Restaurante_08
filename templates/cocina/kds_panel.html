@@ -14,7 +14,7 @@
     </div>
     <div class="kds-header-right">
         <span class="kds-clock" id="kdsClock"></span>
-        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">🔄 Actualizar</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()"> Actualizar</button>
     </div>
 </div>
 
@@ -41,7 +41,7 @@
             </div>
         </div>
         <div class="kds-card-meta">
-            <span>👨‍🍳 {{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</span>
+            <span> {{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</span>
             <span class="kds-comanda-estado badge {% if comanda.estado == 'EN_PREPARACION' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
                 {{ comanda.get_estado_display }}
             </span>
@@ -75,7 +75,7 @@
                         <button type="submit" class="btn-kds btn-kds-done">Listo</button>
                     </form>
                     {% elif linea.estado == 'LISTO' %}
-                    <span class="kds-check">✅</span>
+                    <span class="kds-check"></span>
                     {% endif %}
                 </div>
             </div>
@@ -86,7 +86,7 @@
 </div>
 {% else %}
 <div class="kds-empty">
-    <div class="kds-empty-icon">🍽️</div>
+    <div class="kds-empty-icon"></div>
     <h3>No hay comandas activas</h3>
     <p>Las comandas aparecerán aquí cuando el mozo las envíe a cocina.</p>
 </div>

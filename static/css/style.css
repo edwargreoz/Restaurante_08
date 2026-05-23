@@ -279,6 +279,14 @@ body {
     color: #d63031;
     border: 1px solid #fdcb6e;
 }
+.messages-global {
+    max-width: 1200px;
+    margin: 1rem auto 0;
+    padding: 0 1.5rem;
+}
+.messages-global .alert {
+    margin-bottom: 0.5rem;
+}
 /* === Page header === */
 .page-header {
     display: flex;
