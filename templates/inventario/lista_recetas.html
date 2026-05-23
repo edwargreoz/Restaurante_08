@@ -13,35 +13,49 @@
     </div>
 </div>
 <div class="table-wrapper">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Plato</th>
-                <th>Insumo</th>
-                <th>Cant. por Porción</th>
-                <th>Acción</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for receta in recetas %}
-            <tr>
-                <td class="receta-plato">{{ receta.plato.nombre }}</td>
-                <td class="receta-insumo">{{ receta.insumo.nombre }}</td>
-                <td class="receta-cantidad">{{ receta.cantidad_por_porcion|floatformat:2 }} {{ receta.insumo.get_unidad_display }}</td>
-                <td>
-                    <form method="POST" action="{% url 'eliminar_receta' receta.id %}" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-eliminar-receta"
-                                onclick="return confirm('¿Eliminar receta de {{ receta.plato.nombre }}?')">Eliminar</button>
-                    </form>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4" class="empty-row">No hay recetas registradas</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    {% for receta in recetas %}
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <strong>{{ receta.nombre }}</strong>
+            <form method="POST" action="{% url 'eliminar_receta_completa' receta.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-danger"
+                        onclick="return confirm('¿Eliminar toda la receta {{ receta.nombre }}?')">Eliminar Receta</button>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Insumo</th>
+                        <th>Cant. por Porción</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ri in receta.insumos.all %}
+                    <tr>
+                        <td>{{ ri.insumo.nombre }}</td>
+                        <td>{{ ri.cantidad_por_porcion|floatformat:2 }} {{ ri.insumo.get_unidad_display }}</td>
+                        <td>
+                            <form method="POST" action="{% url 'eliminar_receta' ri.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-eliminar-receta"
+                                        onclick="return confirm('¿Eliminar {{ ri.insumo.nombre }} de {{ receta.nombre }}?')">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-muted">Sin insumos asignados</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% empty %}
+    <div class="alert alert-info">No hay recetas registradas. <a href="{% url 'crear_receta' %}">Crear una</a></div>
+    {% endfor %}
 </div>
 {% endblock %}

@@ -6,7 +6,8 @@ from django.shortcuts import render , redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from core.rol_utils import es_admin
-from menu.models import Categoria,Plato
+from inventario.models import Receta
+from menu.models import Categoria, Plato
 
 @login_required
 def catalogo_platos(request):
@@ -18,8 +19,11 @@ def catalogo_platos(request):
 @user_passes_test(es_admin)
 def gestion_menu(request):
     categorias = Categoria.objects.prefetch_related('platos').all()
-    return render(request, 'menu/gestion_menu.html',{'categorias':
-                                                     categorias})
+    recetas = Receta.objects.all()
+    return render(request, 'menu/gestion_menu.html', {
+        'categorias': categorias,
+        'recetas': recetas,
+    })
 @login_required
 @user_passes_test(es_admin)
 def crear_categoria(request):
@@ -37,12 +41,18 @@ def crear_categoria(request):
 def crear_plato(request):
     if request.method == 'POST':
         categoria = get_object_or_404(Categoria, id=request.POST.get('categoria'))
+        receta_id = request.POST.get('receta')
+        if not receta_id:
+            messages.error(request, 'Debe seleccionar una receta para el plato')
+            return redirect('gestion_menu')
+        receta = get_object_or_404(Receta, id=receta_id)
         Plato.objects.create(
-            categoria = categoria,
+            categoria=categoria,
+            receta=receta,
             nombre=request.POST.get('nombre'),
             precio=request.POST.get('precio'),
-            descripcion = request.POST.get('descripcion',''),
-            disponible = request.POST.get('disponible') == 'on',
+            descripcion=request.POST.get('descripcion', ''),
+            disponible=request.POST.get('disponible') == 'on',
             imagen=request.FILES.get('imagen'),
         )
         messages.success(request, 'Plato creado')

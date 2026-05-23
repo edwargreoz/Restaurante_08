@@ -4,9 +4,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
-from menu.models import Plato
 from core.rol_utils import es_admin, es_mozo
-from .models import Insumo, RecetaInsumo
+from .models import Insumo, Receta, RecetaInsumo
 
 @login_required
 @user_passes_test(es_mozo)
@@ -79,36 +78,55 @@ def eliminar_insumo(request, insumo_id):
 @login_required
 @user_passes_test(es_admin)
 def lista_recetas(request):
-    recetas = RecetaInsumo.objects.select_related('plato', 'insumo').all()
+    recetas = Receta.objects.prefetch_related('insumos__insumo').all()
     return render(request, 'inventario/lista_recetas.html', {'recetas': recetas})
 
 @login_required
 @user_passes_test(es_admin)
 def crear_receta(request):
     if request.method == 'POST':
-        receta = RecetaInsumo(
-            plato_id=request.POST.get('plato_id'),
-            insumo_id=request.POST.get('insumo_id'),
-            cantidad_por_porcion=request.POST.get('cantidad_por_porcion'),
-        )
-        try:
-            receta.full_clean()
-            receta.save()
-            messages.success(request, 'Receta creada')
-        except (IntegrityError, ValidationError) as e:
-            messages.error(request, f'Error: {str(e)}')
+        nombre_receta = request.POST.get('nombre_receta')
+        if not nombre_receta:
+            messages.error(request, 'El nombre de la receta es obligatorio')
+            return redirect('crear_receta')
+        receta, created = Receta.objects.get_or_create(nombre=nombre_receta)
+        if created:
+            messages.success(request, f'Receta "{nombre_receta}" creada')
+        insumo_id = request.POST.get('insumo_id')
+        cantidad = request.POST.get('cantidad_por_porcion')
+        if insumo_id and cantidad:
+            try:
+                receta_insumo = RecetaInsumo(
+                    receta=receta,
+                    insumo_id=insumo_id,
+                    cantidad_por_porcion=cantidad,
+                )
+                receta_insumo.full_clean()
+                receta_insumo.save()
+                messages.success(request, f'Insumo agregado a "{nombre_receta}"')
+            except (IntegrityError, ValidationError) as e:
+                messages.error(request, f'Error: {str(e)}')
         return redirect('lista_recetas')
-    platos = Plato.objects.all()
     insumos = Insumo.objects.all()
     return render(request, 'inventario/crear_receta.html', {
-        'platos': platos, 'insumos': insumos
+        'insumos': insumos
     })
 
 @login_required
 @user_passes_test(es_admin)
-def eliminar_receta(request, receta_id):
-    receta = get_object_or_404(RecetaInsumo, id=receta_id)
+def eliminar_receta(request, receta_insumo_id):
+    receta_insumo = get_object_or_404(RecetaInsumo, id=receta_insumo_id)
+    if request.method == 'POST':
+        receta_insumo.delete()
+        messages.success(request, 'Insumo eliminado de la receta')
+    return redirect('lista_recetas')
+
+
+@login_required
+@user_passes_test(es_admin)
+def eliminar_receta_completa(request, receta_id):
+    receta = get_object_or_404(Receta, id=receta_id)
     if request.method == 'POST':
         receta.delete()
-        messages.success(request, 'Receta eliminada')
+        messages.success(request, f'Receta "{receta.nombre}" eliminada')
     return redirect('lista_recetas')

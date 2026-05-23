@@ -12,18 +12,13 @@
 <div class="row justify-content-center">
     <div class="col-md-6">
         <div class="card">
-            <div class="card-header"><strong>Asignar insumo a plato</strong></div>
+            <div class="card-header"><strong>Asignar insumo a receta</strong></div>
             <div class="card-body receta-form">
-                <form method="POST">
+                    <form method="POST">
                     {% csrf_token %}
                     <div class="form-group">
-                        <label for="plato_id">Plato</label>
-                        <select name="plato_id" id="plato_id" class="form-control" required>
-                            <option value="">--- Seleccionar ---</option>
-                            {% for plato in platos %}
-                            <option value="{{ plato.id }}">{{ plato.nombre }}</option>
-                            {% endfor %}
-                        </select>
+                        <label for="nombre_receta">Nombre de la Receta</label>
+                        <input type="text" name="nombre_receta" id="nombre_receta" class="form-control" placeholder="Ej: Hamburguesa Clásica" required>
                     </div>
                     <div class="form-group">
                         <label for="insumo_id">Insumo</label>

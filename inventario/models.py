@@ -87,13 +87,29 @@ class Insumo(models.Model):
         return f'{self.nombre} ({self.stock_actual} {self.unidad})'
 
 
+class Receta(models.Model):
+    nombre = models.CharField(
+        max_length=200,
+        unique=True,
+        verbose_name='Nombre de la receta'
+    )
+
+    class Meta:
+        ordering = ['nombre']
+        verbose_name = 'Receta'
+        verbose_name_plural = 'Recetas'
+
+    def __str__(self):
+        return self.nombre
+
+
 class RecetaInsumo(models.Model):
 
-    plato = models.ForeignKey(
-        'menu.Plato',
+    receta = models.ForeignKey(
+        Receta,
         on_delete=models.CASCADE,
-        related_name='receta',
-        verbose_name='Plato'
+        related_name='insumos',
+        verbose_name='Receta'
     )
 
     insumo = models.ForeignKey(
@@ -110,13 +126,13 @@ class RecetaInsumo(models.Model):
     )
 
     class Meta:
-        verbose_name = 'Receta de Insumo'
-        verbose_name_plural = 'Recetas de Insumos'
-        # Un insumo solo puede aparecer una vez por plato
-        unique_together = ('plato', 'insumo')
+        verbose_name = 'Insumo de Receta'
+        verbose_name_plural = 'Insumos de Recetas'
+        # Un insumo solo puede aparecer una vez por receta
+        unique_together = ('receta', 'insumo')
 
     def __str__(self):
-        return f'{self.plato.nombre} -> {self.cantidad_por_porcion} {self.insumo.unidad} de {self.insumo.nombre}'
+        return f'{self.receta.nombre} -> {self.cantidad_por_porcion} {self.insumo.unidad} de {self.insumo.nombre}'
 
 
 class MovimientoInsumo(models.Model):

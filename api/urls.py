@@ -9,7 +9,7 @@ from rest_framework_simplejwt.views import (
 from .views import (
     MesaViewSet, UnionMesaViewSet, ComandaViewSet, LineaComandaViewSet,
     CocinaViewSet, ReportesViewSet, CategoriaViewSet, PlatoViewSet,
-    InsumoViewSet, RecetaInsumoViewSet, ReservaViewSet,
+    InsumoViewSet, RecetaViewSet, RecetaInsumoViewSet, ReservaViewSet,
 )
 # Router principal para ViewSets
 # Los ViewSets se registran con: router.register('nombre', ViewSet)
@@ -23,6 +23,7 @@ router.register(r'reportes',ReportesViewSet,basename='reportes')
 router.register(r'categorias', CategoriaViewSet)
 router.register(r'platos', PlatoViewSet)
 router.register(r'insumos', InsumoViewSet)
+router.register(r'recetas', RecetaViewSet)
 router.register(r'recetas-insumo', RecetaInsumoViewSet)
 router.register(r'reservas', ReservaViewSet)
 

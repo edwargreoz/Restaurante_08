@@ -1,6 +1,7 @@
 
 from django.db import models
 from django.core.validators import MinValueValidator
+from inventario.models import Receta
 
 class Categoria(models.Model):
 
@@ -52,6 +53,13 @@ class Plato(models.Model):
         on_delete=models.CASCADE,
         related_name='platos',
         verbose_name='Categoria'
+    )
+
+    receta = models.ForeignKey(
+        Receta,
+        on_delete=models.PROTECT,
+        related_name='platos',
+        verbose_name='Receta'
     )
 
     tiempo_preparacion_min = models.IntegerField(

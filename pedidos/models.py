@@ -132,9 +132,16 @@ class Comanda(models.Model):
                 if not plato.disponible:
                     errores.append({'plato_id': plato_id, 'error': 'Plato no disponible'})
                     continue
-                recetas = RecetaInsumo.objects.filter(
-                    plato=plato
-                ).select_related('insumo').select_for_update(of=('insumo',))
+                if not plato.receta_id:
+                    errores.append({
+                        'plato_id': plato_id,
+                        'plato': plato.nombre,
+                        'error': 'El plato no tiene una receta asignada'
+                    })
+                    continue
+                recetas = plato.receta.insumos.select_related(
+                    'insumo'
+                ).select_for_update(of=('insumo',))
                 faltantes = []
                 deducciones = []
                 for receta in recetas:
@@ -198,9 +205,11 @@ class Comanda(models.Model):
             lineas = self.lineas.select_related('plato').all()
             movimientos = []
             for linea in lineas:
-                recetas = RecetaInsumo.objects.filter(
-                    plato=linea.plato
-                ).select_related('insumo').select_for_update(of=('insumo',))
+                if not linea.plato.receta_id:
+                    continue
+                recetas = linea.plato.receta.insumos.select_related(
+                    'insumo'
+                ).select_for_update(of=('insumo',))
                 for receta in recetas:
                     insumo = receta.insumo
                     cantidad_a_restaurar = receta.cantidad_por_porcion * Decimal(str(linea.cantidad))

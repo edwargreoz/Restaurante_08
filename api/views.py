@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 
 from mesas.models import Mesa, UnionMesa
 from menu.models import Categoria, Plato
-from inventario.models import Insumo, RecetaInsumo
+from inventario.models import Insumo, Receta, RecetaInsumo
 from reservas.models import Reserva
 from pedidos.models import Comanda, LineaComanda
 from caja.models import Caja, Pago
@@ -18,7 +18,7 @@ from .serializers import (
     AgregarPlatosRequestSerializer, PagarRequestSerializer,
     LineaComandaSerializer, CocinaComandaSerializer,
     CategoriaSerializer, PlatoSerializer,
-    InsumoSerializer, RecetaInsumoSerializer,
+    InsumoSerializer, RecetaSerializer, RecetaInsumoSerializer,
     ReservaSerializer,
 )
 from .permissions import EsMozo, EsCocinero, EsCajero, EsAdmin
@@ -31,7 +31,7 @@ class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
 
 class PlatoViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [EsMozo | EsAdmin]
-    queryset = Plato.objects.select_related('categoria').all()
+    queryset = Plato.objects.select_related('categoria', 'receta').all()
     serializer_class = PlatoSerializer
     filterset_class = PlatoFilter
 
@@ -40,9 +40,14 @@ class InsumoViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Insumo.objects.all()
     serializer_class = InsumoSerializer
 
+class RecetaViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [EsAdmin]
+    queryset = Receta.objects.all()
+    serializer_class = RecetaSerializer
+
 class RecetaInsumoViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [EsAdmin]
-    queryset = RecetaInsumo.objects.select_related('plato', 'insumo').all()
+    queryset = RecetaInsumo.objects.select_related('receta', 'insumo').all()
     serializer_class = RecetaInsumoSerializer
 
 class ReservaViewSet(viewsets.ModelViewSet):

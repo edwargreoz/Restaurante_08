@@ -3,7 +3,7 @@ from rest_framework import serializers
 from mesas.models import Mesa, UnionMesa
 from pedidos.models import Comanda, LineaComanda
 from menu.models import Categoria, Plato
-from inventario.models import Insumo, RecetaInsumo
+from inventario.models import Insumo, Receta, RecetaInsumo
 from caja.models import Pago
 from reservas.models import Reserva
 
@@ -14,10 +14,12 @@ class CategoriaSerializer(serializers.ModelSerializer):
 
 class PlatoSerializer(serializers.ModelSerializer):
     categoria_nombre = serializers.CharField(source='categoria.nombre', read_only=True)
+    receta_nombre = serializers.CharField(source='receta.nombre', read_only=True)
     class Meta:
         model = Plato
         fields = ['id', 'nombre', 'descripcion', 'precio', 'categoria',
-                  'categoria_nombre', 'tiempo_preparacion_min', 'disponible', 'imagen']
+                  'categoria_nombre', 'receta', 'receta_nombre',
+                  'tiempo_preparacion_min', 'disponible', 'imagen']
 
 class InsumoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -25,13 +27,18 @@ class InsumoSerializer(serializers.ModelSerializer):
         fields = ['id', 'nombre', 'unidad', 'stock_actual', 'stock_minimo']
 
 class RecetaInsumoSerializer(serializers.ModelSerializer):
-    plato_nombre = serializers.CharField(source='plato.nombre', read_only=True)
+    receta_nombre = serializers.CharField(source='receta.nombre', read_only=True)
     insumo_nombre = serializers.CharField(source='insumo.nombre', read_only=True)
     insumo_unidad = serializers.CharField(source='insumo.unidad', read_only=True)
     class Meta:
         model = RecetaInsumo
-        fields = ['id', 'plato', 'plato_nombre', 'insumo', 'insumo_nombre',
+        fields = ['id', 'receta', 'receta_nombre', 'insumo', 'insumo_nombre',
                   'insumo_unidad', 'cantidad_por_porcion']
+
+class RecetaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Receta
+        fields = ['id', 'nombre']
 
 class MesaSerializer(serializers.ModelSerializer):
     class Meta:
