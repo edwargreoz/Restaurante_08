@@ -103,11 +103,11 @@
                 <td>{{ plato.nombre }}</td>
                 <td>S/ {{ plato.precio }}</td>
                 <td>{{ plato.receta.nombre|default:"—" }}</td>
-                <td>
-                  <a href="{% url 'editar_plato' plato.id %}" class="btn btn-sm btn-warning">Editar</a>
-                  <form method="post" action="{% url 'eliminar_plato' plato.id %}" style="display:inline">
+                <td class="d-flex gap-2 border-0">
+                  <a href="{% url 'editar_plato' plato.id %}" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm" style="font-size: 0.85rem; font-weight: 500;">Editar</a>
+                  <form method="post" action="{% url 'eliminar_plato' plato.id %}" class="m-0 p-0">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar {{ plato.nombre }}?')">Eliminar</button>
+                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 shadow-sm" style="font-size: 0.85rem; font-weight: 500;" onclick="return confirm('¿Seguro que deseas eliminar el plato {{ plato.nombre }}?')">Eliminar</button>
                   </form>
                 </td>
               </tr>
