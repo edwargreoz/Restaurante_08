@@ -242,6 +242,11 @@ class Comanda(models.Model):
         
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta lista para pagar')
+        monto = Decimal(str(monto))
+        if abs(monto - self.total) > 0.01:
+            raise ValidationError(
+                f'El monto recibido ({monto}) no coincide con el total ({self.total})'
+            )
         if metodo == 'TARJETA':
             if not referencia or len(referencia.strip()) < 4:
                 raise ValidationError(
