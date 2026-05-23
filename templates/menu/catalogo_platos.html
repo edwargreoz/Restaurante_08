@@ -21,7 +21,7 @@
                 <img class="card-img-top" src="
                 {% if plato.imagen %}
                     {{ plato.imagen.url }}
-                {% else %}{% static 'arroz_con_pollo.jpg' %}{% endif %}" alt="{{ plato.nombre }}">
+                {% else %}{% static 'icons/orden.png' %}{% endif %}" alt="{{ plato.nombre }}">
                 <div class="card-body">
                     <h5 class="card-title">{{ plato.nombre }}</h5>
                     <p class="card-text">{{ plato.descripcion|truncatewords:15 }}</p>
