@@ -66,7 +66,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (sumaEl) sumaEl.textContent = suma.toFixed(2);
         var restante = redondear(totalCuenta - suma);
         if (restanteEl) restanteEl.textContent = restante.toFixed(2);
-        if (submitBtn) submitBtn.disabled = Math.abs(restante) > 0.01 || suma === 0;
+        var valido = Math.abs(restante) <= 0.01 && suma > 0;
+        if (submitBtn) submitBtn.disabled = !valido;
     }
 
     function toggleSplitCampos(item) {
