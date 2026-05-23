@@ -92,12 +92,13 @@ def crear_receta(request):
         receta, created = Receta.objects.get_or_create(nombre=nombre_receta)
         insumos_ids = request.POST.getlist('insumos[]')
         cantidades = request.POST.getlist('cantidades[]')
+        unidades_list = request.POST.getlist('unidades[]')
         if not insumos_ids:
             messages.error(request, 'Debe agregar al menos un insumo')
             return redirect('crear_receta')
         errores = []
         exitos = 0
-        for insumo_id, cantidad in zip(insumos_ids, cantidades):
+        for insumo_id, cantidad, unidad in zip(insumos_ids, cantidades, unidades_list):
             if not insumo_id or not cantidad:
                 continue
             try:
@@ -105,6 +106,7 @@ def crear_receta(request):
                     receta=receta,
                     insumo_id=insumo_id,
                     cantidad_por_porcion=cantidad,
+                    unidad=unidad,
                 )
                 ri.full_clean()
                 ri.save()
@@ -123,7 +125,8 @@ def crear_receta(request):
         return redirect('lista_recetas')
     insumos = Insumo.objects.all()
     return render(request, 'inventario/crear_receta.html', {
-        'insumos': insumos
+        'insumos': insumos,
+        'unidades': Insumo.UNIDADES,
     })
 
 @login_required
@@ -137,11 +140,12 @@ def editar_receta(request, receta_id):
             receta.save()
         insumos_ids = request.POST.getlist('insumos[]')
         cantidades = request.POST.getlist('cantidades[]')
+        unidades_list = request.POST.getlist('unidades[]')
         if insumos_ids:
             receta.insumos.all().delete()
             errores = []
             exitos = 0
-            for insumo_id, cantidad in zip(insumos_ids, cantidades):
+            for insumo_id, cantidad, unidad in zip(insumos_ids, cantidades, unidades_list):
                 if not insumo_id or not cantidad:
                     continue
                 try:
@@ -149,6 +153,7 @@ def editar_receta(request, receta_id):
                         receta=receta,
                         insumo_id=insumo_id,
                         cantidad_por_porcion=cantidad,
+                        unidad=unidad,
                     )
                     ri.full_clean()
                     ri.save()
@@ -164,6 +169,7 @@ def editar_receta(request, receta_id):
     return render(request, 'inventario/crear_receta.html', {
         'editar': receta,
         'insumos': insumos,
+        'unidades': Insumo.UNIDADES,
     })
 
 @login_required

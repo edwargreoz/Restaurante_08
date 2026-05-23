@@ -4,7 +4,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from decimal import Decimal
-from inventario.models import RecetaInsumo, MovimientoInsumo
+from inventario.models import RecetaInsumo, MovimientoInsumo, convertir_unidad
 from mesas.models import Mesa, UnionMesa
 from caja.models import Pago
 from menu.models import Plato
@@ -146,7 +146,12 @@ class Comanda(models.Model):
                 deducciones = []
                 for receta in recetas:
                     insumo = receta.insumo
-                    necesario = receta.cantidad_por_porcion * Decimal(str(cantidad))
+                    necesario_en_unidad_receta = receta.cantidad_por_porcion * Decimal(str(cantidad))
+                    necesario = convertir_unidad(
+                        necesario_en_unidad_receta,
+                        receta.unidad,
+                        insumo.unidad
+                    )
                     if insumo.stock_actual < necesario:
                         faltantes.append(
                             f"{insumo.nombre}: disponible "
@@ -212,7 +217,12 @@ class Comanda(models.Model):
                 ).select_for_update(of=('insumo',))
                 for receta in recetas:
                     insumo = receta.insumo
-                    cantidad_a_restaurar = receta.cantidad_por_porcion * Decimal(str(linea.cantidad))
+                    cantidad_en_unidad_receta = receta.cantidad_por_porcion * Decimal(str(linea.cantidad))
+                    cantidad_a_restaurar = convertir_unidad(
+                        cantidad_en_unidad_receta,
+                        receta.unidad,
+                        insumo.unidad
+                    )
                     stock_anterior = insumo.stock_actual
                     insumo.stock_actual += cantidad_a_restaurar
                     insumo.save(update_fields=['stock_actual'])

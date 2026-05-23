@@ -40,7 +40,7 @@
                     {% for ri in receta.insumos.all %}
                     <tr>
                         <td>{{ ri.insumo.nombre }}</td>
-                        <td>{{ ri.cantidad_por_porcion|floatformat:2 }} {{ ri.insumo.get_unidad_display }}</td>
+                        <td>{{ ri.cantidad_por_porcion|floatformat:2 }} {{ ri.get_unidad_display }}</td>
                         <td class="{% if ri.insumo.stock_actual < ri.insumo.stock_minimo %}stock-bajo{% endif %}">
                             {{ ri.insumo.stock_actual|floatformat:2 }} {{ ri.insumo.get_unidad_display }}
                         </td>
