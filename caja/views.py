@@ -6,13 +6,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from pedidos.models import Comanda
 from caja.models import Caja, Pago
-
-
-def es_cajero_o_admin(user):
-    return user.is_superuser or user.groups.filter(name='Cajero').exists()
-
-def es_mozo_o_cajero(user):
-    return user.is_superuser or user.groups.filter(name__in=['Mozo', 'Cajero']).exists()
+from core.rol_utils import es_mozo_o_cajero, es_cajero_o_admin
 
 @login_required
 @user_passes_test(es_mozo_o_cajero)
@@ -22,7 +16,7 @@ def cobrar_comanda(request, comanda_id):
         id=comanda_id, estado__in=['ABIERTA','LISTA']
     )
     if request.method == 'POST':
-        caja_activa = Caja.objects.filter(estado='ABIERTA').last()
+        caja_activa = Caja.objects.filter(estado='ABIERTA').first()
         try:
             comanda.pagar(
                 metodo=request.POST.get('metodo'),

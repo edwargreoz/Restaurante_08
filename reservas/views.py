@@ -1,3 +1,6 @@
+from datetime import time as time_obj, datetime
+import re
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
@@ -8,10 +11,79 @@ from mesas.models import Mesa, UnionMesa
 from .models import Reserva
 
 
+def _validar_datos_reserva(mesas_ids, fecha, hora_inicio, hora_fin,
+                           num_personas, cliente_nombre, cliente_contacto,
+                           observacion, mesas_actuales_ids=None):
+    """
+    Valida los datos comunes de crear/editar reserva.
+    Retorna un dict con datos validados o renderiza error.
+    """
+    if not mesas_ids:
+        return None, 'Debe seleccionar al menos una mesa'
+
+    mesas_seleccionadas = Mesa.objects.filter(id__in=mesas_ids)
+    if mesas_seleccionadas.count() != len(mesas_ids):
+        return None, 'Algunas mesas seleccionadas no existen'
+
+    zonas = set(m.zona for m in mesas_seleccionadas)
+    if len(zonas) > 1:
+        return None, 'No puedes unir mesas de diferentes zonas (ej. Salón y Terraza)'
+
+    for m in mesas_seleccionadas:
+        if mesas_actuales_ids and m.id in mesas_actuales_ids:
+            continue
+        if m.estado != 'LIBRE':
+            return None, f'La mesa {m.numero} no está disponible'
+
+    capacidad_total = sum(m.capacidad for m in mesas_seleccionadas)
+    num_per_int = int(num_personas)
+    if num_per_int > capacidad_total:
+        if len(mesas_seleccionadas) > 1:
+            return None, f'Las mesas seleccionadas solo tienen capacidad conjunta para {capacidad_total} personas'
+        return None, f'La mesa seleccionada solo tiene capacidad para {capacidad_total} personas'
+
+    if len(mesas_seleccionadas) > 1:
+        for m in mesas_seleccionadas:
+            if (capacidad_total - m.capacidad) >= num_per_int:
+                return None, 'Has seleccionado más mesas de las necesarias.'
+
+    try:
+        inicio = datetime.strptime(hora_inicio, '%H:%M').time()
+        fin = datetime.strptime(hora_fin, '%H:%M').time()
+    except (ValueError, TypeError):
+        return None, 'Formato de hora inválido'
+
+    if inicio < time_obj(7, 0) or fin > time_obj(22, 0):
+        return None, 'El horario de atención del restaurante es de 07:00 a 22:00'
+    if inicio >= fin:
+        return None, 'La hora de inicio debe ser anterior a la hora de fin'
+
+    if cliente_contacto:
+        if '@' in cliente_contacto:
+            if not re.match(r"[^@]+@[^@]+\.[^@]+", cliente_contacto):
+                return None, 'El correo electrónico ingresado no es válido'
+        else:
+            if not cliente_contacto.isdigit() or len(cliente_contacto) != 9:
+                return None, 'El número de celular debe contener exactamente 9 dígitos'
+
+    return {
+        'mesas_seleccionadas': mesas_seleccionadas,
+        'num_per_int': num_per_int,
+        'cliente_nombre': cliente_nombre,
+        'cliente_contacto': cliente_contacto,
+        'fecha': fecha,
+        'hora_inicio': hora_inicio,
+        'hora_fin': hora_fin,
+        'observacion': observacion,
+    }, None
+
+
 @login_required
 @user_passes_test(es_mozo)
 def lista_reservas(request):
-    reservas = Reserva.objects.select_related('mesa', 'creado_por').all()
+    reservas = Reserva.objects.select_related(
+        'mesa', 'creado_por', 'union_mesa'
+    ).prefetch_related('union_mesa__mesas').all()
     return render(request, 'reservas/lista_reservas.html', {'reservas': reservas})
 
 
@@ -19,101 +91,55 @@ def lista_reservas(request):
 @user_passes_test(es_mozo)
 def crear_reserva(request):
     mesas = Mesa.objects.filter(estado='LIBRE')
-    
-    if request.method == 'POST':
-        mesas_ids = request.POST.getlist('mesas_ids')
-        fecha = request.POST.get('fecha')
-        hora_inicio = request.POST.get('hora_inicio')
-        hora_fin = request.POST.get('hora_fin')
-        num_personas = request.POST.get('num_personas')
-        cliente_nombre = request.POST.get('cliente_nombre')
-        cliente_contacto = request.POST.get('cliente_contacto', '').strip()
-        observacion = request.POST.get('observacion', '')
 
-        def _render_error(msg):
-            messages.error(request, msg)
+    if request.method == 'POST':
+        datos, error = _validar_datos_reserva(
+            mesas_ids=request.POST.getlist('mesas_ids'),
+            fecha=request.POST.get('fecha'),
+            hora_inicio=request.POST.get('hora_inicio'),
+            hora_fin=request.POST.get('hora_fin'),
+            num_personas=request.POST.get('num_personas'),
+            cliente_nombre=request.POST.get('cliente_nombre'),
+            cliente_contacto=request.POST.get('cliente_contacto', '').strip(),
+            observacion=request.POST.get('observacion', ''),
+        )
+        if error:
+            messages.error(request, error)
             return render(request, 'reservas/crear_reserva.html', {'mesas': mesas, 'datos': request.POST})
 
-        if not mesas_ids:
-            return _render_error('Debe seleccionar al menos una mesa')
-
         try:
-            mesas_seleccionadas = Mesa.objects.filter(id__in=mesas_ids)
-            
-            if mesas_seleccionadas.count() != len(mesas_ids):
-                return _render_error('Algunas mesas seleccionadas no existen')
+            ms = datos['mesas_seleccionadas']
+            mesa_obj = ms.first() if len(ms) == 1 else None
+            union_mesa_obj = None if mesa_obj else UnionMesa.objects.create(activa=True)
 
-            zonas_seleccionadas = set(m.zona for m in mesas_seleccionadas)
-            if len(zonas_seleccionadas) > 1:
-                return _render_error('No puedes unir mesas de diferentes zonas (ej. Salón y Terraza)')
-
-            for m in mesas_seleccionadas:
-                if m.estado != 'LIBRE':
-                    return _render_error(f'La mesa {m.numero} no está disponible')
-
-            capacidad_total = sum(m.capacidad for m in mesas_seleccionadas)
-            num_per_int = int(num_personas)
-            if num_per_int > capacidad_total:
-                if len(mesas_seleccionadas) > 1:
-                    return _render_error(f'Las mesas seleccionadas solo tienen capacidad conjunta para {capacidad_total} personas')
-                else:
-                    return _render_error(f'La mesa seleccionada solo tiene capacidad para {capacidad_total} personas')
-
-            if len(mesas_seleccionadas) > 1:
-                for m in mesas_seleccionadas:
-                    if (capacidad_total - m.capacidad) >= num_per_int:
-                        return _render_error('Has seleccionado más mesas de las necesarias. No puedes exceder la capacidad requerida reservando mesas extra.')
-
-            if hora_inicio < "07:00" or hora_fin > "22:00":
-                return _render_error('El horario de atención del restaurante es de 07:00 a 22:00')
-
-            if hora_inicio >= hora_fin:
-                return _render_error('La hora de inicio debe ser anterior a la hora de fin')
-
-            if cliente_contacto:
-                import re
-                if '@' in cliente_contacto:
-                    if not re.match(r"[^@]+@[^@]+\.[^@]+", cliente_contacto):
-                        return _render_error('El correo electrónico ingresado no es válido')
-                else:
-                    if not cliente_contacto.isdigit() or len(cliente_contacto) != 9:
-                        return _render_error('El número de celular debe contener exactamente 9 dígitos numéricos')
-
-            mesa_obj = None
-            union_mesa_obj = None
-
-            if len(mesas_seleccionadas) == 1:
-                mesa_obj = mesas_seleccionadas.first()
-            else:
-                union_mesa_obj = UnionMesa.objects.create(activa=True)
-                union_mesa_obj.mesas.set(mesas_seleccionadas)
+            if union_mesa_obj:
+                union_mesa_obj.mesas.set(ms)
                 union_mesa_obj.save()
 
             reserva = Reserva.objects.create(
                 mesa=mesa_obj,
                 union_mesa=union_mesa_obj,
-                cliente_nombre=cliente_nombre,
-                cliente_contacto=cliente_contacto,
-                fecha=fecha,
-                hora_inicio=hora_inicio,
-                hora_fin=hora_fin,
-                num_personas=num_personas,
-                observacion=observacion,
+                cliente_nombre=datos['cliente_nombre'],
+                cliente_contacto=datos['cliente_contacto'],
+                fecha=datos['fecha'],
+                hora_inicio=datos['hora_inicio'],
+                hora_fin=datos['hora_fin'],
+                num_personas=datos['num_per_int'],
+                observacion=datos['observacion'],
                 creado_por=request.user,
             )
 
+            msg = f'Reserva creada para {reserva.cliente_nombre}'
             if union_mesa_obj:
-                messages.success(request, f'Reserva creada para {reserva.cliente_nombre} en Unión de Mesas')
+                msg += ' en Unión de Mesas'
             else:
-                messages.success(request, f'Reserva creada para {reserva.cliente_nombre} en Mesa {mesa_obj.numero}')
+                msg += f' en Mesa {mesa_obj.numero}'
+            messages.success(request, msg)
             return redirect('lista_reservas')
 
-        except (ValueError, TypeError):
-            return _render_error('Verifica que todos los datos sean correctos')
-        except IntegrityError:
-            return _render_error('Error al guardar la reserva')
-        except Exception as e:
-            return _render_error(f'Ocurrio un error: {str(e)}')
+        except (ValueError, TypeError, IntegrityError) as e:
+            messages.error(request, f'Error al guardar la reserva: {e}')
+            return render(request, 'reservas/crear_reserva.html', {'mesas': mesas, 'datos': request.POST})
 
     return render(request, 'reservas/crear_reserva.html', {'mesas': mesas})
 
@@ -165,7 +191,7 @@ def eliminar_reserva(request, reserva_id):
 @user_passes_test(es_mozo)
 def editar_reserva(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
-    
+
     if not reserva.activa:
         messages.error(request, 'No puedes editar una reserva cancelada.')
         return redirect('lista_reservas')
@@ -178,108 +204,66 @@ def editar_reserva(request, reserva_id):
 
     from django.db.models import Q
     mesas = Mesa.objects.filter(Q(estado='LIBRE') | Q(id__in=mesas_actuales_ids))
-    
+
     if request.method == 'POST':
-        mesas_ids = request.POST.getlist('mesas_ids')
-        fecha = request.POST.get('fecha')
-        hora_inicio = request.POST.get('hora_inicio')
-        hora_fin = request.POST.get('hora_fin')
-        num_personas = request.POST.get('num_personas')
-        cliente_nombre = request.POST.get('cliente_nombre')
-        cliente_contacto = request.POST.get('cliente_contacto', '').strip()
-        observacion = request.POST.get('observacion', '')
-
-        def _render_error(msg):
-            messages.error(request, msg)
-            return render(request, 'reservas/editar_reserva.html', {'mesas': mesas, 'datos': request.POST, 'reserva': reserva, 'mesas_actuales_ids': mesas_ids})
-
-        if not mesas_ids:
-            return _render_error('Debe seleccionar al menos una mesa')
+        datos, error = _validar_datos_reserva(
+            mesas_ids=request.POST.getlist('mesas_ids'),
+            fecha=request.POST.get('fecha'),
+            hora_inicio=request.POST.get('hora_inicio'),
+            hora_fin=request.POST.get('hora_fin'),
+            num_personas=request.POST.get('num_personas'),
+            cliente_nombre=request.POST.get('cliente_nombre'),
+            cliente_contacto=request.POST.get('cliente_contacto', '').strip(),
+            observacion=request.POST.get('observacion', ''),
+            mesas_actuales_ids=mesas_actuales_ids,
+        )
+        if error:
+            messages.error(request, error)
+            return render(request, 'reservas/editar_reserva.html', {
+                'mesas': mesas, 'datos': request.POST,
+                'reserva': reserva, 'mesas_actuales_ids': mesas_actuales_ids,
+            })
 
         try:
-            mesas_seleccionadas = Mesa.objects.filter(id__in=mesas_ids)
-            
-            if mesas_seleccionadas.count() != len(mesas_ids):
-                return _render_error('Algunas mesas seleccionadas no existen')
-
-            zonas_seleccionadas = set(m.zona for m in mesas_seleccionadas)
-            if len(zonas_seleccionadas) > 1:
-                return _render_error('No puedes unir mesas de diferentes zonas (ej. Salón y Terraza)')
-
-            for m in mesas_seleccionadas:
-                if m.estado != 'LIBRE' and m.id not in mesas_actuales_ids:
-                    return _render_error(f'La mesa {m.numero} no está disponible')
-
-            capacidad_total = sum(m.capacidad for m in mesas_seleccionadas)
-            num_per_int = int(num_personas)
-            if num_per_int > capacidad_total:
-                return _render_error(f'La capacidad conjunta seleccionada es {capacidad_total}, insuficiente para {num_personas} personas')
-
-            if len(mesas_seleccionadas) > 1:
-                for m in mesas_seleccionadas:
-                    if (capacidad_total - m.capacidad) >= num_per_int:
-                        return _render_error('Has seleccionado más mesas de las necesarias. No puedes exceder la capacidad requerida reservando mesas extra.')
-
-            if hora_inicio < "07:00" or hora_fin > "22:00":
-                return _render_error('El horario de atención del restaurante es de 07:00 a 22:00')
-
-            if hora_inicio >= hora_fin:
-                return _render_error('La hora de inicio debe ser anterior a la hora de fin')
-
-            if cliente_contacto:
-                import re
-                if '@' in cliente_contacto:
-                    if not re.match(r"[^@]+@[^@]+\.[^@]+", cliente_contacto):
-                        return _render_error('El correo electrónico ingresado no es válido')
-                else:
-                    if not cliente_contacto.isdigit() or len(cliente_contacto) != 9:
-                        return _render_error('El número de celular debe contener exactamente 9 dígitos numéricos')
-
+            ms = datos['mesas_seleccionadas']
             vieja_mesa = reserva.mesa
             vieja_union = reserva.union_mesa
-            
-            mesa_obj = None
-            union_mesa_obj = None
 
-            if len(mesas_seleccionadas) == 1:
-                mesa_obj = mesas_seleccionadas.first()
+            if len(ms) == 1:
+                reserva.mesa = ms.first()
+                reserva.union_mesa = None
             else:
                 union_mesa_obj = UnionMesa.objects.create(activa=True)
-                union_mesa_obj.mesas.set(mesas_seleccionadas)
+                union_mesa_obj.mesas.set(ms)
                 union_mesa_obj.save()
+                reserva.mesa = None
+                reserva.union_mesa = union_mesa_obj
 
-            reserva.mesa = mesa_obj
-            reserva.union_mesa = union_mesa_obj
-            reserva.cliente_nombre = cliente_nombre
-            reserva.cliente_contacto = cliente_contacto
-            reserva.fecha = fecha
-            reserva.hora_inicio = hora_inicio
-            reserva.hora_fin = hora_fin
-            reserva.num_personas = num_personas
-            reserva.observacion = observacion
-            reserva.save() 
-            
-            if vieja_mesa and vieja_mesa != mesa_obj and vieja_mesa not in mesas_seleccionadas:
+            reserva.cliente_nombre = datos['cliente_nombre']
+            reserva.cliente_contacto = datos['cliente_contacto']
+            reserva.fecha = datos['fecha']
+            reserva.hora_inicio = datos['hora_inicio']
+            reserva.hora_fin = datos['hora_fin']
+            reserva.num_personas = datos['num_per_int']
+            reserva.observacion = datos['observacion']
+            reserva.save()
+
+            if vieja_mesa and vieja_mesa != reserva.mesa:
                 vieja_mesa.estado = 'LIBRE'
                 vieja_mesa.save(update_fields=['estado'])
-            
-            if vieja_union and vieja_union != union_mesa_obj:
-                for m in vieja_union.mesas.all():
-                    if m not in mesas_seleccionadas:
-                        m.estado = 'LIBRE'
-                        m.save(update_fields=['estado'])
+            if vieja_union and vieja_union != reserva.union_mesa:
                 vieja_union.activa = False
                 vieja_union.save(update_fields=['activa'])
 
             messages.success(request, f'Reserva de {reserva.cliente_nombre} actualizada con éxito')
             return redirect('lista_reservas')
 
-        except (ValueError, TypeError):
-            return _render_error('Verifica que todos los datos sean correctos')
-        except IntegrityError:
-            return _render_error('Error al guardar la reserva')
-        except Exception as e:
-            return _render_error(f'Ocurrio un error: {str(e)}')
+        except (ValueError, TypeError, IntegrityError) as e:
+            messages.error(request, f'Error al guardar la reserva: {e}')
+            return render(request, 'reservas/editar_reserva.html', {
+                'mesas': mesas, 'datos': request.POST,
+                'reserva': reserva, 'mesas_actuales_ids': mesas_actuales_ids,
+            })
 
     datos = {
         'fecha': reserva.fecha.strftime('%Y-%m-%d'),
@@ -290,7 +274,7 @@ def editar_reserva(request, reserva_id):
         'cliente_contacto': reserva.cliente_contacto,
         'observacion': reserva.observacion,
     }
-    
+
     return render(request, 'reservas/editar_reserva.html', {
         'mesas': mesas,
         'datos': datos,
