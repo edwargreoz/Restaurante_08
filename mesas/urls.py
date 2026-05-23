@@ -11,6 +11,7 @@ urlpatterns = [
     path('mesas/comanda/<int:comanda_id>/agregar/', views.agregar_plato_comanda, name='agregar_plato_comanda'),
     path('mesas/comanda/<int:comanda_id>/anular/', views.anular_comanda, name='anular_comanda'),
     # Unión de Mesas
+    path('mesas/limpieza-a-libre/<int:mesa_id>/', views.marcar_mesa_libre, name='marcar_mesa_libre'),
     path('mesas/unir/', views.unir_mesas, name='unir_mesas'),
     path('mesas/deshacer-union/<int:union_id>/', views.deshacer_union, name='deshacer_union'),
     path('mesas/union/<int:union_id>/agregar/', views.agregar_mesa_union, name='agregar_mesa_union'),

@@ -93,6 +93,21 @@ def anular_comanda(request, comanda_id):
 
 @login_required
 @user_passes_test(es_mozo)
+def marcar_mesa_libre(request, mesa_id):
+    mesa = get_object_or_404(Mesa, id=mesa_id)
+    if request.method == 'POST' and mesa.estado == 'LIMPIEZA':
+        tiene_reserva = mesa.reservas.filter(activa=True).exists()
+        union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
+        if union:
+            tiene_reserva = tiene_reserva or union.reservas.filter(activa=True).exists()
+        
+        mesa.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
+        mesa.save(update_fields=['estado'])
+        messages.success(request, f'Mesa {mesa.numero} limpiada y ahora está {mesa.get_estado_display().lower()}.')
+    return redirect('plano_mesas')
+
+@login_required
+@user_passes_test(es_mozo)
 def unir_mesas(request):
     mesas = Mesa.objects.filter(activa=True)
     uniones = UnionMesa.objects.filter(activa=True).prefetch_related('mesas')
@@ -236,8 +251,17 @@ def deshacer_union(request, union_id):
 @login_required
 @user_passes_test(es_admin)
 def lista_mesas_admin(request):
+    if request.method == 'POST':
+        form = MesaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Mesa creada exitosamente.')
+            return redirect('lista_mesas_admin')
+    else:
+        form = MesaForm()
+        
     mesas = Mesa.objects.filter(activa=True).order_by('numero')
-    return render(request, 'mesas/lista_mesas_admin.html', {'mesas': mesas})
+    return render(request, 'mesas/lista_mesas_admin.html', {'mesas': mesas, 'form': form})
 
 @login_required
 @user_passes_test(es_admin)

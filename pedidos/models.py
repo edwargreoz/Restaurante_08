@@ -243,7 +243,7 @@ class Comanda(models.Model):
                     tiene_reserva = m.reservas.filter(activa=True).exists()
                     if union:
                         tiene_reserva = tiene_reserva or union.reservas.filter(activa=True).exists()
-                    m.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
+                    m.estado = 'RESERVADA' if tiene_reserva else 'LIMPIEZA'
                     m.save(update_fields=['estado'])
         return self
     
@@ -280,13 +280,13 @@ class Comanda(models.Model):
         if union:
             tiene_reserva_mesa = tiene_reserva_mesa or union.reservas.filter(activa=True).exists()
             
-        mesa.estado = 'RESERVADA' if tiene_reserva_mesa else 'LIBRE'
+        mesa.estado = 'RESERVADA' if tiene_reserva_mesa else 'LIMPIEZA'
         mesa.save(update_fields=['estado'])
         if union:
             for m in union.mesas.all():
                 if m.id != mesa.id:
                     tiene_r = m.reservas.filter(activa=True).exists() or union.reservas.filter(activa=True).exists()
-                    m.estado = 'RESERVADA' if tiene_r else 'LIBRE'
+                    m.estado = 'RESERVADA' if tiene_r else 'LIMPIEZA'
                     m.save(update_fields=['estado'])
         return self
     def pagar_split(self, pagos_lista, caja=None):
@@ -325,13 +325,13 @@ class Comanda(models.Model):
         if union:
             tiene_reserva_mesa = tiene_reserva_mesa or union.reservas.filter(activa=True).exists()
             
-        mesa.estado = 'RESERVADA' if tiene_reserva_mesa else 'LIBRE'
+        mesa.estado = 'RESERVADA' if tiene_reserva_mesa else 'LIMPIEZA'
         mesa.save(update_fields=['estado'])
         if union:
             for m in union.mesas.all():
                 if m.id != mesa.id:
                     tiene_r = m.reservas.filter(activa=True).exists() or union.reservas.filter(activa=True).exists()
-                    m.estado = 'RESERVADA' if tiene_r else 'LIBRE'
+                    m.estado = 'RESERVADA' if tiene_r else 'LIMPIEZA'
                     m.save(update_fields=['estado'])
         return self
 
