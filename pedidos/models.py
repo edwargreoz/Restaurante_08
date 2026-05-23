@@ -312,8 +312,11 @@ class Comanda(models.Model):
 
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta lista para pagar')
+        for pd in pagos_lista:
+            pd['monto'] = Decimal(str(pd['monto']))
+            pd['vuelto'] = Decimal(str(pd.get('vuelto', 0) or 0))
         total_pagos = sum(p['monto'] for p in pagos_lista)
-        if abs(total_pagos - self.total) > 0.01:
+        if abs(total_pagos - self.total) > Decimal('0.01'):
             raise ValidationError(
                 f'Suma de pagos ({total_pagos}) no coincide con total ({self.total})'
             )

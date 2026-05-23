@@ -90,7 +90,7 @@
                         <div class="form-group">
                             <label for="monto">Monto recibido (S/)</label>
                             <input type="number" name="monto" id="monto" step="0.01" min="0"
-                                   data-total="{{ comanda.total }}" value="{{ comanda.total }}" required>
+                                   data-total="{{ comanda.total|stringformat:'.2f' }}" value="{{ comanda.total|stringformat:'.2f' }}" required>
                         </div>
                         <div class="form-group pago-vuelto-group" id="vuelto-group">
                             <label for="vuelto">Vuelto (S/)</label>
@@ -137,46 +137,47 @@
                                 <button type="button" class="btn btn-danger btn-sm remove-split-pago" style="display:none;">Eliminar</button>
                             </div>
                         </div>
-                        <div id="split-template" style="display:none;">
-                            <div class="split-pago-item card card-body mb-2 p-3">
-                                <div class="form-group">
-                                    <label>Método de pago</label>
-                                    <select name="metodo[]" class="form-control split-metodo" required>
-                                        <option value="">--- Seleccionar ---</option>
-                                        {% for key, label in metodos %}
-                                        <option value="{{ key }}">{{ label }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Monto a pagar (S/)</label>
-                                    <input type="number" name="monto[]" class="form-control split-monto" step="0.01" min="0.01" required>
-                                </div>
-                                <div class="form-group split-recibido-group" style="display:none;">
-                                    <label>Recibido (S/)</label>
-                                    <input type="number" name="recibido[]" class="form-control split-recibido" step="0.01" min="0">
-                                </div>
-                                <div class="form-group split-vuelto-group" style="display:none;">
-                                    <label>Vuelto (S/)</label>
-                                    <input type="number" name="vuelto[]" class="form-control split-vuelto" step="0.01" min="0" value="0" readonly style="background:#f8f9fa;">
-                                </div>
-                                <div class="form-group split-ref-group" style="display:none;">
-                                    <label>Referencia (últimos 4 dígitos)</label>
-                                    <input type="text" name="referencia[]" class="form-control split-referencia" placeholder="Ej: ****1234" maxlength="20">
-                                </div>
-                                <button type="button" class="btn btn-danger btn-sm remove-split-pago">Eliminar</button>
-                            </div>
-                        </div>
                         <div class="d-flex gap-2 mb-3">
                             <button type="button" class="btn btn-outline-secondary btn-sm" id="add-split-pago">+ Agregar otro método</button>
                         </div>
                         <div class="pago-resumen border-top pt-3 mb-3">
-                            <p class="mb-1">Total cuenta: <strong>S/ <span id="split-total-cuenta">{{ comanda.total|floatformat:2 }}</span></strong></p>
+                            <p class="mb-1">Total cuenta: <strong>S/ <span id="split-total-cuenta" data-total="{{ comanda.total|stringformat:'.2f' }}">{{ comanda.total|floatformat:2 }}</span></strong></p>
                             <p class="mb-1">Suma pagos: <strong>S/ <span id="split-suma-pagos">0.00</span></strong></p>
-                            <p class="mb-0">Restante: <strong>S/ <span id="split-restante">{{ comanda.total|floatformat:2 }}</span></strong></p>
+                            <p class="mb-0">Restante: <strong>S/ <span id="split-restante" data-total="{{ comanda.total|stringformat:'.2f' }}">{{ comanda.total|floatformat:2 }}</span></strong></p>
                         </div>
                         <button type="submit" class="btn btn-primary w-100" id="split-submit" disabled>Cobrar S/ {{ comanda.total|floatformat:2 }}</button>
                     </form>
+                    <!-- Template fuera del form para que los inputs required ocultos no bloqueen el submit -->
+                    <div id="split-template" style="display:none;">
+                        <div class="split-pago-item card card-body mb-2 p-3">
+                            <div class="form-group">
+                                <label>Método de pago</label>
+                                <select class="form-control split-metodo">
+                                    <option value="">--- Seleccionar ---</option>
+                                    {% for key, label in metodos %}
+                                    <option value="{{ key }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Monto a pagar (S/)</label>
+                                <input type="number" class="form-control split-monto" step="0.01" min="0.01">
+                            </div>
+                            <div class="form-group split-recibido-group" style="display:none;">
+                                <label>Recibido (S/)</label>
+                                <input type="number" class="form-control split-recibido" step="0.01" min="0">
+                            </div>
+                            <div class="form-group split-vuelto-group" style="display:none;">
+                                <label>Vuelto (S/)</label>
+                                <input type="number" class="form-control split-vuelto" step="0.01" min="0" value="0" readonly style="background:#f8f9fa;">
+                            </div>
+                            <div class="form-group split-ref-group" style="display:none;">
+                                <label>Referencia (últimos 4 dígitos)</label>
+                                <input type="text" class="form-control split-referencia" placeholder="Ej: ****1234" maxlength="20">
+                            </div>
+                            <button type="button" class="btn btn-danger btn-sm remove-split-pago">Eliminar</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

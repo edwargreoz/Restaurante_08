@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var template = document.getElementById('split-template');
     var addBtn = document.getElementById('add-split-pago');
     var totalCuentaEl = document.getElementById('split-total-cuenta');
-    var totalCuenta = totalCuentaEl ? parseFloat(totalCuentaEl.textContent) || 0 : 0;
+    var totalCuenta = totalCuentaEl ? parseFloat(totalCuentaEl.getAttribute('data-total') || totalCuentaEl.textContent.replace(',', '.')) || 0 : 0;
 
     function redondear(val) {
         return Math.round(val * 100) / 100;
@@ -152,6 +152,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 el.value = '';
                 el.required = false;
             });
+            /* Asignar atributos name y required a los clones (el template está fuera del form) */
+            var cloneMetodo = clone.querySelector('.split-metodo');
+            if (cloneMetodo) { cloneMetodo.name = 'metodo[]'; cloneMetodo.required = true; }
+            var cloneMonto = clone.querySelector('.split-monto');
+            if (cloneMonto) { cloneMonto.name = 'monto[]'; cloneMonto.required = true; }
+            var cloneRecibido = clone.querySelector('.split-recibido');
+            if (cloneRecibido) { cloneRecibido.name = 'recibido[]'; }
+            var cloneVuelto = clone.querySelector('.split-vuelto');
+            if (cloneVuelto) { cloneVuelto.name = 'vuelto[]'; cloneVuelto.value = '0'; }
+            var cloneRef = clone.querySelector('.split-referencia');
+            if (cloneRef) { cloneRef.name = 'referencia[]'; }
             container.appendChild(clone);
             initSplitItem(clone);
             var allItems = container.querySelectorAll('.split-pago-item');
@@ -163,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function () {
             actualizarResumenSplit();
             var restanteEl = document.getElementById('split-restante');
             if (restanteEl) {
-                var restante = parseFloat(restanteEl.textContent) || 0;
+                var restante = parseFloat(restanteEl.textContent.replace(',', '.')) || 0;
                 if (restante > 0) {
                     var montoInput = clone.querySelector('.split-monto');
                     if (montoInput) {

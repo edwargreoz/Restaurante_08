@@ -24,13 +24,16 @@ def cobrar_comanda(request, comanda_id):
         metodos = request.POST.getlist('metodo[]')
         if metodos:
             try:
+                montos = request.POST.getlist('monto[]')
+                vueltos = request.POST.getlist('vuelto[]')
+                referencias = request.POST.getlist('referencia[]')
                 pagos_lista = []
                 for i in range(len(metodos)):
                     pagos_lista.append({
                         'metodo': metodos[i],
-                        'monto': request.POST.getlist('monto[]')[i],
-                        'vuelto': request.POST.getlist('vuelto[]', ['0'])[i],
-                        'referencia': request.POST.getlist('referencia[]', [''])[i],
+                        'monto': montos[i] if i < len(montos) else '0',
+                        'vuelto': vueltos[i] if i < len(vueltos) else '0',
+                        'referencia': referencias[i] if i < len(referencias) else '',
                     })
                 comanda.pagar_split(pagos_lista, caja=caja_activa)
                 messages.success(request, 'Pago dividido registrado correctamente')
