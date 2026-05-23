@@ -253,7 +253,7 @@ class Comanda(models.Model):
                     tiene_reserva = m.reservas.filter(activa=True).exists()
                     if union:
                         tiene_reserva = tiene_reserva or union.reservas.filter(activa=True).exists()
-                    m.estado = 'RESERVADA' if tiene_reserva else 'LIMPIEZA'
+                    m.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
                     m.save(update_fields=['estado'])
         return self
     
@@ -286,6 +286,15 @@ class Comanda(models.Model):
         self.save()
         mesa = self.mesa
         union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
+        
+        # Finalizar reservas activas al momento del pago
+        from reservas.models import Reserva
+        for r in Reserva.objects.filter(mesa=mesa, activa=True):
+            r.finalizar()
+        if union:
+            for r in Reserva.objects.filter(union_mesa=union, activa=True):
+                r.finalizar()
+                
         tiene_reserva_mesa = mesa.reservas.filter(activa=True).exists()
         if union:
             tiene_reserva_mesa = tiene_reserva_mesa or union.reservas.filter(activa=True).exists()
@@ -331,6 +340,15 @@ class Comanda(models.Model):
         self.save()
         mesa = self.mesa
         union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
+        
+        # Finalizar reservas activas al momento del pago
+        from reservas.models import Reserva
+        for r in Reserva.objects.filter(mesa=mesa, activa=True):
+            r.finalizar()
+        if union:
+            for r in Reserva.objects.filter(union_mesa=union, activa=True):
+                r.finalizar()
+                
         tiene_reserva_mesa = mesa.reservas.filter(activa=True).exists()
         if union:
             tiene_reserva_mesa = tiene_reserva_mesa or union.reservas.filter(activa=True).exists()

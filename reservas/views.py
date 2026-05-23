@@ -161,6 +161,21 @@ def cancelar_reserva(request, reserva_id):
 
 
 @login_required
+@user_passes_test(es_mozo)
+def finalizar_reserva(request, reserva_id):
+    reserva = get_object_or_404(Reserva, id=reserva_id)
+
+    if not reserva.activa:
+        messages.warning(request, 'Esta reserva ya no está activa')
+        return redirect('lista_reservas')
+
+    if request.method == 'POST':
+        reserva.finalizar()
+        messages.success(request, f'Reserva de {reserva.cliente_nombre} finalizada correctamente')
+
+    return redirect('lista_reservas')
+
+@login_required
 @user_passes_test(es_admin)
 def eliminar_reserva(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)

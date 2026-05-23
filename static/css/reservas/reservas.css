@@ -66,3 +66,22 @@
 .btn-cancel-link:hover {
     color: #2d3748 !important;
 }
+.badge-completed {
+    background: rgba(41, 128, 185, 0.1);
+    color: #2980b9;
+    border: 1px solid rgba(41, 128, 185, 0.3);
+}
+.btn-finalize {
+    background: none;
+    border: 1px solid #2ecc71;
+    color: #27ae60;
+    padding: 0.3rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-finalize:hover {
+    background: #ebfaf0;
+    border-color: #27ae60;
+}

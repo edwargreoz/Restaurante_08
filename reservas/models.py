@@ -21,6 +21,7 @@ class Reserva(models.Model):
     num_personas = models.IntegerField(validators=[MinValueValidator(1)])
     observacion = models.TextField(blank=True)
     activa = models.BooleanField(default=True)
+    finalizada = models.BooleanField(default=False)
     creado_por = models.ForeignKey(
         'auth.User', on_delete=models.SET_NULL, null=True
     )
@@ -32,7 +33,10 @@ class Reserva(models.Model):
         verbose_name_plural = 'Reservas'
 
     def __str__(self):
-        estado = 'Activa' if self.activa else 'Cancelada'
+        if self.finalizada:
+            estado = 'Finalizada'
+        else:
+            estado = 'Activa' if self.activa else 'Cancelada'
         if self.union_mesa:
             return f'{self.cliente_nombre} - Unión: {self.union_mesa} ({self.fecha}) - {estado}'
         else:
@@ -88,3 +92,28 @@ class Reserva(models.Model):
                 # Desactivar la unión para que las mesas dejen de estar "unidas"
                 self.union_mesa.activa = False
                 self.union_mesa.save(update_fields=['activa'])
+
+    def finalizar(self):
+        self.activa = False
+        self.finalizada = True
+        self.save(update_fields=['activa', 'finalizada'])
+        
+        if self.mesa:
+            tiene_otra_reserva = Reserva.objects.filter(
+                mesa=self.mesa, activa=True
+            ).exclude(id=self.id).exists()
+            if not tiene_otra_reserva:
+                self.mesa.estado = 'LIMPIEZA'
+                self.mesa.save(update_fields=['estado'])
+        elif self.union_mesa:
+            tiene_otra_reserva = Reserva.objects.filter(
+                union_mesa=self.union_mesa, activa=True
+            ).exclude(id=self.id).exists()
+            if not tiene_otra_reserva:
+                for m in self.union_mesa.mesas.all():
+                    m.estado = 'LIMPIEZA'
+                    m.save(update_fields=['estado'])
+                # Desactivar la unión para que las mesas dejen de estar "unidas"
+                self.union_mesa.activa = False
+                self.union_mesa.save(update_fields=['activa'])
+

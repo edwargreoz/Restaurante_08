@@ -45,6 +45,8 @@
                 <td>
                     {% if reserva.activa %}
                         <span class="badge badge-active">Activa</span>
+                    {% elif reserva.finalizada %}
+                        <span class="badge badge-completed">Finalizada</span>
                     {% else %}
                         <span class="badge badge-cancelled">Cancelada</span>
                     {% endif %}
@@ -53,6 +55,10 @@
                     <div class="d-flex gap-2">
                         {% if reserva.activa %}
                             <a href="{% url 'editar_reserva' reserva.id %}" class="btn-cancel" style="border-color: #f39c12; color: #f39c12; text-decoration: none; padding: 4px 8px; line-height: normal; display: inline-block;">Editar</a>
+                            <form action="{% url 'finalizar_reserva' reserva.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de finalizar esta reserva?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-finalize">Finalizar</button>
+                            </form>
                             <form action="{% url 'cancelar_reserva' reserva.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de cancelar esta reserva?');">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-cancel">Cancelar</button>
