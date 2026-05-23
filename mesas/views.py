@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from core.rol_utils import es_mozo
 from .models import Mesa,UnionMesa
 from pedidos.models import Comanda
+from pedidos.views import _procesar_agregar_plato
 from menu.models import Categoria
 
 
@@ -72,22 +73,9 @@ def abrir_comanda(request, mesa_id):
 @login_required
 @user_passes_test(es_mozo)
 def agregar_plato_comanda(request, comanda_id):
-    if request.method=='POST':
-        comanda = get_object_or_404(Comanda, id=comanda_id)
-        try:
-            comanda.agregar_platos([{
-                'plato_id': int(request.POST.get('plato_id')),
-                'cantidad':int(request.POST.get('cantidad', 1)),
-                'observacion': request.POST.get('observacion', ''),
-
-            }])
-            messages.success(request, 'Plato agregado')
-        except ValidationError as e:
-            for error in e.message_dict.get('errores', [str(e)]):
-                if isinstance(error, dict):
-                    messages.error(request, error.get('error', str(error)))
-                else:
-                    messages.error(request, error)
+    comanda = get_object_or_404(Comanda, id=comanda_id)
+    if request.method == 'POST':
+        _procesar_agregar_plato(request, comanda)
     return redirect('detalle_mesa', mesa_id=comanda.mesa.id)
 
 @login_required

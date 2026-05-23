@@ -22,27 +22,29 @@ def tomar_pedido(request, mesa_id):
         'comanda':comanda,
         'categorias':categorias
     })
+def _procesar_agregar_plato(request, comanda):
+    try:
+        comanda.agregar_platos([{
+            'plato_id': int(request.POST.get('plato_id')),
+            'cantidad': int(request.POST.get('cantidad', 1)),
+            'observacion': request.POST.get('observacion', ''),
+        }], usuario=request.user)
+        messages.success(request, 'Plato agregado')
+        return True
+    except ValidationError as e:
+        for error in e.message_dict.get('errores', [str(e)]):
+            if isinstance(error, dict):
+                messages.error(request, error.get('error', str(error)))
+            else:
+                messages.error(request, error)
+        return False
+
 @login_required
 @user_passes_test(es_mozo)
 def agregar_platos_pedido(request, comanda_id):
+    comanda = get_object_or_404(Comanda, id=comanda_id)
     if request.method == 'POST':
-        comanda = get_object_or_404(Comanda, id=comanda_id)
-        plato_id = request.POST.get('plato_id')
-        cantidad = request.POST.get('cantidad',1)
-        observacion = request.POST.get('observacion','')
-        try:
-            comanda.agregar_platos([{
-                'plato_id':int(plato_id),
-                'cantidad':int(cantidad),
-                'observacion': observacion
-            }], usuario=request.user)
-            messages.success(request, 'Plato agregado')
-        except ValidationError as e:
-            for error in e.message_dict.get('errores', [str(e)]):
-                if isinstance(error, dict):
-                    messages.error(request, error.get('error', str(error)))
-                else:
-                    messages.error(request, error)
+        _procesar_agregar_plato(request, comanda)
     return redirect('tomar_pedido', mesa_id=comanda.mesa.id)
 
 #kds cocina
