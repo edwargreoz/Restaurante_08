@@ -3,7 +3,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError
-from core.rol_utils import es_mozo
+from core.rol_utils import es_mozo, es_admin
 from mesas.models import Mesa, UnionMesa
 from .models import Reserva
 
@@ -135,6 +135,7 @@ def cancelar_reserva(request, reserva_id):
 
 
 @login_required
+@user_passes_test(es_admin)
 def eliminar_reserva(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
     
