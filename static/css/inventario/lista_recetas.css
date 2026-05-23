@@ -21,3 +21,7 @@
 .btn-eliminar-receta:hover {
     text-decoration: underline;
 }
+.stock-bajo {
+    color: #e53e3e;
+    font-weight: 600;
+}

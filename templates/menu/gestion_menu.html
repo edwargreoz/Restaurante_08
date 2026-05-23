@@ -5,121 +5,124 @@
 <div class="container mt-4">
   <h1 class="mb-4">Gestión del Menú</h1>
   <div class="row">
-    <!-- Columna izquierda: Formularios -->
+    <!-- Columna izquierda: Crear/Editar Plato -->
     <div class="col-md-5">
-      <h2 class="mb-3">Administrar</h2>
-        <!-- Crear Categoría -->
-        <div class="card mb-3">
-        <div class="card-header">Crear Categoría</div>
-        <div class="card-body">
-            <form method="post" action="{% url 'crear_categoria' %}">
-            {% csrf_token %}
-            <div class="mb-3">
-                <input type="text" name="nombre" class="form-control" placeholder="Nombre de la categoría" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Crear Categoría</button>
-            </form>
-        </div>
-        </div>
-        <!-- Crear/Editar Plato -->
-        <div class="card mb-3">
+      <div class="card mb-3">
         <div class="card-header">
-            {% if editar %}Editar Plato: {{ editar.nombre }}{% else %}Crear Plato{% endif %}
+          {% if editar %}Editar Plato: {{ editar.nombre }}{% else %}Crear Plato{% endif %}
         </div>
         <div class="card-body">
-            <form method="post" action="{% if editar %}{% url 'editar_plato' editar.id %}{% else %}{% url 'crear_plato' %}{% endif %}" enctype="multipart/form-data">
+          <form method="post" action="{% if editar %}{% url 'editar_plato' editar.id %}{% else %}{% url 'crear_plato' %}{% endif %}" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="mb-3">
-                <select name="categoria" class="form-select" required>
+              <label class="form-label">Categoría</label>
+              <select name="categoria" class="form-select" required>
                 <option value="">Seleccionar categoría</option>
                 {% for cat in categorias %}
-                    <option value="{{ cat.id }}" {% if editar and editar.categoria.id == cat.id %}selected{% endif %}>{{ cat.nombre }}</option>
+                <option value="{{ cat.id }}" {% if editar and editar.categoria.id == cat.id %}selected{% endif %}>{{ cat.nombre }}</option>
                 {% endfor %}
-                </select>
+              </select>
             </div>
             <div class="mb-3">
-                <input type="text" name="nombre" class="form-control" placeholder="Nombre del plato" value="{{ editar.nombre|default:'' }}" required>
+              <label class="form-label">Nombre del plato</label>
+              <input type="text" name="nombre" class="form-control" placeholder="Ej: Lomo Saltado" value="{{ editar.nombre|default:'' }}" required>
             </div>
             <div class="mb-3">
-                <input type="number" name="precio" class="form-control" placeholder="Precio S/" step="0.01" value="{{ editar.precio|default:'' }}" required>
+              <label class="form-label">Precio (S/)</label>
+              <input type="number" name="precio" class="form-control" placeholder="0.00" step="0.01" value="{{ editar.precio|default:'' }}" required>
             </div>
             {% if not editar %}
             <div class="mb-3">
-                <select name="receta" class="form-select" required>
-                    <option value="">--- Seleccionar Receta ---</option>
-                    {% for receta in recetas %}
-                    <option value="{{ receta.id }}">{{ receta.nombre }}</option>
-                    {% endfor %}
-                </select>
-                <small class="text-muted">Solo se pueden crear platos con una receta existente</small>
+              <label class="form-label">Receta</label>
+              <select name="receta" class="form-select" required>
+                <option value="">--- Seleccionar Receta ---</option>
+                {% for receta in recetas %}
+                <option value="{{ receta.id }}">{{ receta.nombre }}</option>
+                {% endfor %}
+              </select>
+              <small class="text-muted">Debe existir una receta con insumos para que el plato descuente stock</small>
             </div>
             {% endif %}
             <div class="mb-3">
-                <textarea name="descripcion" class="form-control" placeholder="Descripción">{{ editar.descripcion|default:'' }}</textarea>
+              <label class="form-label">Descripción</label>
+              <textarea name="descripcion" class="form-control" placeholder="Descripción del plato">{{ editar.descripcion|default:'' }}</textarea>
             </div>
             <div class="mb-3 form-check">
-                <input type="checkbox" name="disponible" class="form-check-input" id="disponible" {% if editar.disponible or not editar %}checked{% endif %}>
-                <label class="form-check-label" for="disponible">Disponible</label>
+              <input type="checkbox" name="disponible" class="form-check-input" id="disponible" {% if editar.disponible or not editar %}checked{% endif %}>
+              <label class="form-check-label" for="disponible">Disponible</label>
             </div>
             <div class="mb-3">
-                <label class="form-label">Imagen</label>
-                <input type="file" name="imagen" class="form-control">
-                {% if editar and editar.imagen %}
-                <small class="text-muted">Actual: {{ editar.imagen.name }}</small>
-                {% endif %}
+              <label class="form-label">Imagen</label>
+              <input type="file" name="imagen" class="form-control">
+              {% if editar and editar.imagen %}
+              <small class="text-muted">Actual: {{ editar.imagen.name }}</small>
+              {% endif %}
             </div>
             <button type="submit" class="btn btn-success">
-                {% if editar %}Guardar Cambios{% else %}Crear Plato{% endif %}
+              {% if editar %}Guardar Cambios{% else %}Crear Plato{% endif %}
             </button>
             {% if editar %}
-                <a href="{% url 'gestion_menu' %}" class="btn btn-secondary">Cancelar</a>
+            <a href="{% url 'gestion_menu' %}" class="btn btn-secondary">Cancelar</a>
             {% endif %}
-            </form>
+          </form>
         </div>
-        </div>
+      </div>
     </div>
-    <!-- Columna derecha: Listado -->
+    <!-- Columna derecha: Categorías y Platos -->
     <div class="col-md-7">
-      <h2 class="mb-3">Categorías y Platos</h2>
-        {% for categoria in categorias %}
-        <div class="card mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-            <strong>{{ categoria.nombre }}</strong>
-            </div>
-            <div class="card-body p-0">
-            <table class="table table-striped mb-0">
-                <thead>
-                <tr>
-                    <th>Plato</th>
-                    <th>Precio</th>
-                    <th>Acciones</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for plato in categoria.platos.all %}
-                <tr>
-                    <td>{{ plato.nombre }}</td>
-                    <td>S/ {{ plato.precio }}</td>
-                    <td>
-                    <a href="{% url 'editar_plato' plato.id %}" class="btn btn-sm btn-warning">Editar</a>
-                    <form method="post" action="{% url 'eliminar_plato' plato.id %}" style="display:inline">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar {{ plato.nombre }}?')">Eliminar</button>
-                    </form>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="3" class="text-muted">Sin platos en esta categoría</td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            </div>
+      <!-- Mini inline form para crear categoría -->
+      <div class="card mb-3">
+        <div class="card-body py-2 d-flex align-items-center gap-3">
+          <strong class="text-nowrap">Nueva Categoría:</strong>
+          <form method="post" action="{% url 'crear_categoria' %}" class="d-flex gap-2 flex-grow-1 mb-0">
+            {% csrf_token %}
+            <input type="text" name="nombre" class="form-control form-control-sm" placeholder="Nombre de la categoría" required>
+            <button type="submit" class="btn btn-primary btn-sm text-nowrap">Crear</button>
+          </form>
         </div>
-        {% empty %}
-        <div class="alert alert-info">No hay categorías registradas.</div>
-        {% endfor %}
+      </div>
+      <!-- Listado de categorías y platos -->
+      {% for categoria in categorias %}
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>{{ categoria.nombre }}</strong>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-striped mb-0">
+            <thead>
+              <tr>
+                <th>Plato</th>
+                <th>Precio</th>
+                <th>Receta</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for plato in categoria.platos.all %}
+              <tr>
+                <td>{{ plato.nombre }}</td>
+                <td>S/ {{ plato.precio }}</td>
+                <td>{{ plato.receta.nombre|default:"—" }}</td>
+                <td>
+                  <a href="{% url 'editar_plato' plato.id %}" class="btn btn-sm btn-warning">Editar</a>
+                  <form method="post" action="{% url 'eliminar_plato' plato.id %}" style="display:inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar {{ plato.nombre }}?')">Eliminar</button>
+                  </form>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td colspan="4" class="text-muted">Sin platos en esta categoría</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% empty %}
+      <div class="alert alert-info">No hay categorías registradas. Crea una usando el formulario de arriba.</div>
+      {% endfor %}
     </div>
   </div>
 </div>

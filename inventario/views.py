@@ -90,26 +90,80 @@ def crear_receta(request):
             messages.error(request, 'El nombre de la receta es obligatorio')
             return redirect('crear_receta')
         receta, created = Receta.objects.get_or_create(nombre=nombre_receta)
-        if created:
-            messages.success(request, f'Receta "{nombre_receta}" creada')
-        insumo_id = request.POST.get('insumo_id')
-        cantidad = request.POST.get('cantidad_por_porcion')
-        if insumo_id and cantidad:
+        insumos_ids = request.POST.getlist('insumos[]')
+        cantidades = request.POST.getlist('cantidades[]')
+        if not insumos_ids:
+            messages.error(request, 'Debe agregar al menos un insumo')
+            return redirect('crear_receta')
+        errores = []
+        exitos = 0
+        for insumo_id, cantidad in zip(insumos_ids, cantidades):
+            if not insumo_id or not cantidad:
+                continue
             try:
-                receta_insumo = RecetaInsumo(
+                ri = RecetaInsumo(
                     receta=receta,
                     insumo_id=insumo_id,
                     cantidad_por_porcion=cantidad,
                 )
-                receta_insumo.full_clean()
-                receta_insumo.save()
-                messages.success(request, f'Insumo agregado a "{nombre_receta}"')
-            except (IntegrityError, ValidationError) as e:
-                messages.error(request, f'Error: {str(e)}')
+                ri.full_clean()
+                ri.save()
+                exitos += 1
+            except IntegrityError:
+                insumo = Insumo.objects.get(id=insumo_id)
+                errores.append(f"'{insumo.nombre}' ya está en la receta")
+            except ValidationError as e:
+                errores.append(str(e))
+        if created:
+            messages.success(request, f'Receta "{nombre_receta}" creada')
+        if exitos:
+            messages.success(request, f'{exitos} insumo(s) agregado(s)')
+        for err in errores:
+            messages.error(request, err)
         return redirect('lista_recetas')
     insumos = Insumo.objects.all()
     return render(request, 'inventario/crear_receta.html', {
         'insumos': insumos
+    })
+
+@login_required
+@user_passes_test(es_admin)
+def editar_receta(request, receta_id):
+    receta = get_object_or_404(Receta, id=receta_id)
+    if request.method == 'POST':
+        nombre_receta = request.POST.get('nombre_receta')
+        if nombre_receta:
+            receta.nombre = nombre_receta
+            receta.save()
+        insumos_ids = request.POST.getlist('insumos[]')
+        cantidades = request.POST.getlist('cantidades[]')
+        if insumos_ids:
+            receta.insumos.all().delete()
+            errores = []
+            exitos = 0
+            for insumo_id, cantidad in zip(insumos_ids, cantidades):
+                if not insumo_id or not cantidad:
+                    continue
+                try:
+                    ri = RecetaInsumo(
+                        receta=receta,
+                        insumo_id=insumo_id,
+                        cantidad_por_porcion=cantidad,
+                    )
+                    ri.full_clean()
+                    ri.save()
+                    exitos += 1
+                except ValidationError as e:
+                    errores.append(str(e))
+            if exitos:
+                messages.success(request, f'Receta "{receta.nombre}" actualizada ({exitos} insumo(s))')
+            for err in errores:
+                messages.error(request, err)
+        return redirect('lista_recetas')
+    insumos = Insumo.objects.all()
+    return render(request, 'inventario/crear_receta.html', {
+        'editar': receta,
+        'insumos': insumos,
     })
 
 @login_required

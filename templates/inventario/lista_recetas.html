@@ -17,11 +17,14 @@
     <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center">
             <strong>{{ receta.nombre }}</strong>
-            <form method="POST" action="{% url 'eliminar_receta_completa' receta.id %}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-danger"
-                        onclick="return confirm('¿Eliminar toda la receta {{ receta.nombre }}?')">Eliminar Receta</button>
-            </form>
+            <div>
+                <a href="{% url 'editar_receta' receta.id %}" class="btn btn-sm btn-warning">Editar</a>
+                <form method="POST" action="{% url 'eliminar_receta_completa' receta.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-sm btn-danger"
+                            onclick="return confirm('¿Eliminar toda la receta {{ receta.nombre }}?')">Eliminar</button>
+                </form>
+            </div>
         </div>
         <div class="card-body p-0">
             <table class="table mb-0">
@@ -29,6 +32,7 @@
                     <tr>
                         <th>Insumo</th>
                         <th>Cant. por Porción</th>
+                        <th>Stock Actual</th>
                         <th>Acción</th>
                     </tr>
                 </thead>
@@ -37,6 +41,9 @@
                     <tr>
                         <td>{{ ri.insumo.nombre }}</td>
                         <td>{{ ri.cantidad_por_porcion|floatformat:2 }} {{ ri.insumo.get_unidad_display }}</td>
+                        <td class="{% if ri.insumo.stock_actual < ri.insumo.stock_minimo %}stock-bajo{% endif %}">
+                            {{ ri.insumo.stock_actual|floatformat:2 }} {{ ri.insumo.get_unidad_display }}
+                        </td>
                         <td>
                             <form method="POST" action="{% url 'eliminar_receta' ri.id %}" style="display:inline;">
                                 {% csrf_token %}
@@ -47,7 +54,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="3" class="text-muted">Sin insumos asignados</td>
+                        <td colspan="4" class="text-muted">Sin insumos asignados</td>
                     </tr>
                     {% endfor %}
                 </tbody>

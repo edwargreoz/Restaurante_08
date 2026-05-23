@@ -1,42 +1,114 @@
 {% extends 'base.html' %}
 {% load static %}
-{% block title %}Nueva Receta{% endblock %}
+{% block title %}{% if editar %}Editar Receta{% else %}Nueva Receta{% endif %}{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/inventario/crear_receta.css' %}">
 {% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>Nueva Receta</h1>
+    <h1>{% if editar %}Editar Receta{% else %}Nueva Receta{% endif %}</h1>
     <a href="{% url 'lista_recetas' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Volver</a>
 </div>
 <div class="row justify-content-center">
-    <div class="col-md-6">
+    <div class="col-md-8">
         <div class="card">
-            <div class="card-header"><strong>Asignar insumo a receta</strong></div>
+            <div class="card-header"><strong>{% if editar %}{{ editar.nombre }}{% else %}Nueva Receta{% endif %}</strong></div>
             <div class="card-body receta-form">
-                    <form method="POST">
+                <form method="POST" id="recetaForm">
                     {% csrf_token %}
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <label for="nombre_receta">Nombre de la Receta</label>
-                        <input type="text" name="nombre_receta" id="nombre_receta" class="form-control" placeholder="Ej: Hamburguesa Clásica" required>
+                        <input type="text" name="nombre_receta" id="nombre_receta" class="form-control"
+                               placeholder="Ej: Hamburguesa Clásica"
+                               value="{{ editar.nombre|default:'' }}" required>
                     </div>
-                    <div class="form-group">
-                        <label for="insumo_id">Insumo</label>
-                        <select name="insumo_id" id="insumo_id" class="form-control" required>
-                            <option value="">--- Seleccionar ---</option>
-                            {% for insumo in insumos %}
-                            <option value="{{ insumo.id }}">{{ insumo.nombre }} ({{ insumo.get_unidad_display }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="cantidad_por_porcion">Cantidad por porción</label>
-                        <input type="number" name="cantidad_por_porcion" id="cantidad_por_porcion" step="0.01" min="0" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Crear Receta</button>
+
+                    <label class="mb-2">Insumos de la receta</label>
+                    <table class="table table-bordered" id="insumosTable">
+                        <thead>
+                            <tr>
+                                <th style="width:45%">Insumo</th>
+                                <th style="width:35%">Cantidad</th>
+                                <th style="width:20%">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="insumosBody">
+                            {% if editar %}
+                                {% for ri in editar.insumos.all %}
+                                <tr class="insumo-row">
+                                    <td>
+                                        <select name="insumos[]" class="form-control" required>
+                                            <option value="">--- Seleccionar ---</option>
+                                            {% for insumo in insumos %}
+                                            <option value="{{ insumo.id }}" {% if ri.insumo.id == insumo.id %}selected{% endif %}>
+                                                {{ insumo.nombre }} ({{ insumo.get_unidad_display }})
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <input type="number" name="cantidades[]" class="form-control"
+                                               step="0.01" min="0" value="{{ ri.cantidad_por_porcion }}" required>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-danger btn-sm remove-row">Eliminar</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% endif %}
+                        </tbody>
+                    </table>
+
+                    <button type="button" class="btn btn-info mb-3" id="addRow">+ Agregar Insumo</button>
+                    <br>
+                    <button type="submit" class="btn btn-primary">
+                        {% if editar %}Guardar Cambios{% else %}Crear Receta{% endif %}
+                    </button>
                 </form>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const insumosData = [
+        {% for insumo in insumos %}
+        { id: {{ insumo.id }}, nombre: "{{ insumo.nombre|escapejs }}", unidad: "{{ insumo.get_unidad_display|escapejs }}" },
+        {% endfor %}
+    ];
+
+    function createRow(selectedId, cantidad) {
+        let options = '<option value="">--- Seleccionar ---</option>';
+        for (const ins of insumosData) {
+            const sel = (ins.id === selectedId) ? 'selected' : '';
+            options += `<option value="${ins.id}" ${sel}>${ins.nombre} (${ins.unidad})</option>`;
+        }
+        return `<tr class="insumo-row">
+            <td><select name="insumos[]" class="form-control" required>${options}</select></td>
+            <td><input type="number" name="cantidades[]" class="form-control" step="0.01" min="0" value="${cantidad || ''}" required></td>
+            <td><button type="button" class="btn btn-danger btn-sm remove-row">Eliminar</button></td>
+        </tr>`;
+    }
+
+    document.getElementById('addRow').addEventListener('click', function() {
+        const tbody = document.getElementById('insumosBody');
+        tbody.insertAdjacentHTML('beforeend', createRow(null, null));
+    });
+
+    document.getElementById('insumosBody').addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-row')) {
+            e.target.closest('tr').remove();
+        }
+    });
+
+    document.getElementById('recetaForm').addEventListener('submit', function(e) {
+        const rows = document.querySelectorAll('#insumosBody .insumo-row');
+        if (rows.length === 0) {
+            e.preventDefault();
+            alert('Debe agregar al menos un insumo a la receta.');
+        }
+    });
+</script>
 {% endblock %}
