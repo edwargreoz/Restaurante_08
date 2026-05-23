@@ -12,3 +12,6 @@ def es_admin(user):
 
 def es_mozo_o_cajero(user):
     return user.is_superuser or user.groups.filter(name__in=['Mozo', 'Cajero']).exists()
+
+def es_mozo_o_cocinero(user):
+    return user.is_superuser or user.groups.filter(name__in=['Mozo', 'Cocinero']).exists()

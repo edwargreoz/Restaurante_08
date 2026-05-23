@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}KDS - Cocina{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/cocina/kds.css' %}">
+{% endblock %}
+{% block main_class %}kds-container{% endblock %}
+{% block content %}
+
+<div class="kds-header">
+    <div class="kds-header-left">
+        <h1><img src="{% static 'icons/cocina.png' %}" alt="" class="kds-icon"> Cocina</h1>
+        <span class="kds-badge" id="kdsCount">{{ comandas|length }} comandas activas</span>
+    </div>
+    <div class="kds-header-right">
+        <span class="kds-clock" id="kdsClock"></span>
+        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">🔄 Actualizar</button>
+    </div>
+</div>
+
+{% if messages %}
+    {% for message in messages %}
+        <div class="kds-toast kds-toast-{{ message.tags }}">{{ message }}</div>
+    {% endfor %}
+{% endif %}
+
+{% if comandas %}
+<div class="kds-grid" id="kdsGrid">
+    {% for comanda in comandas %}
+    <div class="kds-card {% if comanda.estado == 'EN_PREPARACION' %}kds-card-active{% endif %}"
+         data-comanda-id="{{ comanda.id }}"
+         data-apertura="{{ comanda.fecha_apertura|date:'U' }}">
+        <div class="kds-card-header">
+            <div class="kds-mesa-info">
+                <span class="kds-mesa-num">Mesa {{ comanda.mesa.numero }}</span>
+                <span class="kds-mesa-zona">{{ comanda.mesa.get_zona_display }}</span>
+            </div>
+            <div class="kds-timer" id="timer-{{ comanda.id }}">
+                <span class="kds-timer-icon">⏱</span>
+                <span class="kds-timer-value" data-apertura="{{ comanda.fecha_apertura|date:'U' }}"></span>
+            </div>
+        </div>
+        <div class="kds-card-meta">
+            <span>👨‍🍳 {{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</span>
+            <span class="kds-comanda-estado badge {% if comanda.estado == 'EN_PREPARACION' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
+                {{ comanda.get_estado_display }}
+            </span>
+        </div>
+        <div class="kds-lineas">
+            {% for linea in comanda.lineas.all %}
+            <div class="kds-linea {% if linea.estado == 'LISTO' %}kds-linea-listo{% elif linea.estado == 'EN_PREP' %}kds-linea-prep{% else %}kds-linea-pendiente{% endif %}">
+                <div class="kds-linea-info">
+                    <div class="kds-linea-nombre">
+                        <strong>{{ linea.cantidad }}x {{ linea.plato.nombre }}</strong>
+                        {% if linea.observacion %}
+                        <span class="kds-obs">{{ linea.observacion }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="kds-linea-meta">
+                        <span class="badge {% if linea.estado == 'PENDIENTE' %}bg-warning text-dark{% elif linea.estado == 'EN_PREP' %}bg-primary{% else %}bg-success{% endif %}">
+                            {{ linea.get_estado_display }}
+                        </span>
+                        <small class="text-muted">{{ linea.plato.tiempo_preparacion_min }} min</small>
+                    </div>
+                </div>
+                <div class="kds-linea-actions">
+                    {% if linea.estado == 'PENDIENTE' %}
+                    <form method="post" action="{% url 'enviar_cocina' linea.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-kds btn-kds-start">Iniciar</button>
+                    </form>
+                    {% elif linea.estado == 'EN_PREP' %}
+                    <form method="post" action="{% url 'marcar_listo' linea.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-kds btn-kds-done">Listo</button>
+                    </form>
+                    {% elif linea.estado == 'LISTO' %}
+                    <span class="kds-check">✅</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="kds-empty">
+    <div class="kds-empty-icon">🍽️</div>
+    <h3>No hay comandas activas</h3>
+    <p>Las comandas aparecerán aquí cuando el mozo las envíe a cocina.</p>
+</div>
+{% endif %}
+
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'js/cocina/kds.js' %}"></script>
+{% endblock %}

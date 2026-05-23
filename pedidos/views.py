@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from core.rol_utils import es_mozo, es_cocinero
+from core.rol_utils import es_mozo, es_cocinero, es_mozo_o_cocinero
 from pedidos.models import Comanda, LineaComanda
 from mesas.models import Mesa
 from menu.models import Categoria
@@ -50,13 +50,19 @@ def agregar_platos_pedido(request, comanda_id):
 @login_required
 @user_passes_test(es_cocinero)
 def kds_panel(request):
-    comandas= Comanda.objects.filter(
-        Q(estado='EN_PREPARACION') | Q(lineas__estado__in=['PENDIENTE','EN_PREP'])
-    ).distinct('fecha_apertura').prefetch_related('lineas__plato','mozo','mesa')
-    
-    return render(request, 'cocina/kds_panel.html',{'comandas':comandas})
+    comanda_ids = LineaComanda.objects.filter(
+        estado__in=['PENDIENTE', 'EN_PREP']
+    ).values_list('comanda_id', flat=True).distinct()
+
+    comandas = Comanda.objects.filter(
+        Q(estado='EN_PREPARACION') | Q(id__in=comanda_ids)
+    ).prefetch_related(
+        'lineas__plato', 'mozo', 'mesa'
+    ).order_by('fecha_apertura')
+
+    return render(request, 'cocina/kds_panel.html', {'comandas': comandas})
 @login_required
-@user_passes_test(es_cocinero)
+@user_passes_test(es_mozo_o_cocinero)
 def enviar_cocina(request, linea_id):
     if request.method == 'POST':
         linea = get_object_or_404(LineaComanda, id=linea_id)
