@@ -49,7 +49,7 @@
         <a href="{% url 'reportes_turno' %}" class="card-link stretched-link">Ver reportes →</a>
     </div>
     <!-- Caja actual -->
-    <div class="card card-dark">
+    <div class="card {% if caja_actual and caja_actual.estado == 'ABIERTA' %}card-green{% else %}card-dark{% endif %}">
         <img src="{% static 'icons/caja.png' %}" class="card-icon" alt="">
         <p class="card-label">Caja — {{ caja_actual.turno|default:"Sin turno" }}</p>
         <p class="card-number" style="font-size: 1.8rem;">

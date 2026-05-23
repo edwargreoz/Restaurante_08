@@ -11,7 +11,7 @@
 <div class="row justify-content-center">
     <div class="col-md-6">
         {% if caja %}
-        <div class="card card-dark turno-card">
+        <div class="card {% if caja.estado == 'ABIERTA' %}card-green{% else %}card-dark{% endif %} turno-card">
             <div class="card-body">
                 <img src="{% static 'icons/caja.png' %}" class="turno-icono" alt="">
                 <p class="card-label">Turno: {{ caja.turno }}</p>
