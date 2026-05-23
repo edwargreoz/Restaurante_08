@@ -42,7 +42,7 @@
                                             <option value="">--- Seleccionar ---</option>
                                             {% for insumo in insumos %}
                                             <option value="{{ insumo.id }}" {% if ri.insumo.id == insumo.id %}selected{% endif %}>
-                                                {{ insumo.nombre }} ({{ insumo.get_unidad_display }})
+                                                {{ insumo.nombre }}
                                             </option>
                                             {% endfor %}
                                         </select>
@@ -83,7 +83,7 @@
 <script>
     const insumosData = [
         {% for insumo in insumos %}
-        { id: {{ insumo.id }}, nombre: "{{ insumo.nombre|escapejs }}", unidad: "{{ insumo.get_unidad_display|escapejs }}", unidad_key: "{{ insumo.unidad }}" },
+        { id: {{ insumo.id }}, nombre: "{{ insumo.nombre|escapejs }}", unidad_key: "{{ insumo.unidad }}" },
         {% endfor %}
     ];
     const unidadOptions = [
@@ -96,7 +96,7 @@
         let insumoOptions = '<option value="">--- Seleccionar ---</option>';
         for (const ins of insumosData) {
             const sel = (ins.id === selectedId) ? 'selected' : '';
-            insumoOptions += `<option value="${ins.id}" ${sel}>${ins.nombre} (${ins.unidad})</option>`;
+            insumoOptions += `<option value="${ins.id}" ${sel}>${ins.nombre}</option>`;
         }
         let unitOptions = '';
         for (const u of unidadOptions) {
