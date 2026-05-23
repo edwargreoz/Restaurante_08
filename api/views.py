@@ -103,22 +103,15 @@ class ComandaViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error' : 'mesa_id es obligatorio'},
                 status= status.HTTP_400_BAD_REQUEST)
-        with transaction.atomic():
-            mesa = Mesa.objects.select_for_update().filter(id=mesa_id).first()
-            if not mesa:
-                return Response(
-                    {'error':'Mesa no encontrada'},
-                    status= status.HTTP_404_NOT_FOUND)
-        
-            try:
-                comanda = Comanda.abrir(mesa_id, request.user)
-            except ValidationError as e:
-                return Response(
-                    {'error': str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        try:
+            comanda = Comanda.abrir(mesa_id, request.user)
+        except ValidationError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = self.get_serializer(comanda)
-        return Response(serializer.data , status=status.HTTP_201_CREATED)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['POST'])
     def agregar_platos(self,request,pk=None):
