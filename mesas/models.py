@@ -85,6 +85,9 @@ class UnionMesa(models.Model):
     def ocupantes_maximos(self):
         return self.capacidad_total()
         
+    def esta_reservada(self):
+        return self.reservas.filter(activa=True).exists()
+        
     def __str__(self):
         mesas_str = ' + '.join(
             [f'Mesa {m.numero}' for m in self.mesas.all()]

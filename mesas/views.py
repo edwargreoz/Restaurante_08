@@ -102,6 +102,10 @@ def unir_mesas(request):
             if mesas_validas.count() < 2:
                 messages.error(request, 'Las mesas seleccionadas no existen')
                 return redirect('unir_mesas')
+                
+            if mesas_validas.filter(estado='RESERVADA').exists():
+                messages.error(request, 'No puedes unir mesas que están reservadas.')
+                return redirect('unir_mesas')
             
             # Validar que todas las mesas sean de la misma zona
             zonas = set(m.zona for m in mesas_validas)
@@ -137,7 +141,7 @@ def unir_mesas(request):
     for u in uniones:
         for m in u.mesas.all():
             union_mesas_ids.add(m.id)
-    mesas_disponibles = mesas.exclude(id__in=union_mesas_ids)
+    mesas_disponibles = mesas.exclude(id__in=union_mesas_ids).exclude(estado='RESERVADA')
     return render(request, 'mesas/unir_mesas.html', {
         'mesas': mesas,
         'uniones': uniones,
@@ -154,6 +158,12 @@ def agregar_mesa_union(request, union_id):
             mesa = get_object_or_404(Mesa, id=mesa_id)
             if union.mesas.filter(id=mesa_id).exists():
                 messages.error(request, f'Mesa {mesa.numero} ya está en la unión')
+            elif union.esta_reservada():
+                messages.error(request, 'La unión está reservada. Modifica la reserva para agregar mesas.')
+                return redirect('unir_mesas')
+            elif mesa.estado == 'RESERVADA':
+                messages.error(request, 'No puedes agregar una mesa que está reservada.')
+                return redirect('unir_mesas')
             else:
                 # Validar que la mesa sea de la misma zona que las mesas de la unión
                 zona_union = union.mesas.first().zona
@@ -191,6 +201,9 @@ def agregar_mesa_union(request, union_id):
 def deshacer_union(request, union_id):
     if request.method == 'POST':
         union = get_object_or_404(UnionMesa, id=union_id, activa=True)
+        if union.esta_reservada():
+            messages.error(request, 'No puedes deshacer una unión que tiene una reserva activa.')
+            return redirect('unir_mesas')
         mesa_ids = [m.id for m in union.mesas.all()]
         comandas_activas = Comanda.objects.filter(
             mesa_id__in=mesa_ids,

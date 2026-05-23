@@ -38,7 +38,7 @@
 
                                 <input type="checkbox" name="mesas" value="{{ mesa.id }}"
                                     data-zona="{{ mesa.zona }}"
-                                    {% if mesa.id in union_mesas_ids %}disabled{% endif %}>
+                                    {% if mesa.id in union_mesas_ids or mesa.estado == 'RESERVADA' %}disabled{% endif %}>
 
                                 <strong>Mesa {{ mesa.numero }}</strong>
 
@@ -95,16 +95,23 @@
                             </span>
                         </div>
 
+                        {% if not union.esta_reservada %}
                         <form method="POST" action="{% url 'deshacer_union' union.id %}">
                             {% csrf_token %}
                             <button type="submit" class="btn-deshacer">
                                 Deshacer
                             </button>
                         </form>
+                        {% endif %}
                     </div>
 
+                    {% if union.esta_reservada %}
+                    <div class="text-warning small mt-2" style="font-weight:600;">
+                        <i class="fas fa-lock"></i> Unión reservada. Edita la reserva para modificar.
+                    </div>
+                    {% else %}
                     <form method="POST" action="{% url 'agregar_mesa_union' union.id %}"
-                          style="display:flex;gap:0.5rem;align-items:center;">
+                          style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;">
                         {% csrf_token %}
 
                         <select name="mesa_id" class="form-control select-agregar-mesa"
@@ -124,6 +131,7 @@
                             +
                         </button>
                     </form>
+                    {% endif %}
                 </div>
                 {% empty %}
                 <p class="text-muted text-center mb-0">
