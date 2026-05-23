@@ -85,3 +85,6 @@ class Reserva(models.Model):
                 for m in self.union_mesa.mesas.all():
                     m.estado = 'LIBRE'
                     m.save(update_fields=['estado'])
+                # Desactivar la unión para que las mesas dejen de estar "unidas"
+                self.union_mesa.activa = False
+                self.union_mesa.save(update_fields=['activa'])

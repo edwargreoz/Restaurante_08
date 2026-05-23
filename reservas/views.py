@@ -144,6 +144,19 @@ def eliminar_reserva(request, reserva_id):
         return redirect('lista_reservas')
         
     if request.method == 'POST':
+        # Seguridad: liberar mesas si quedaron en estado RESERVADA
+        if reserva.mesa and reserva.mesa.estado == 'RESERVADA':
+            reserva.mesa.estado = 'LIBRE'
+            reserva.mesa.save(update_fields=['estado'])
+        elif reserva.union_mesa:
+            for m in reserva.union_mesa.mesas.all():
+                if m.estado == 'RESERVADA':
+                    m.estado = 'LIBRE'
+                    m.save(update_fields=['estado'])
+            # Desactivar la unión para que las mesas dejen de estar "unidas"
+            if reserva.union_mesa.activa:
+                reserva.union_mesa.activa = False
+                reserva.union_mesa.save(update_fields=['activa'])
         reserva.delete()
         messages.success(request, f'Reserva de {reserva.cliente_nombre} eliminada permanentemente')
     return redirect('lista_reservas')

@@ -118,6 +118,12 @@ def unir_mesas(request):
                 messages.error(request, 'Las mesas seleccionadas no existen')
                 return redirect('unir_mesas')
             
+            # Validar que todas las mesas sean de la misma zona
+            zonas = set(m.zona for m in mesas_validas)
+            if len(zonas) > 1:
+                messages.error(request, 'No puedes unir mesas de diferentes zonas (ej. Salón y Terraza)')
+                return redirect('unir_mesas')
+            
             selected_ids = set(int(id) for id in mesa_ids)
             for union_existente in uniones:
                 union_ids = set(m.id for m in union_existente.mesas.all())
@@ -164,6 +170,12 @@ def agregar_mesa_union(request, union_id):
             if union.mesas.filter(id=mesa_id).exists():
                 messages.error(request, f'Mesa {mesa.numero} ya está en la unión')
             else:
+                # Validar que la mesa sea de la misma zona que las mesas de la unión
+                zona_union = union.mesas.first().zona
+                if mesa.zona != zona_union:
+                    zona_display = dict(Mesa.ZONAS).get(zona_union, zona_union)
+                    messages.error(request, f'No puedes agregar una mesa de {mesa.get_zona_display()} a una unión de {zona_display}')
+                    return redirect('unir_mesas')
                 union.mesas.add(mesa)
                 comanda_union = Comanda.objects.filter(
                     mesa__in=union.mesas.all(),
@@ -179,7 +191,12 @@ def agregar_mesa_union(request, union_id):
                     comanda_nueva = Comanda.objects.create(mesa=mesa, mozo=request.user)
                     comanda_union.fusionar(comanda_nueva)
                 else:
-                    Comanda.abrir(mesa.id, request.user)
+                    # Solo intentar abrir comanda si la mesa está libre
+                    # Si las mesas están reservadas u ocupadas, solo se agrega a la unión
+                    try:
+                        Comanda.abrir(mesa.id, request.user)
+                    except ValidationError:
+                        pass  # La mesa se agrega a la unión sin abrir comanda
                 messages.success(request, f'Mesa {mesa.numero} agregada a la unión')
         return redirect('unir_mesas')
     return redirect('unir_mesas')
