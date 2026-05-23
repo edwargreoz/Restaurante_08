@@ -41,6 +41,10 @@
                 {% if user|has_group:'Mozo' %}
                 <a href="{% url 'lista_insumos' %}" class="nav-link {% if request.resolver_match.url_name == 'lista_insumos' %}active{% endif %}">Inventario</a>
                 {% endif %}
+
+                {% if user.is_superuser %}
+                <a href="{% url 'lista_usuarios' %}" class="nav-link {% if 'usuario' in request.resolver_match.url_name %}active{% endif %}">Usuarios</a>
+                {% endif %}
             </div>
             <div class="nav-user">
                 <span class="nav-username">{{ user.get_full_name|default:user.username }}</span>

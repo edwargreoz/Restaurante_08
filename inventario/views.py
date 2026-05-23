@@ -12,8 +12,10 @@ from .models import Insumo, RecetaInsumo
 @user_passes_test(es_mozo)
 def lista_insumos(request):
     insumos= Insumo.objects.all()
-    return render(request, 'inventario/lista_insumos.html',
-                  {'insumos':insumos})
+    return render(request, 'inventario/lista_insumos.html', {
+        'insumos': insumos,
+        'es_admin': es_admin(request.user)
+    })
 @login_required
 @user_passes_test(es_admin)
 def gestion_insumos(request):

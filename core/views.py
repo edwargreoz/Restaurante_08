@@ -83,3 +83,71 @@ def dashboard_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
+
+# --- GESTIÓN DE USUARIOS ---
+from django.contrib.auth.models import User
+from django.contrib import messages
+from django.shortcuts import get_object_or_404
+from core.rol_utils import es_admin
+from django.contrib.auth.decorators import user_passes_test
+from .forms import UsuarioForm
+
+@login_required
+@user_passes_test(es_admin)
+def lista_usuarios(request):
+    usuarios = User.objects.all().order_by('-is_active', 'username')
+    return render(request, 'core/usuarios/lista_usuarios.html', {'usuarios': usuarios})
+
+@login_required
+@user_passes_test(es_admin)
+def crear_usuario(request):
+    if request.method == 'POST':
+        form = UsuarioForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Usuario creado correctamente.')
+            return redirect('lista_usuarios')
+        else:
+            messages.error(request, 'Error al crear el usuario. Por favor verifica los datos.')
+    else:
+        form = UsuarioForm()
+    
+    return render(request, 'core/usuarios/form_usuario.html', {
+        'form': form,
+        'titulo': 'Crear Nuevo Usuario'
+    })
+
+@login_required
+@user_passes_test(es_admin)
+def editar_usuario(request, user_id):
+    usuario = get_object_or_404(User, id=user_id)
+    
+    if request.method == 'POST':
+        form = UsuarioForm(request.POST, instance=usuario)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Usuario actualizado correctamente.')
+            return redirect('lista_usuarios')
+        else:
+            messages.error(request, 'Error al actualizar el usuario.')
+    else:
+        form = UsuarioForm(instance=usuario)
+        
+    return render(request, 'core/usuarios/form_usuario.html', {
+        'form': form,
+        'titulo': 'Editar Usuario',
+        'usuario': usuario
+    })
+
+@login_required
+@user_passes_test(es_admin)
+def eliminar_usuario(request, user_id):
+    usuario = get_object_or_404(User, id=user_id)
+    if request.method == 'POST':
+        # Soft delete (Desactivar)
+        usuario.is_active = False
+        usuario.save()
+        messages.success(request, f'El usuario {usuario.username} ha sido desactivado.')
+        return redirect('lista_usuarios')
+        
+    return redirect('lista_usuarios')

@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-wrapper {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        padding: 2.5rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+    .page-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .page-header h1 {
+        margin: 0;
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: #4a5568;
+    }
+    .form-control, .form-select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 1rem;
+        transition: all 0.2s;
+    }
+    .form-control:focus, .form-select:focus {
+        outline: none;
+        border-color: #3182ce;
+        box-shadow: 0 0 0 3px rgba(49,130,206,0.1);
+    }
+    .help-text {
+        font-size: 0.85rem;
+        color: #718096;
+        margin-top: 0.25rem;
+        display: block;
+    }
+    .btn-container {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2.5rem;
+    }
+    .btn-container .btn {
+        flex: 1;
+        text-align: center;
+        padding: 0.8rem;
+        font-weight: 600;
+    }
+    /* Estilos para el switch (checkbox) */
+    .switch-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        background: #f8fafc;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        margin-top: 1.5rem;
+    }
+    .switch-label {
+        margin: 0;
+        font-weight: 600;
+        color: #4a5568;
+    }
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 26px;
+    }
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #cbd5e0;
+        transition: .4s;
+        border-radius: 34px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    input:checked + .slider {
+        background-color: #48bb78;
+    }
+    input:checked + .slider:before {
+        transform: translateX(24px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-wrapper">
+    <div class="page-header">
+        <h1>{{ titulo }}</h1>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-md-6 form-group">
+                {{ form.first_name.label_tag }}
+                {{ form.first_name }}
+                {{ form.first_name.errors }}
+            </div>
+            <div class="col-md-6 form-group">
+                {{ form.last_name.label_tag }}
+                {{ form.last_name }}
+                {{ form.last_name.errors }}
+            </div>
+        </div>
+
+        <div class="form-group">
+            {{ form.username.label_tag }}
+            {{ form.username }}
+            {{ form.username.errors }}
+        </div>
+
+        <div class="form-group">
+            {{ form.email.label_tag }}
+            {{ form.email }}
+            {{ form.email.errors }}
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 form-group">
+                {{ form.rol.label_tag }}
+                {{ form.rol }}
+                {{ form.rol.errors }}
+            </div>
+            <div class="col-md-6 form-group">
+                {{ form.password.label_tag }}
+                <div class="input-group" style="display: flex;">
+                    {{ form.password }}
+                    <button class="btn btn-outline-secondary" type="button" id="togglePassword" style="border: 1px solid #e2e8f0; background-color: #f8fafc; border-top-right-radius: 8px; border-bottom-right-radius: 8px; border-left: none; display: flex; align-items: center; justify-content: center; padding: 0.5rem 0.8rem;">
+                        <img src="{% static 'icons/eyesclose.png' %}" id="eyeIcon" alt="Mostrar" style="width: 20px; opacity: 0.7;">
+                    </button>
+                </div>
+                {% if form.password.help_text %}
+                    <span class="help-text">{{ form.password.help_text }}</span>
+                {% endif %}
+                {{ form.password.errors }}
+            </div>
+        </div>
+
+        <div class="switch-container">
+            <span class="switch-label">Usuario Activo (Permite iniciar sesión)</span>
+            <label class="switch">
+                {{ form.is_active }}
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="btn-container">
+            <a href="{% url 'lista_usuarios' %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Guardar Usuario</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const togglePassword = document.querySelector('#togglePassword');
+        const passwordInput = document.getElementById('id_password');
+        const eyeIcon = document.getElementById('eyeIcon');
+        
+        const eyeOpen = "{% static 'icons/eyesopen.png' %}";
+        const eyeClose = "{% static 'icons/eyesclose.png' %}";
+        
+        // Ajustar el borde del input cuando usamos input-group
+        if(passwordInput) {
+            passwordInput.style.borderTopRightRadius = '0';
+            passwordInput.style.borderBottomRightRadius = '0';
+        }
+
+        togglePassword.addEventListener('click', function (e) {
+            // Cambiar tipo de input
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            // Cambiar el icono visualmente
+            if (type === 'text') {
+                eyeIcon.src = eyeOpen;
+            } else {
+                eyeIcon.src = eyeClose;
+            }
+        });
+    });
+</script>
+{% endblock %}
