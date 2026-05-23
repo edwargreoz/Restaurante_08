@@ -16,8 +16,10 @@
         <span class="badge bg-danger">Ocupada</span>
         <span class="badge bg-warning text-dark">Reservada</span>
         <span class="badge bg-secondary">Limpieza</span>
-        <span class="badge" style="background:#b77a2f;color:#fff;">Unida</span>
         <a href="{% url 'unir_mesas' %}" class="btn btn-sm ms-3" style="border: 1px solid #b77a2f; color: #b77a2f; background: #fdf6ee;">Unir Mesas</a>
+        {% if user.is_superuser %}
+        <a href="{% url 'lista_mesas_admin' %}" class="btn btn-sm btn-dark ms-2">Gestión Mesas</a>
+        {% endif %}
     </div>
 </div>
 

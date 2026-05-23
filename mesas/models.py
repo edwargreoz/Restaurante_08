@@ -46,6 +46,11 @@ class Mesa(models.Model):
         verbose_name='Estado actual'
     )
 
+    activa = models.BooleanField(
+        default=True,
+        verbose_name='¿Mesa activa?'
+    )
+
     class Meta:
         """Configuracion del modelo."""
         ordering = ['numero']

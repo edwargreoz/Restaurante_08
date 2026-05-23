@@ -4,8 +4,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from core.rol_utils import es_mozo
+from core.rol_utils import es_mozo, es_admin
 from .models import Mesa,UnionMesa
+from .forms import MesaForm
 from pedidos.models import Comanda
 from pedidos.views import _procesar_agregar_plato
 from menu.models import Categoria
@@ -14,7 +15,7 @@ from menu.models import Categoria
 @login_required
 @user_passes_test(es_mozo)
 def plano_mesas(request): 
-    mesas = Mesa.objects.all()
+    mesas = Mesa.objects.filter(activa=True)
     uniones = UnionMesa.objects.filter(activa=True).prefetch_related('mesas')
     union_mesas_ids = set()
     union_labels = {}
@@ -93,7 +94,7 @@ def anular_comanda(request, comanda_id):
 @login_required
 @user_passes_test(es_mozo)
 def unir_mesas(request):
-    mesas = Mesa.objects.all()
+    mesas = Mesa.objects.filter(activa=True)
     uniones = UnionMesa.objects.filter(activa=True).prefetch_related('mesas')
     if request.method == 'POST':
         mesa_ids = request.POST.getlist('mesas')
@@ -127,6 +128,13 @@ def unir_mesas(request):
                 mesa_id__in=mesa_ids,
                 estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
             )
+            
+            if comandas_activas.exists():
+                for m in mesas_validas:
+                    if m.estado == 'LIBRE':
+                        m.estado = 'OCUPADA'
+                        m.save()
+                        
             if comandas_activas.count() >= 2:
                 principal = comandas_activas.first()
                 for otras in comandas_activas[1:]:
@@ -222,3 +230,62 @@ def deshacer_union(request, union_id):
         else:
             messages.success(request, 'Unión deshecha, comandas anuladas, mesas liberadas')
     return redirect('unir_mesas')
+
+# ----------------- VISTAS DE ADMINISTRADOR (CRUD MESAS) -----------------
+
+@login_required
+@user_passes_test(es_admin)
+def lista_mesas_admin(request):
+    mesas = Mesa.objects.filter(activa=True).order_by('numero')
+    return render(request, 'mesas/lista_mesas_admin.html', {'mesas': mesas})
+
+@login_required
+@user_passes_test(es_admin)
+def crear_mesa(request):
+    if request.method == 'POST':
+        form = MesaForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Mesa creada exitosamente.')
+            return redirect('lista_mesas_admin')
+    else:
+        form = MesaForm()
+    
+    return render(request, 'mesas/form_mesa.html', {'form': form, 'titulo': 'Crear Nueva Mesa'})
+
+@login_required
+@user_passes_test(es_admin)
+def editar_mesa(request, mesa_id):
+    mesa = get_object_or_404(Mesa, id=mesa_id, activa=True)
+    if mesa.estado == 'RESERVADA':
+        messages.error(request, 'No puedes editar una mesa que actualmente se encuentra RESERVADA.')
+        return redirect('lista_mesas_admin')
+        
+    if request.method == 'POST':
+        form = MesaForm(request.POST, instance=mesa)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'Mesa {mesa.numero} actualizada exitosamente.')
+            return redirect('lista_mesas_admin')
+    else:
+        form = MesaForm(instance=mesa)
+    
+    return render(request, 'mesas/form_mesa.html', {'form': form, 'titulo': f'Editar Mesa {mesa.numero}'})
+
+@login_required
+@user_passes_test(es_admin)
+def eliminar_mesa(request, mesa_id):
+    mesa = get_object_or_404(Mesa, id=mesa_id, activa=True)
+    if request.method == 'POST':
+        # Validar si no está en uso actualmente
+        if mesa.estado != 'LIBRE':
+            messages.error(request, 'No puedes eliminar una mesa que no está LIBRE.')
+            return redirect('lista_mesas_admin')
+        
+        # Borrado lógico
+        mesa.activa = False
+        mesa.save()
+        messages.success(request, f'Mesa {mesa.numero} eliminada lógicamente.')
+        return redirect('lista_mesas_admin')
+    
+    return render(request, 'mesas/eliminar_mesa_confirmar.html', {'mesa': mesa})

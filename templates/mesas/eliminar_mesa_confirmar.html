@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Eliminar Mesa {{ mesa.numero }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">Confirmar Eliminación</h3>
+                </div>
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle text-danger fa-4x mb-3"></i>
+                    <h4>¿Estás seguro de que deseas eliminar la Mesa {{ mesa.numero }}?</h4>
+                    <p class="text-muted">
+                        Esta acción es irreversible y eliminará la mesa del sistema actual.
+                        Asegúrate de que no haya clientes usándola.
+                    </p>
+                    
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-center gap-3">
+                            <a href="{% url 'lista_mesas_admin' %}" class="btn btn-secondary px-4">Cancelar</a>
+                            <button type="submit" class="btn btn-danger px-4">Sí, Eliminar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
