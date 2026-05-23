@@ -4,7 +4,6 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.utils import timezone
 from core.rol_utils import es_mozo
 from .models import Mesa,UnionMesa
 from pedidos.models import Comanda
@@ -41,12 +40,10 @@ def detalle_mesa(request, mesa_id):
     if comanda_activa and mesa.estado == 'LIBRE':
         try:
             comanda_activa.anular(usuario=request.user)
+            messages.info(request, 'Se anuló una comanda huérfana de la mesa')
         except ValidationError:
-            comanda_activa.estado = 'ANULADA'
-            comanda_activa.fecha_cierre = timezone.now()
-            comanda_activa.save()
+            messages.error(request, 'No se pudo anular la comanda huérfana')
         comanda_activa = None
-        messages.info(request, 'Se anuló una comanda huérfana de la mesa')
     union_activa = UnionMesa.objects.filter(mesas=mesa, activa=True).prefetch_related('mesas').first()
     if not comanda_activa and union_activa:
         comanda_activa = Comanda.objects.filter(
@@ -211,14 +208,16 @@ def deshacer_union(request, union_id):
             mesa_id__in=mesa_ids,
             estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
         )
+        errores = []
         for comanda in comandas_activas:
             try:
                 comanda.anular(usuario=request.user)
-            except ValidationError:
-                comanda.estado = 'ANULADA'
-                comanda.fecha_cierre = timezone.now()
-                comanda.save()
+            except ValidationError as e:
+                errores.append(str(e))
         union.activa = False
         union.save()
-        messages.success(request, 'Unión deshecha, comandas anuladas, mesas liberadas')
+        if errores:
+            messages.warning(request, 'Unión deshecha, pero algunas comandas no pudieron anularse: ' + '; '.join(errores))
+        else:
+            messages.success(request, 'Unión deshecha, comandas anuladas, mesas liberadas')
     return redirect('unir_mesas')

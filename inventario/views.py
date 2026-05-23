@@ -25,21 +25,24 @@ def gestion_insumos(request):
 @user_passes_test(es_admin)
 def crear_insumo(request):
     if request.method == 'POST':
+        insumo = Insumo(
+            nombre=request.POST.get('nombre'),
+            unidad=request.POST.get('unidad'),
+            stock_actual=request.POST.get('stock_actual', 0),
+            stock_minimo=request.POST.get('stock_minimo', 0),
+            costo_unitario=request.POST.get('costo_unitario', 0),
+        )
         try:
-            Insumo.objects.create(
-                nombre=request.POST.get('nombre'),
-                unidad=request.POST.get('unidad'),
-                stock_actual=request.POST.get('stock_actual', 0),
-                stock_minimo=request.POST.get('stock_minimo', 0),
-                costo_unitario=request.POST.get('costo_unitario', 0),
-            )
+            insumo.full_clean()
+            insumo.save()
             messages.success(request, 'Insumo creado')
-        except IntegrityError:
-            messages.error(request, 'Error: ya existe un insumo con ese nombre')
+        except IntegrityError as e:
+            if 'UNIQUE' in str(e):
+                messages.error(request, 'Error: ya existe un insumo con ese nombre')
+            else:
+                messages.error(request, f'Error de integridad: {str(e)}')
         except ValidationError as e:
             messages.error(request, f'Error: {"; ".join(e.messages)}')
-        except Exception as e:
-            messages.error(request, f'Error inesperado: {str(e)}')
     return redirect('gestion_insumos')
 
 @login_required
@@ -52,9 +55,13 @@ def editar_insumo(request, insumo_id):
         insumo.stock_actual = request.POST.get('stock_actual', insumo.stock_actual)
         insumo.stock_minimo = request.POST.get('stock_minimo', insumo.stock_minimo)
         insumo.costo_unitario = request.POST.get('costo_unitario', insumo.costo_unitario)
-        insumo.save()
-        messages.success(request, 'Insumo actualizado')
-        return redirect('gestion_insumos')
+        try:
+            insumo.full_clean()
+            insumo.save()
+            messages.success(request, 'Insumo actualizado')
+            return redirect('gestion_insumos')
+        except (IntegrityError, ValidationError) as e:
+            messages.error(request, f'Error: {str(e)}')
     return render(request, 'inventario/gestion_insumos.html', {
         'editar': insumo,
         'insumos': Insumo.objects.all(),
@@ -79,14 +86,16 @@ def lista_recetas(request):
 @user_passes_test(es_admin)
 def crear_receta(request):
     if request.method == 'POST':
+        receta = RecetaInsumo(
+            plato_id=request.POST.get('plato_id'),
+            insumo_id=request.POST.get('insumo_id'),
+            cantidad_por_porcion=request.POST.get('cantidad_por_porcion'),
+        )
         try:
-            RecetaInsumo.objects.create(
-                plato_id=request.POST.get('plato_id'),
-                insumo_id=request.POST.get('insumo_id'),
-                cantidad_por_porcion=request.POST.get('cantidad_por_porcion'),
-            )
+            receta.full_clean()
+            receta.save()
             messages.success(request, 'Receta creada')
-        except Exception as e:
+        except (IntegrityError, ValidationError) as e:
             messages.error(request, f'Error: {str(e)}')
         return redirect('lista_recetas')
     platos = Plato.objects.all()

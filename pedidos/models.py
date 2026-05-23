@@ -4,7 +4,7 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from decimal import Decimal
-from inventario.models import RecetaInsumo, MovimientoInsumo, convertir_unidad
+from inventario.models import RecetaInsumo, MovimientoInsumo
 from mesas.models import Mesa, UnionMesa
 from caja.models import Pago
 from menu.models import Plato
