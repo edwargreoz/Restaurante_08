@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Comandas para Cobrar{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/caja/cobrar_comanda.css' %}">
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Comandas para Cobrar</h1>
+    {% if caja_abierta %}
+    <span class="badge badge-pago badge-pago-efectivo">Turno: {{ caja_abierta.turno }}</span>
+    {% else %}
+    <span class="badge" style="background:#6c757d;">Sin turno abierto</span>
+    {% endif %}
+</div>
+
+{% if not caja_abierta %}
+<div class="alert alert-warning">
+    No hay un turno de caja abierto.
+    <a href="{% url 'apertura_turno' %}" class="alert-link">Abrir turno</a>
+</div>
+{% endif %}
+
+{% if comandas %}
+<div class="table-wrapper">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Mesa</th>
+                <th>Mozo</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th>Desde</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for comanda in comandas %}
+            <tr>
+                <td><strong>Mesa {{ comanda.mesa.numero }}</strong></td>
+                <td>{{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</td>
+                <td><strong>S/ {{ comanda.total|floatformat:2 }}</strong></td>
+                <td>
+                    <span class="badge {% if comanda.estado == 'ABIERTA' %}badge-blue{% else %}badge-orange{% endif %}">
+                        {{ comanda.get_estado_display }}
+                    </span>
+                </td>
+                <td>{{ comanda.fecha_apertura|timesince }}</td>
+                <td>
+                    <a href="{% url 'cobrar_comanda' comanda.id %}" class="btn btn-primary btn-sm">Cobrar</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <h4>No hay comandas pendientes de cobro</h4>
+    <p>Todas las comandas están cobradas o no hay comandas activas.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -12,26 +12,60 @@ from core.rol_utils import es_mozo_o_cajero, es_cajero_o_admin
 @user_passes_test(es_mozo_o_cajero)
 def cobrar_comanda(request, comanda_id):
     comanda = get_object_or_404(
-        Comanda.objects.prefetch_related('lineas__plato','pagos'),
-        id=comanda_id, estado__in=['ABIERTA','LISTA']
+        Comanda.objects.prefetch_related('lineas__plato', 'pagos'),
+        id=comanda_id, estado__in=['ABIERTA', 'LISTA']
     )
     if request.method == 'POST':
         caja_activa = Caja.objects.filter(estado='ABIERTA').first()
-        try:
-            comanda.pagar(
-                metodo=request.POST.get('metodo'),
-                monto = request.POST.get('monto'),
-                vuelto = request.POST.get('vuelto',0),
-                referencia=request.POST.get('referencia',''),
-                caja=caja_activa,
-            )
-            messages.success(request, 'Pago registrado correctamente')
-            return redirect('dashboard')
-        except ValidationError as e:
-            messages.error(request, str(e))
-    return render(request, 'caja/cobrar_comanda.html',{
+        if not caja_activa:
+            messages.error(request, 'No hay un turno de caja abierto')
+            return redirect('cobrar_comanda', comanda_id=comanda_id)
+
+        metodos = request.POST.getlist('metodo[]')
+        if metodos and len(metodos) > 1:
+            try:
+                pagos_lista = []
+                for i in range(len(metodos)):
+                    pagos_lista.append({
+                        'metodo': metodos[i],
+                        'monto': request.POST.getlist('monto[]')[i],
+                        'vuelto': request.POST.getlist('vuelto[]', ['0'])[i],
+                        'referencia': request.POST.getlist('referencia[]', [''])[i],
+                    })
+                comanda.pagar_split(pagos_lista, caja=caja_activa)
+                messages.success(request, 'Pago dividido registrado correctamente')
+                return redirect('dashboard')
+            except ValidationError as e:
+                for msg in getattr(e, 'message_dict', [str(e)]):
+                    messages.error(request, str(msg))
+        else:
+            try:
+                comanda.pagar(
+                    metodo=request.POST.get('metodo'),
+                    monto=request.POST.get('monto'),
+                    vuelto=request.POST.get('vuelto', 0),
+                    referencia=request.POST.get('referencia', ''),
+                    caja=caja_activa,
+                )
+                messages.success(request, 'Pago registrado correctamente')
+                return redirect('dashboard')
+            except ValidationError as e:
+                messages.error(request, str(e))
+    return render(request, 'caja/cobrar_comanda.html', {
         'comanda': comanda,
         'metodos': Pago.METODOS,
+    })
+
+@login_required
+@user_passes_test(es_cajero_o_admin)
+def lista_comandas_cobro(request):
+    comandas = Comanda.objects.filter(
+        estado__in=['ABIERTA', 'LISTA']
+    ).select_related('mesa', 'mozo').order_by('-fecha_apertura')
+    caja_abierta = Caja.objects.filter(estado='ABIERTA').first()
+    return render(request, 'caja/lista_comandas_cobro.html', {
+        'comandas': comandas,
+        'caja_abierta': caja_abierta,
     })
 @login_required
 @user_passes_test(es_cajero_o_admin)

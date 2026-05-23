@@ -38,6 +38,7 @@
                 {% endif %}
 
                 {% if user|has_group:'Cajero' %}
+                <a href="{% url 'lista_comandas_cobro' %}" class="nav-link {% if request.resolver_match.url_name == 'lista_comandas_cobro' or request.resolver_match.url_name == 'cobrar_comanda' %}active{% endif %}">Cobrar</a>
                 <a href="{% url 'apertura_turno' %}" class="nav-link {% if request.resolver_match.url_name == 'apertura_turno' %}active{% endif %}">Caja</a>
                 {% endif %}
 
