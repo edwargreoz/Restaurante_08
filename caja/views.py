@@ -13,7 +13,7 @@ from core.rol_utils import es_mozo_o_cajero, es_cajero_o_admin
 def cobrar_comanda(request, comanda_id):
     comanda = get_object_or_404(
         Comanda.objects.prefetch_related('lineas__plato', 'pagos'),
-        id=comanda_id, estado__in=['ABIERTA', 'LISTA']
+        id=comanda_id, estado='LISTA'
     )
     if request.method == 'POST':
         caja_activa = Caja.objects.filter(estado='ABIERTA').first()

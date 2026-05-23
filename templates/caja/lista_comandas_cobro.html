@@ -47,7 +47,11 @@
                 </td>
                 <td>{{ comanda.fecha_apertura|timesince }}</td>
                 <td>
+                    {% if comanda.estado == 'LISTA' %}
                     <a href="{% url 'cobrar_comanda' comanda.id %}" class="btn btn-primary btn-sm">Cobrar</a>
+                    {% else %}
+                    <span class="btn btn-secondary btn-sm disabled" title="La comanda debe estar lista para cobrar">Cobrar</span>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}

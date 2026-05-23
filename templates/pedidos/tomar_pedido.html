@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block title %}Tomar Pedido - Mesa {{ mesa.numero }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/mesas/mesas.css' %}">
+{% endblock %}
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -35,23 +38,31 @@
             <div class="card-body">
                 <p><strong>Mozo:</strong> {{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</p>
                 <p><strong>Estado:</strong> <span class="badge bg-primary">{{ comanda.get_estado_display }}</span></p>
-                <table class="table">
+                <table class="table table-comanda">
                     <thead>
                         <tr>
-                            <th>Plato</th>
-                            <th>Cant.</th>
-                            <th>Subtotal</th>
-                            <th>Estado</th>
-                            <th>Acción</th>
+                            <th class="col-plato">Plato</th>
+                            <th class="col-cant">Cant.</th>
+                            <th class="col-subtotal">Subtotal</th>
+                            <th class="col-estado">Estado</th>
+                            <th style="width:18%;text-align:center;">Acción</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for linea in comanda.lineas.all %}
                         <tr>
-                            <td>{{ linea.plato.nombre }}</td>
-                            <td>{{ linea.cantidad }}</td>
-                            <td>S/ {{ linea.subtotal }}</td>
-                            <td><span class="badge bg-secondary">{{ linea.get_estado_display }}</span></td>
+                            <td class="col-plato">{{ linea.plato.nombre }}</td>
+                            <td class="col-cant">{{ linea.cantidad }}</td>
+                            <td class="col-subtotal">S/ {{ linea.subtotal }}</td>
+                            <td class="col-estado">
+                                <span class="badge badge-estado
+                                    {% if linea.estado == 'PENDIENTE' %}bg-warning text-dark
+                                    {% elif linea.estado == 'EN_PREP' %}bg-info text-white
+                                    {% elif linea.estado == 'LISTO' %}bg-success
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ linea.get_estado_display }}
+                                </span>
+                            </td>
                             <td>
                         {% if linea.estado == 'PENDIENTE' %}
                             <form method="post" action="{% url 'enviar_cocina' linea.id %}">

@@ -259,7 +259,7 @@ class Comanda(models.Model):
     
     def pagar(self, metodo, monto, vuelto=0, referencia='', caja=None): 
         
-        if self.estado not in ('ABIERTA', 'LISTA'):
+        if self.estado != 'LISTA':
             raise ValidationError('La comanda no esta lista para pagar')
         monto = Decimal(str(monto))
         if monto < self.total - Decimal('0.01'):
@@ -310,7 +310,7 @@ class Comanda(models.Model):
         return self
     def pagar_split(self, pagos_lista, caja=None):
 
-        if self.estado not in ('ABIERTA', 'LISTA'):
+        if self.estado != 'LISTA':
             raise ValidationError('La comanda no esta lista para pagar')
         for pd in pagos_lista:
             pd['monto'] = Decimal(str(pd['monto']))

@@ -60,24 +60,32 @@
                     <span class="badge bg-primary">{{ comanda_activa.get_estado_display }}</span>
                     </p>
                     <div class="table-wrapper">
-                        <table class="table">
+                        <table class="table table-comanda">
                             <thead>
                                 <tr>
-                                    <th>Plato</th>
-                                    <th>Cant.</th>
-                                    <th>Precio</th>
-                                    <th>Subtotal</th>
-                                    <th>Estado</th>
+                                    <th class="col-plato">Plato</th>
+                                    <th class="col-cant">Cant.</th>
+                                    <th class="col-precio">Precio</th>
+                                    <th class="col-subtotal">Subtotal</th>
+                                    <th class="col-estado">Estado</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for linea in comanda_activa.lineas.all %}
                                 <tr>
-                                    <td>{{ linea.plato.nombre }}</td>
-                                    <td>{{ linea.cantidad }}</td>
-                                    <td>S/ {{ linea.plato.precio }}</td>
-                                    <td>S/ {{ linea.subtotal }}</td>
-                                    <td><span class="badge bg-secondary">{{ linea.get_estado_display }}</span></td>
+                                    <td class="col-plato">{{ linea.plato.nombre }}</td>
+                                    <td class="col-cant">{{ linea.cantidad }}</td>
+                                    <td class="col-precio">S/ {{ linea.plato.precio }}</td>
+                                    <td class="col-subtotal">S/ {{ linea.subtotal }}</td>
+                                    <td class="col-estado">
+                                        <span class="badge badge-estado
+                                            {% if linea.estado == 'PENDIENTE' %}bg-warning text-dark
+                                            {% elif linea.estado == 'EN_PREP' %}bg-info text-white
+                                            {% elif linea.estado == 'LISTO' %}bg-success
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ linea.get_estado_display }}
+                                        </span>
+                                    </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
@@ -94,11 +102,21 @@
                             </tfoot>
                         </table>
                     </div>
-                    <div class="d-flex gap-2 mt-3">
-                        <a href="{% url 'cobrar_comanda' comanda_activa.id %}" class="btn btn-primary">Ir a Cobrar</a>
+                    <div class="d-flex gap-2 mt-3 flex-wrap">
+                        {% if comanda_activa.estado == 'LISTA' %}
+                        <a href="{% url 'cobrar_comanda' comanda_activa.id %}" class="btn btn-success fw-bold px-4">
+                            Ir a Cobrar
+                        </a>
+                        {% else %}
+                        <span class="btn btn-secondary fw-bold px-4 disabled" title="Todos los platos deben estar listos para poder cobrar">
+                            Ir a Cobrar
+                        </span>
+                        {% endif %}
                         <form method="POST" action="{% url 'anular_comanda' comanda_activa.id %}" style="display:inline;">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-danger" onclick="return confirm('¿Anular comanda? Se liberará la mesa y se restaurará el stock.')">Cancelar comanda</button>
+                            <button type="submit" class="btn btn-danger fw-bold px-4" onclick="return confirm('¿Anular comanda? Se liberará la mesa y se restaurará el stock.')">
+                                Cancelar comanda
+                            </button>
                         </form>
                     </div>
                     {% else %}
