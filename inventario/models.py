@@ -125,13 +125,6 @@ class RecetaInsumo(models.Model):
         verbose_name='Cantidad por porcion'
     )
 
-    unidad = models.CharField(
-        max_length=20,
-        choices=Insumo.UNIDADES,
-        default='UNIDAD',
-        verbose_name='Unidad en la receta'
-    )
-
     class Meta:
         verbose_name = 'Insumo de Receta'
         verbose_name_plural = 'Insumos de Recetas'
@@ -139,7 +132,7 @@ class RecetaInsumo(models.Model):
         unique_together = ('receta', 'insumo')
 
     def __str__(self):
-        return f'{self.receta.nombre} -> {self.cantidad_por_porcion} {self.unidad} de {self.insumo.nombre}'
+        return f'{self.receta.nombre} -> {self.cantidad_por_porcion} {self.insumo.unidad} de {self.insumo.nombre}'
 
 
 class MovimientoInsumo(models.Model):

@@ -10,7 +10,7 @@
     <a href="{% url 'lista_recetas' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Volver</a>
 </div>
 <div class="row justify-content-center">
-    <div class="col-md-10">
+    <div class="col-md-8">
         <div class="card">
             <div class="card-header"><strong>{% if editar %}{{ editar.nombre }}{% else %}Nueva Receta{% endif %}</strong></div>
             <div class="card-body receta-form">
@@ -27,10 +27,9 @@
                     <table class="table table-bordered" id="insumosTable">
                         <thead>
                             <tr>
-                                <th style="width:35%">Insumo</th>
-                                <th style="width:20%">Cantidad</th>
-                                <th style="width:20%">Unidad</th>
-                                <th style="width:15%">Acción</th>
+                                <th style="width:45%">Insumo</th>
+                                <th style="width:35%">Cantidad</th>
+                                <th style="width:20%">Acción</th>
                             </tr>
                         </thead>
                         <tbody id="insumosBody">
@@ -50,13 +49,6 @@
                                     <td>
                                         <input type="number" name="cantidades[]" class="form-control"
                                                step="0.01" min="0" value="{{ ri.cantidad_por_porcion }}" required>
-                                    </td>
-                                    <td>
-                                        <select name="unidades[]" class="form-control" required>
-                                            {% for key, label in unidades %}
-                                            <option value="{{ key }}" {% if ri.unidad == key %}selected{% endif %}>{{ label }}</option>
-                                            {% endfor %}
-                                        </select>
                                     </td>
                                     <td>
                                         <button type="button" class="btn btn-danger btn-sm remove-row">Eliminar</button>
@@ -83,37 +75,26 @@
 <script>
     const insumosData = [
         {% for insumo in insumos %}
-        { id: {{ insumo.id }}, nombre: "{{ insumo.nombre|escapejs }}", unidad: "{{ insumo.get_unidad_display|escapejs }}", unidad_key: "{{ insumo.unidad }}" },
-        {% endfor %}
-    ];
-    const unidadOptions = [
-        {% for key, label in unidades %}
-        { key: "{{ key }}", label: "{{ label }}" },
+        { id: {{ insumo.id }}, nombre: "{{ insumo.nombre|escapejs }}", unidad: "{{ insumo.get_unidad_display|escapejs }}" },
         {% endfor %}
     ];
 
-    function createRow(selectedId, cantidad, selectedUnidad) {
-        let insumoOptions = '<option value="">--- Seleccionar ---</option>';
+    function createRow(selectedId, cantidad) {
+        let options = '<option value="">--- Seleccionar ---</option>';
         for (const ins of insumosData) {
             const sel = (ins.id === selectedId) ? 'selected' : '';
-            insumoOptions += `<option value="${ins.id}" ${sel}>${ins.nombre} (${ins.unidad})</option>`;
-        }
-        let unitOptions = '';
-        for (const u of unidadOptions) {
-            const sel = (u.key === selectedUnidad) ? 'selected' : '';
-            unitOptions += `<option value="${u.key}" ${sel}>${u.label}</option>`;
+            options += `<option value="${ins.id}" ${sel}>${ins.nombre} (${ins.unidad})</option>`;
         }
         return `<tr class="insumo-row">
-            <td><select name="insumos[]" class="form-control" required>${insumoOptions}</select></td>
+            <td><select name="insumos[]" class="form-control" required>${options}</select></td>
             <td><input type="number" name="cantidades[]" class="form-control" step="0.01" min="0" value="${cantidad || ''}" required></td>
-            <td><select name="unidades[]" class="form-control" required>${unitOptions}</select></td>
             <td><button type="button" class="btn btn-danger btn-sm remove-row">Eliminar</button></td>
         </tr>`;
     }
 
     document.getElementById('addRow').addEventListener('click', function() {
         const tbody = document.getElementById('insumosBody');
-        tbody.insertAdjacentHTML('beforeend', createRow(null, null, 'UNIDAD'));
+        tbody.insertAdjacentHTML('beforeend', createRow(null, null));
     });
 
     document.getElementById('insumosBody').addEventListener('click', function(e) {
