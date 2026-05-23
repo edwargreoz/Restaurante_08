@@ -1,5 +1,5 @@
 .page-subtitle {
-    color: #a0aec0;
+    color: #4a5568;
     font-size: 0.9rem;
     margin-top: 0.2rem;
 }
@@ -7,38 +7,44 @@
 .filtros-card {
     margin-bottom: 1.5rem;
 }
+
 .filtros-form {
     display: flex;
     gap: 1rem;
     align-items: flex-end;
     flex-wrap: wrap;
 }
+
 .filtros-form .form-group {
     flex: 1;
     min-width: 180px;
 }
+
 .filtros-actions {
     display: flex;
     gap: 0.5rem;
     align-items: flex-end;
     padding-bottom: 0.1rem;
 }
+
 .filtros-rapidos {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     margin-top: 1rem;
     padding-top: 0.8rem;
-    border-top: 1px solid #2d3748;
+    border-top: 1px solid #e2e8f0;
     font-size: 0.85rem;
-    color: #a0aec0;
+    color: #4a5568;
 }
+
 .filtros-rapidos .btn-outline-primary {
-    border-color: #4a5568;
-    color: #a0aec0;
+    border-color: #cbd5e0;
+    color: #4a5568;
     padding: 0.25rem 0.8rem;
     font-size: 0.8rem;
 }
+
 .filtros-rapidos .btn-outline-primary:hover {
     background: #b77a2f;
     border-color: #b77a2f;
@@ -52,26 +58,32 @@
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
+
 .resumen-card {
     display: flex;
     align-items: center;
     padding: 1.2rem;
 }
+
 .resumen-info {
     display: flex;
     flex-direction: column;
+    gap: 0.2rem;
 }
+
 .resumen-label {
     font-size: 0.8rem;
-    color: #a0aec0;
+    color: #4a5568;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
 .resumen-valor {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #fff;
+    color: #1a1a2e;
 }
+
 .resumen-card-total { border-left: 4px solid #48bb78; }
 .resumen-card-cantidad { border-left: 4px solid #4299e1; }
 .resumen-card-promedio { border-left: 4px solid #ecc94b; }
@@ -83,52 +95,64 @@
     gap: 1rem;
     margin-bottom: 1.5rem;
 }
+
 .metodo-card {
     padding: 1rem;
 }
+
 .metodo-header {
     display: flex;
     align-items: center;
     gap: 0.6rem;
     margin-bottom: 0.8rem;
 }
+
 .metodo-nombre {
     font-weight: 600;
     font-size: 0.95rem;
-    color: #fff;
+    color: #1a1a2e;
 }
+
 .metodo-body {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem 1rem;
 }
-.metodo-monto, .metodo-cantidad {
+
+.metodo-monto,
+.metodo-cantidad {
     display: flex;
     flex-direction: column;
 }
-.metodo-monto-label, .metodo-cantidad-label {
+
+.metodo-monto-label,
+.metodo-cantidad-label {
     font-size: 0.75rem;
-    color: #a0aec0;
+    color: #4a5568;
     text-transform: uppercase;
 }
+
 .metodo-monto-valor {
     font-size: 1.1rem;
     font-weight: 700;
     color: #48bb78;
 }
+
 .metodo-cantidad-valor {
     font-size: 1.1rem;
     font-weight: 600;
-    color: #fff;
+    color: #1a1a2e;
 }
+
 .metodo-bar {
     width: 100%;
     height: 6px;
-    background: #2d3748;
+    background: #e2e8f0;
     border-radius: 3px;
     margin-top: 0.3rem;
     overflow: hidden;
 }
+
 .metodo-bar-fill {
     height: 100%;
     background: linear-gradient(90deg, #b77a2f, #d69e2e);
@@ -143,17 +167,20 @@
     border-radius: 6px;
     white-space: nowrap;
 }
+
 .badge-pago-efectivo { background: #276749; color: #9ae6b4; }
 .badge-pago-tarjeta { background: #2a4365; color: #90cdf4; }
-.badge-pago-yape, .badge-pago-plin { background: #6b46c1; color: #d6bcfa; }
+.badge-pago-yape,
+.badge-pago-plin { background: #6b46c1; color: #d6bcfa; }
 
 /* Empty state */
 .empty-state {
     text-align: center;
     padding: 3rem 1rem;
-    color: #a0aec0;
+    color: #4a5568;
 }
+
 .empty-state h4 {
-    color: #fff;
+    color: #1a1a2e;
     margin-bottom: 0.3rem;
 }
