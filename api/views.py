@@ -10,7 +10,7 @@ from menu.models import Categoria, Plato
 from inventario.models import Insumo, RecetaInsumo
 from reservas.models import Reserva
 from pedidos.models import Comanda, LineaComanda
-from caja.models import Pago
+from caja.models import Caja, Pago
     
 from .filters import ComandaFilter, PlatoFilter
 from .serializers import (
@@ -178,18 +178,26 @@ class ComandaViewSet(viewsets.ModelViewSet):
         
         data = serializer.validated_data
 
+        caja_activa = Caja.objects.filter(estado='ABIERTA').last()
+        if not caja_activa:
+            return Response(
+                {'error': 'No hay un turno de caja abierto'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         with transaction.atomic():
             comanda = Comanda.objects.select_for_update().get(id=comanda.id)
             try:
                 comanda.pagar(
-                    metodo=data['metodo'],monto=data['monto'],
-                    vuelto = data.get('vuelto',0),
-                    referencia= data.get('referencia','')    
+                    metodo=data['metodo'], monto=data['monto'],
+                    vuelto=data.get('vuelto', 0),
+                    referencia=data.get('referencia', ''),
+                    caja=caja_activa
                 )
             except ValidationError as e:
                 return Response(
-                    {'error' :  str(e)},
-                    status=status.HTTP_400_BAD_REQUEST 
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -208,10 +216,17 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error': 'Debe enviar al menos un pago'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        caja_activa = Caja.objects.filter(estado='ABIERTA').last()
+        if not caja_activa:
+            return Response(
+                {'error': 'No hay un turno de caja abierto'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         with transaction.atomic():
             comanda = Comanda.objects.select_for_update().get(id=comanda.id)
             try:
-                comanda.pagar_split(pagos_data)
+                comanda.pagar_split(pagos_data, caja=caja_activa)
             except ValidationError as e:
                 return Response(
                     e.message_dict if hasattr(e, 'message_dict')
@@ -255,11 +270,16 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 class CocinaViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Comanda.objects.filter(
-        Q(estado='EN_PREPARACION') | Q(lineas__estado__in=['PENDIENTE', 'EN_PREP'])
-    ).prefetch_related('lineas__plato').distinct('fecha_apertura', 'id').order_by('fecha_apertura')
     permission_classes = [EsCocinero | EsAdmin]
     serializer_class = CocinaComandaSerializer
+
+    def get_queryset(self):
+        comanda_ids = LineaComanda.objects.filter(
+            estado__in=['PENDIENTE', 'EN_PREP']
+        ).values_list('comanda_id', flat=True).distinct()
+        return Comanda.objects.filter(
+            Q(estado='EN_PREPARACION') | Q(id__in=comanda_ids)
+        ).prefetch_related('lineas__plato').order_by('fecha_apertura')
 
 class ReportesViewSet(viewsets.ViewSet):
     permission_classes = [EsCajero|EsAdmin]

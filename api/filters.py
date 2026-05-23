@@ -1,5 +1,5 @@
 from django_filters import rest_framework as filters
-from pedidos.models import Comanda, LineaComanda
+from pedidos.models import Comanda
 from menu.models import Plato
 class ComandaFilter(filters.FilterSet):
     estado = filters.ChoiceFilter(choices=Comanda.ESTADOS)
@@ -18,10 +18,3 @@ class PlatoFilter(filters.FilterSet):
     class Meta:
         model = Plato
         fields = ['categoria', 'disponible', 'precio_min', 'precio_max']
-class LineaComandaFilter(filters.FilterSet):
-    estado = filters.ChoiceFilter(choices=LineaComanda.ESTADOS)
-    comanda = filters.NumberFilter()
-    plato = filters.NumberFilter(field_name='plato__id')
-    class Meta:
-        model = LineaComanda
-        fields = ['estado', 'comanda', 'plato']

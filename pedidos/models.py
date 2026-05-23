@@ -267,8 +267,8 @@ class Comanda(models.Model):
                     m.estado = 'LIBRE'
                     m.save()
         return self
-    def pagar_split(self, pagos_lista):
-        
+    def pagar_split(self, pagos_lista, caja=None):
+
         if self.estado not in ('ABIERTA', 'LISTA'):
             raise ValidationError('La comanda no esta lista para pagar')
         total_pagos = sum(p['monto'] for p in pagos_lista)
@@ -291,7 +291,8 @@ class Comanda(models.Model):
             Pago.objects.create(
                 comanda=self, metodo=pd['metodo'],
                 monto=pd['monto'], vuelto=pd.get('vuelto', 0),
-                referencia=pd.get('referencia', '')
+                referencia=pd.get('referencia', ''),
+                caja=caja
             )
         self.estado = 'COBRADA'
         self.fecha_cierre = timezone.now()

@@ -22,7 +22,7 @@ class PlatoSerializer(serializers.ModelSerializer):
 class InsumoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Insumo
-        fields = '__all__'
+        fields = ['id', 'nombre', 'unidad', 'stock_actual', 'stock_minimo']
 
 class RecetaInsumoSerializer(serializers.ModelSerializer):
     plato_nombre = serializers.CharField(source='plato.nombre', read_only=True)
@@ -127,9 +127,17 @@ class CocinaComandaSerializer(serializers.ModelSerializer):
 
 class ReservaSerializer(serializers.ModelSerializer):
     mesa_numero = serializers.IntegerField(source='mesa.numero', read_only=True)
+    union_mesa_nombre = serializers.SerializerMethodField()
     creado_por_nombre = serializers.CharField(source='creado_por.get_full_name', read_only=True)
     class Meta:
         model = Reserva
-        fields = ['id', 'mesa', 'mesa_numero', 'cliente_nombre', 'cliente_contacto',
+        fields = ['id', 'mesa', 'mesa_numero', 'union_mesa', 'union_mesa_nombre',
+                  'cliente_nombre', 'cliente_contacto',
                   'fecha', 'hora_inicio', 'hora_fin', 'num_personas',
                   'observacion', 'activa', 'creado_por', 'creado_por_nombre', 'fecha_creacion']
+
+    def get_union_mesa_nombre(self, obj):
+        if obj.union_mesa:
+            mesas = list(obj.union_mesa.mesas.values_list('numero', flat=True))
+            return ' + '.join(f'Mesa {m}' for m in mesas)
+        return None
