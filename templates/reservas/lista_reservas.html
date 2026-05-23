@@ -58,10 +58,12 @@
                                 <button type="submit" class="btn-cancel">Cancelar</button>
                             </form>
                         {% else %}
+                            {% if user.is_superuser %}
                             <form action="{% url 'eliminar_reserva' reserva.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de ELIMINAR permanentemente esta reserva?');">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-cancel" style="border-color: #d63031; color: #d63031;" title="Eliminar del sistema">Eliminar</button>
                             </form>
+                            {% endif %}
                         {% endif %}
                     </div>
                 </td>

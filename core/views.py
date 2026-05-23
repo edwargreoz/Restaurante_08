@@ -16,6 +16,8 @@ from caja.models import Caja,Pago #para mostrar ingresos del dia en el dashboard
 
 def login_view(request):
     if request.user.is_authenticated:
+        if request.user.groups.filter(name='Cocinero').exists() and not request.user.is_superuser:
+            return redirect('kds_panel')
         return redirect('dashboard')
     if request.method == 'POST':
         # Obtener credenciales del formulario
@@ -28,6 +30,8 @@ def login_view(request):
         if user is not None:
             # Iniciar sesion si las credenciales son correctas
             login(request, user)
+            if user.groups.filter(name='Cocinero').exists() and not user.is_superuser:
+                return redirect('kds_panel')
             return redirect('dashboard')
         else:
             # Error: credenciales invalidas

@@ -16,14 +16,16 @@
     {% if user.is_authenticated %}
 <nav class="navbar-top">
     <div class="nav-container">
-        <a href="{% url 'dashboard' %}" class="nav-logo">
+        <a href="{% if user|has_group:'Cocinero' and not user.is_superuser %}{% url 'kds_panel' %}{% else %}{% url 'dashboard' %}{% endif %}" class="nav-logo">
             <img src="{% static 'icons/logoEmpresa.png' %}" alt="Logo" height="32">
             <span>Restaurant</span>
         </a>
         <button class="nav-toggle" id="navToggle">☰</button>
         <div class="nav-menu" id="navMenu">
             <div class="nav-links">
+                {% if user.is_superuser or user|has_group:'Mozo' or user|has_group:'Cajero' %}
                 <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+                {% endif %}
                 {% if user|has_group:'Mozo' %}
                 <a href="{% url 'plano_mesas' %}" class="nav-link {% if request.resolver_match.url_name == 'plano_mesas' or request.resolver_match.url_name == 'detalle_mesa' %}active{% endif %}">Mesas</a>
                 <a href="{% url 'lista_reservas' %}" class="nav-link {% if 'reserva' in request.resolver_match.url_name %}active{% endif %}">Reservas</a>
