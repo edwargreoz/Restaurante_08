@@ -43,44 +43,40 @@ def login_view(request):
     return render(request, 'auth/login.html')
 
 
-#segunda modificación by raiza :
 @login_required
 def dashboard_view(request):
-    mesas_libres = Mesa.objects.filter(estado='LIBRE').count()
-    mesas_ocupadas = Mesa.objects.filter(estado='OCUPADA').count()
-    comandas_activas = Comanda.objects.filter(estado__in=['ABIERTA', 'EN_PREPARACION']).count()
-    alertas_stock = Insumo.objects.filter(stock_actual__lt=models.F('stock_minimo')).count()
-    
-    hoy=timezone.now().date()
-    manana=hoy+timedelta(days=1)
-    ventas_hoy=Pago.objects.filter(
-        fecha__date__gte=hoy,
-        fecha__date__lt=manana
-    ).aggregate(total=models.Sum('monto'))['total'] or 0 #si no hay ventas, total sera None, por eso usamos 'or 0' para mostrar 0 en vez de None
+    es_mozo = request.user.is_superuser or request.user.groups.filter(name='Mozo').exists()
+    es_cajero = request.user.is_superuser or request.user.groups.filter(name='Cajero').exists()
 
-    
-    caja_actual=Caja.objects.filter(estado='ABIERTA').first()
+    if not es_mozo and not es_cajero:
+        return redirect('kds_panel')
 
-    ultimas_comandas=Comanda.objects.filter(
-        estado__in=['ABIERTA', 'EN_PREPARACION']
-    ).select_related('mesa', 'mozo').order_by('-fecha_apertura')[:5] #mostrar las 5 comandas mas recientes
+    context = {}
 
-    alertas_detalle=Insumo.objects.filter(
-        stock_actual__lt=models.F('stock_minimo')
-    )[:5] #mostrar solo 5 alertas de stock
+    if es_mozo:
+        context['mesas_libres'] = Mesa.objects.filter(estado='LIBRE').count()
+        context['mesas_ocupadas'] = Mesa.objects.filter(estado='OCUPADA').count()
+        context['comandas_activas'] = Comanda.objects.filter(
+            estado__in=['ABIERTA', 'EN_PREPARACION']
+        ).count()
+        context['alertas_stock'] = Insumo.objects.filter(
+            stock_actual__lt=models.F('stock_minimo')
+        ).count()
+        context['ultimas_comandas'] = Comanda.objects.filter(
+            estado__in=['ABIERTA', 'EN_PREPARACION']
+        ).select_related('mesa', 'mozo').order_by('-fecha_apertura')[:5]
+        context['alertas_detalle'] = Insumo.objects.filter(
+            stock_actual__lt=models.F('stock_minimo')
+        )[:5]
 
-    context = {
-        'mesas_libres': mesas_libres,
-        'mesas_ocupadas': mesas_ocupadas,
-        'comandas_activas': comandas_activas,
-        'alertas_stock': alertas_stock,
-        
-        'ventas_hoy': ventas_hoy,
-        'caja_actual': caja_actual,
-        'ultimas_comandas': ultimas_comandas,
-        'alertas_detalle': alertas_detalle,
-        
-    }
+    if es_cajero:
+        hoy = timezone.now().date()
+        context['ventas_hoy'] = Pago.objects.filter(
+            fecha__date__gte=hoy,
+            fecha__date__lt=hoy + timedelta(days=1)
+        ).aggregate(total=models.Sum('monto'))['total'] or 0
+        context['caja_actual'] = Caja.objects.filter(estado='ABIERTA').first()
+
     return render(request, 'core/dashboard.html', context)
 
 
