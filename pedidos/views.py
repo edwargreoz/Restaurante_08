@@ -32,11 +32,15 @@ def _procesar_agregar_plato(request, comanda):
         messages.success(request, 'Plato agregado')
         return True
     except ValidationError as e:
-        for error in e.message_dict.get('errores', [str(e)]):
-            if isinstance(error, dict):
-                messages.error(request, error.get('error', str(error)))
-            else:
-                messages.error(request, error)
+        if hasattr(e, 'error_dict'):
+            errores = e.message_dict.get('errores', [str(e)])
+            for error in errores:
+                if isinstance(error, dict):
+                    messages.error(request, error.get('error', str(error)))
+                else:
+                    messages.error(request, error)
+        else:
+            messages.error(request, str(e))
         return False
 
 @login_required

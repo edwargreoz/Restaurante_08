@@ -22,7 +22,7 @@ def cobrar_comanda(request, comanda_id):
             return redirect('cobrar_comanda', comanda_id=comanda_id)
 
         metodos = request.POST.getlist('metodo[]')
-        if metodos and len(metodos) > 1:
+        if metodos:
             try:
                 pagos_lista = []
                 for i in range(len(metodos)):

@@ -108,7 +108,7 @@
                     <form method="POST" id="split-form">
                         {% csrf_token %}
                         <div id="split-pagos-container">
-                            <div class="split-pago-item card card-body mb-2 p-3" data-index="0">
+                            <div class="split-pago-item card card-body mb-2 p-3">
                                 <div class="form-group">
                                     <label>Método de pago</label>
                                     <select name="metodo[]" class="form-control split-metodo" required>
@@ -119,12 +119,16 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>Monto (S/)</label>
+                                    <label>Monto a pagar (S/)</label>
                                     <input type="number" name="monto[]" class="form-control split-monto" step="0.01" min="0.01" required>
+                                </div>
+                                <div class="form-group split-recibido-group" style="display:none;">
+                                    <label>Recibido (S/)</label>
+                                    <input type="number" name="recibido[]" class="form-control split-recibido" step="0.01" min="0">
                                 </div>
                                 <div class="form-group split-vuelto-group" style="display:none;">
                                     <label>Vuelto (S/)</label>
-                                    <input type="number" name="vuelto[]" class="form-control split-vuelto" step="0.01" min="0" value="0">
+                                    <input type="number" name="vuelto[]" class="form-control split-vuelto" step="0.01" min="0" value="0" readonly style="background:#f8f9fa;">
                                 </div>
                                 <div class="form-group split-ref-group" style="display:none;">
                                     <label>Referencia (últimos 4 dígitos)</label>
@@ -145,12 +149,16 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
-                                    <label>Monto (S/)</label>
+                                    <label>Monto a pagar (S/)</label>
                                     <input type="number" name="monto[]" class="form-control split-monto" step="0.01" min="0.01" required>
+                                </div>
+                                <div class="form-group split-recibido-group" style="display:none;">
+                                    <label>Recibido (S/)</label>
+                                    <input type="number" name="recibido[]" class="form-control split-recibido" step="0.01" min="0">
                                 </div>
                                 <div class="form-group split-vuelto-group" style="display:none;">
                                     <label>Vuelto (S/)</label>
-                                    <input type="number" name="vuelto[]" class="form-control split-vuelto" step="0.01" min="0" value="0">
+                                    <input type="number" name="vuelto[]" class="form-control split-vuelto" step="0.01" min="0" value="0" readonly style="background:#f8f9fa;">
                                 </div>
                                 <div class="form-group split-ref-group" style="display:none;">
                                     <label>Referencia (últimos 4 dígitos)</label>
