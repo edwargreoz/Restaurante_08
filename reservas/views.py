@@ -254,6 +254,15 @@ def editar_reserva(request, reserva_id):
             if vieja_union and vieja_union != reserva.union_mesa:
                 vieja_union.activa = False
                 vieja_union.save(update_fields=['activa'])
+                for m in vieja_union.mesas.all():
+                    if m not in ms:
+                        m.estado = 'LIBRE'
+                        m.save(update_fields=['estado'])
+            
+            # Asegurar que todas las mesas de la nueva reserva cambien a RESERVADA
+            for m in ms:
+                m.estado = 'RESERVADA'
+                m.save(update_fields=['estado'])
 
             messages.success(request, f'Reserva de {reserva.cliente_nombre} actualizada con éxito')
             return redirect('lista_reservas')

@@ -89,8 +89,8 @@ class Comanda(models.Model):
             ).first()
             if comanda_existente:
                 return comanda_existente
-            if mesa.estado != 'LIBRE':
-                raise ValidationError('La mesa no esta libre')
+            if mesa.estado not in ['LIBRE', 'RESERVADA']:
+                raise ValidationError('La mesa no esta libre ni reservada')
             union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
             if union:
                 for m in union.mesas.all():
@@ -99,9 +99,9 @@ class Comanda(models.Model):
                     ).first()
                     if comanda_m:
                         return comanda_m
-                    if m.estado != 'LIBRE':
+                    if m.estado not in ['LIBRE', 'RESERVADA']:
                         raise ValidationError(
-                            f'La mesa {m.numero} de la union no esta libre'
+                            f'La mesa {m.numero} de la union no esta libre ni reservada'
                         )
             comanda = cls.objects.create(mesa=mesa, mozo=usuario)
             mesa.estado = 'OCUPADA'
@@ -231,8 +231,11 @@ class Comanda(models.Model):
                     mesa=m, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
                 ).exclude(id=self.id).exists()
                 if not tiene_otra_comanda:
-                    m.estado = 'LIBRE'
-                    m.save()
+                    tiene_reserva = m.reservas.filter(activa=True).exists()
+                    if union:
+                        tiene_reserva = tiene_reserva or union.reservas.filter(activa=True).exists()
+                    m.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
+                    m.save(update_fields=['estado'])
         return self
     
     def pagar(self, metodo, monto, vuelto=0, referencia='', caja=None): 
@@ -258,14 +261,19 @@ class Comanda(models.Model):
         self.fecha_cierre = timezone.now()
         self.save()
         mesa = self.mesa
-        mesa.estado = 'LIBRE'
-        mesa.save()
         union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
+        tiene_reserva_mesa = mesa.reservas.filter(activa=True).exists()
+        if union:
+            tiene_reserva_mesa = tiene_reserva_mesa or union.reservas.filter(activa=True).exists()
+            
+        mesa.estado = 'RESERVADA' if tiene_reserva_mesa else 'LIBRE'
+        mesa.save(update_fields=['estado'])
         if union:
             for m in union.mesas.all():
                 if m.id != mesa.id:
-                    m.estado = 'LIBRE'
-                    m.save()
+                    tiene_r = m.reservas.filter(activa=True).exists() or union.reservas.filter(activa=True).exists()
+                    m.estado = 'RESERVADA' if tiene_r else 'LIBRE'
+                    m.save(update_fields=['estado'])
         return self
     def pagar_split(self, pagos_lista, caja=None):
 
@@ -298,14 +306,19 @@ class Comanda(models.Model):
         self.fecha_cierre = timezone.now()
         self.save()
         mesa = self.mesa
-        mesa.estado = 'LIBRE'
-        mesa.save()
         union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
+        tiene_reserva_mesa = mesa.reservas.filter(activa=True).exists()
+        if union:
+            tiene_reserva_mesa = tiene_reserva_mesa or union.reservas.filter(activa=True).exists()
+            
+        mesa.estado = 'RESERVADA' if tiene_reserva_mesa else 'LIBRE'
+        mesa.save(update_fields=['estado'])
         if union:
             for m in union.mesas.all():
                 if m.id != mesa.id:
-                    m.estado = 'LIBRE'
-                    m.save()
+                    tiene_r = m.reservas.filter(activa=True).exists() or union.reservas.filter(activa=True).exists()
+                    m.estado = 'RESERVADA' if tiene_r else 'LIBRE'
+                    m.save(update_fields=['estado'])
         return self
 
 class LineaComanda(models.Model):
