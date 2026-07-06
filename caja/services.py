@@ -25,6 +25,13 @@ class CajaService:
         )
 
     @staticmethod
+    def obtener_activa() -> Caja:
+        caja = Caja.objects.filter(estado='ABIERTA').first()
+        if not caja:
+            raise CajaNoAbierta('No hay un turno de caja abierto')
+        return caja
+
+    @staticmethod
     def listar_todas():
         return Caja.objects.all()
 

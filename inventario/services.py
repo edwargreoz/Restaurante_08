@@ -209,26 +209,24 @@ class UnidadConversionService:
 
     @staticmethod
     def crear_cadena(insumo_id: int, niveles: list) -> list:
-        """Crea una cadena de unidades de conversión.
+        """Crea una cadena de unidades de conversión de abajo hacia arriba.
         niveles = [
             {'nombre': 'Paquete', 'contiene': 10, 'sub_unidad': 'Subpaquete'},
             {'nombre': 'Subpaquete', 'contiene': 500, 'sub_unidad': 'Gramo'},
         ]
         La última sub_unidad debe ser una unidad base existente.
         """
-        cadenas = []
-        for i, nivel in enumerate(niveles):
-            es_ultimo = (i == len(niveles) - 1)
+        niveles_procesados = []
+        for nivel in reversed(niveles):
             sub = None
-            if not es_ultimo:
-                sub_nombre = niveles[i + 1]['nombre']
-                sub = UnidadConversion.objects.filter(
-                    nombre=sub_nombre, insumo_id=insumo_id
-                ).first()
-            else:
+            try:
                 sub = UnidadConversion.objects.get(
                     nombre=nivel['sub_unidad'], es_base=True
                 )
+            except UnidadConversion.DoesNotExist:
+                sub = UnidadConversion.objects.filter(
+                    nombre=nivel['sub_unidad'], insumo_id=insumo_id
+                ).first()
 
             uc, _ = UnidadConversion.objects.get_or_create(
                 insumo_id=insumo_id,
@@ -239,5 +237,5 @@ class UnidadConversionService:
                     'es_base': False,
                 }
             )
-            cadenas.append(uc)
-        return cadenas
+            niveles_procesados.append(uc)
+        return list(reversed(niveles_procesados))
