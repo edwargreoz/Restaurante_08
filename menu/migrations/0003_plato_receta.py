@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='plato',
             name='receta',
-            field=models.ForeignKey(default=1, on_delete=django.db.models.deletion.PROTECT, related_name='platos', to='inventario.receta', verbose_name='Receta'),
+            field=models.ForeignKey(null=True, blank=True, on_delete=django.db.models.deletion.PROTECT, related_name='platos', to='inventario.receta', verbose_name='Receta'),
             preserve_default=False,
         ),
     ]

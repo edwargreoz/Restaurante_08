@@ -3,14 +3,15 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db import transaction
 from django.db.models import Q
-from django.core.exceptions import ValidationError
 
 from mesas.models import Mesa, UnionMesa
 from menu.models import Categoria, Plato
 from inventario.models import Insumo, Receta, RecetaInsumo
 from reservas.models import Reserva
 from pedidos.models import Comanda, LineaComanda
-from caja.models import Caja, Pago
+
+from core.excepciones import CajaNoAbierta, ReglaNegocioViolada, RecursoNoEncontrado
+from caja.services import CajaService, PagoService
     
 from .filters import ComandaFilter, PlatoFilter
 from .serializers import (
@@ -176,23 +177,25 @@ class ComandaViewSet(viewsets.ModelViewSet):
         
         data = serializer.validated_data
 
-        caja_activa = Caja.objects.filter(estado='ABIERTA').last()
-        if not caja_activa:
+        try:
+            caja_activa = CajaService.obtener_activa()
+        except CajaNoAbierta as e:
             return Response(
-                {'error': 'No hay un turno de caja abierto'},
+                {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         with transaction.atomic():
             comanda = Comanda.objects.select_for_update().get(id=comanda.id)
             try:
-                comanda.pagar(
+                PagoService.procesar_pago(
+                    comanda,
                     metodo=data['metodo'], monto=data['monto'],
                     vuelto=data.get('vuelto', 0),
                     referencia=data.get('referencia', ''),
-                    caja=caja_activa
+                    caja=caja_activa,
                 )
-            except ValidationError as e:
+            except (ReglaNegocioViolada, RecursoNoEncontrado) as e:
                 return Response(
                     {'error': str(e)},
                     status=status.HTTP_400_BAD_REQUEST
@@ -214,21 +217,21 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error': 'Debe enviar al menos un pago'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        caja_activa = Caja.objects.filter(estado='ABIERTA').last()
-        if not caja_activa:
+        try:
+            caja_activa = CajaService.obtener_activa()
+        except CajaNoAbierta as e:
             return Response(
-                {'error': 'No hay un turno de caja abierto'},
+                {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         with transaction.atomic():
             comanda = Comanda.objects.select_for_update().get(id=comanda.id)
             try:
-                comanda.pagar_split(pagos_data, caja=caja_activa)
-            except ValidationError as e:
+                PagoService.procesar_pago_split(comanda, pagos_data, caja=caja_activa)
+            except (ReglaNegocioViolada, RecursoNoEncontrado) as e:
                 return Response(
-                    e.message_dict if hasattr(e, 'message_dict')
-                    else {'error': str(e)},
+                    {'error': str(e)},
                     status=status.HTTP_400_BAD_REQUEST
                 )
         serializer = self.get_serializer(comanda)
@@ -284,7 +287,7 @@ class ReportesViewSet(viewsets.ViewSet):
 
     @action(detail=False,methods=['get'])
     def ventas_turno(self, request):
-        data = Pago.objects.reporte_ventas(
+        data = PagoService.reporte_ventas(
             caja_id=request.query_params.get('caja_id'),
             fecha_desde=request.query_params.get('fecha_desde'),
             fecha_hasta=request.query_params.get('fecha_hasta'),

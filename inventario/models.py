@@ -3,6 +3,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator
 from decimal import Decimal
+from core.excepciones import UnidadConversionInvalida
 
 
 UNIDADES_BASE = {
@@ -233,7 +234,7 @@ class UnidadConversion(models.Model):
         if self.es_base:
             return cantidad
         if not self.contiene_unidad:
-            raise ValueError(f'{self.nombre} no tiene subunidad definida')
+            raise UnidadConversionInvalida(f'{self.nombre} no tiene subunidad definida')
         total_en_sub = cantidad * self.contiene_cantidad
         return self.contiene_unidad.convertir_a_base(total_en_sub)
 
@@ -241,6 +242,6 @@ class UnidadConversion(models.Model):
         if self.es_base:
             return cantidad_base
         if not self.contiene_unidad:
-            raise ValueError(f'{self.nombre} no tiene subunidad definida')
+            raise UnidadConversionInvalida(f'{self.nombre} no tiene subunidad definida')
         en_sub = self.contiene_unidad.convertir_desde_base(cantidad_base)
         return en_sub / self.contiene_cantidad

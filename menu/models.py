@@ -59,7 +59,9 @@ class Plato(models.Model):
         Receta,
         on_delete=models.PROTECT,
         related_name='platos',
-        verbose_name='Receta'
+        verbose_name='Receta',
+        null=True,
+        blank=True,
     )
 
     tiempo_preparacion_min = models.IntegerField(
