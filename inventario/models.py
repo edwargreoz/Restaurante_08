@@ -195,3 +195,52 @@ class MovimientoInsumo(models.Model):
 
     def __str__(self):
         return f'{self.get_tipo_display()} - {self.insumo.nombre} ({self.cantidad})'
+
+
+class UnidadConversion(models.Model):
+    nombre = models.CharField(max_length=100, verbose_name='Nombre de la unidad')
+    es_base = models.BooleanField(default=False, verbose_name='¿Es unidad base?')
+    insumo = models.ForeignKey(
+        'Insumo', on_delete=models.CASCADE,
+        related_name='unidades_conversion',
+        null=True, blank=True,
+        verbose_name='Insumo asociado (solo si no es base)',
+    )
+    contiene_cantidad = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        null=True, blank=True,
+        verbose_name='Cantidad que contiene de la subunidad',
+    )
+    contiene_unidad = models.ForeignKey(
+        'self', on_delete=models.PROTECT,
+        null=True, blank=True,
+        related_name='unidad_padre',
+        verbose_name='Subunidad que contiene',
+    )
+
+    class Meta:
+        verbose_name = 'Conversión de Unidad'
+        verbose_name_plural = 'Conversiones de Unidades'
+        unique_together = ('nombre', 'insumo')
+
+    def __str__(self):
+        if self.es_base:
+            return f'Base: {self.nombre}'
+        return f'1 {self.nombre} = {self.contiene_cantidad} {self.contiene_unidad.nombre if self.contiene_unidad else "?"}'
+
+    def convertir_a_base(self, cantidad: Decimal) -> Decimal:
+        from decimal import Decimal
+        if self.es_base:
+            return cantidad
+        if not self.contiene_unidad:
+            raise ValueError(f'{self.nombre} no tiene subunidad definida')
+        total_en_sub = cantidad * self.contiene_cantidad
+        return self.contiene_unidad.convertir_a_base(total_en_sub)
+
+    def convertir_desde_base(self, cantidad_base: Decimal) -> Decimal:
+        if self.es_base:
+            return cantidad_base
+        if not self.contiene_unidad:
+            raise ValueError(f'{self.nombre} no tiene subunidad definida')
+        en_sub = self.contiene_unidad.convertir_desde_base(cantidad_base)
+        return en_sub / self.contiene_cantidad
