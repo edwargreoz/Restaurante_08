@@ -7,6 +7,17 @@ from inventario.models import Receta
 
 class CategoriaService:
     @staticmethod
+    def listar_categorias():
+        return Categoria.objects.prefetch_related('platos').all()
+
+    @staticmethod
+    def obtener_por_id(categoria_id: int) -> Categoria:
+        cat = Categoria.objects.filter(id=categoria_id).first()
+        if not cat:
+            raise RecursoNoEncontrado('Categoría no encontrada')
+        return cat
+
+    @staticmethod
     def crear(nombre: str, es_bebida: bool = False,
               orden_display: int = 0) -> Categoria:
         return Categoria.objects.create(
@@ -43,6 +54,30 @@ class PlatoService:
         if not plato:
             raise RecursoNoEncontrado('Plato no encontrado')
         return plato.disponible
+
+    @staticmethod
+    def actualizar(plato_id: int, **kwargs) -> Plato:
+        plato = Plato.objects.filter(id=plato_id).first()
+        if not plato:
+            raise RecursoNoEncontrado('Plato no encontrado')
+        for attr, value in kwargs.items():
+            if attr == 'categoria':
+                plato.categoria = value
+            elif attr == 'receta':
+                plato.receta = value
+            elif attr == 'imagen' and value:
+                plato.imagen = value
+            else:
+                setattr(plato, attr, value)
+        plato.save()
+        return plato
+
+    @staticmethod
+    def eliminar(plato_id: int):
+        plato = Plato.objects.filter(id=plato_id).first()
+        if not plato:
+            raise RecursoNoEncontrado('Plato no encontrado')
+        plato.delete()
 
     @staticmethod
     def toggle_disponible(plato_id: int) -> Plato:

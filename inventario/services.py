@@ -12,6 +12,40 @@ from menu.models import Plato
 
 class InsumoService:
     @staticmethod
+    def listar_insumos():
+        return Insumo.objects.all()
+
+    @staticmethod
+    def obtener_por_id(insumo_id: int) -> Insumo:
+        insumo = Insumo.objects.filter(id=insumo_id).first()
+        if not insumo:
+            raise RecursoNoEncontrado('Insumo no encontrado')
+        return insumo
+
+    @staticmethod
+    def crear(nombre: str, unidad: str, stock_actual=Decimal('0'),
+              stock_minimo=Decimal('0'), costo_unitario=Decimal('0')) -> Insumo:
+        return Insumo.objects.create(
+            nombre=nombre, unidad=unidad,
+            stock_actual=stock_actual, stock_minimo=stock_minimo,
+            costo_unitario=costo_unitario,
+        )
+
+    @staticmethod
+    def actualizar(insumo_id: int, **kwargs) -> Insumo:
+        insumo = InsumoService.obtener_por_id(insumo_id)
+        for attr, value in kwargs.items():
+            setattr(insumo, attr, value)
+        insumo.full_clean()
+        insumo.save()
+        return insumo
+
+    @staticmethod
+    def eliminar(insumo_id: int):
+        insumo = InsumoService.obtener_por_id(insumo_id)
+        insumo.delete()
+
+    @staticmethod
     @transaction.atomic
     def registrar_compra(insumo_id: int, unidad_conversion_id: int,
                          cantidad_unidades: int, costo_total: Decimal,
@@ -60,6 +94,35 @@ class InsumoService:
 
 
 class RecetaService:
+    @staticmethod
+    def listar_recetas():
+        return Receta.objects.prefetch_related('insumos__insumo').all()
+
+    @staticmethod
+    def obtener_por_id(receta_id: int) -> Receta:
+        receta = Receta.objects.filter(id=receta_id).first()
+        if not receta:
+            raise RecursoNoEncontrado('Receta no encontrada')
+        return receta
+
+    @staticmethod
+    def crear(nombre: str, insumos_data: list = None) -> Receta:
+        receta, created = Receta.objects.get_or_create(nombre=nombre)
+        if insumos_data:
+            for item in insumos_data:
+                RecetaInsumo.objects.create(
+                    receta=receta,
+                    insumo_id=item['insumo_id'],
+                    cantidad_por_porcion=item['cantidad'],
+                    unidad=item.get('unidad', 'UNIDAD'),
+                )
+        return receta
+
+    @staticmethod
+    def eliminar(receta_id: int):
+        receta = RecetaService.obtener_por_id(receta_id)
+        receta.delete()
+
     @staticmethod
     def calcular_insumos_para_platos(receta_id: int, cantidad_platos: int) -> dict:
         """Calcula los insumos necesarios para preparar N platos."""
