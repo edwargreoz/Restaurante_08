@@ -16,7 +16,7 @@ class CajaService:
     @transaction.atomic
     def abrir_turno(turno_nombre: str, usuario,
                     saldo_inicial: Decimal = Decimal('0')) -> Caja:
-        caja_existente = Caja.objects.filter(estado='ABIERTA').first()
+        caja_existente = Caja.objects.select_for_update().filter(estado='ABIERTA').first()
         if caja_existente:
             raise ReglaNegocioViolada('Ya hay un turno de caja abierto')
         return Caja.objects.create(
@@ -38,7 +38,7 @@ class CajaService:
     @staticmethod
     @transaction.atomic
     def cerrar_turno(caja_id: int) -> dict:
-        caja = Caja.objects.filter(id=caja_id, estado='ABIERTA').first()
+        caja = Caja.objects.select_for_update().filter(id=caja_id, estado='ABIERTA').first()
         if not caja:
             raise RecursoNoEncontrado('No hay turno abierto o no existe')
         comandas_pendientes = Comanda.objects.filter(
@@ -59,6 +59,34 @@ class CajaService:
 
 
 class PagoService:
+    @staticmethod
+    def obtener_comanda_para_cobro(comanda_id: int):
+        comanda = Comanda.objects.prefetch_related(
+            'lineas__plato', 'pagos'
+        ).filter(id=comanda_id, estado='LISTA').first()
+        if not comanda:
+            raise RecursoNoEncontrado('Comanda no encontrada o no está lista para cobro')
+        return comanda
+
+    @staticmethod
+    def listar_comandas_para_cobro():
+        return Comanda.objects.filter(
+            estado__in=['ABIERTA', 'LISTA']
+        ).select_related('mesa', 'mozo').order_by('-fecha_apertura')
+
+    @staticmethod
+    def listar_pagos_con_filtros(caja_id=None, fecha_desde=None, fecha_hasta=None):
+        pagos = Pago.objects.select_related(
+            'comanda__mesa', 'comanda__mozo', 'caja'
+        ).all()
+        if caja_id:
+            pagos = pagos.filter(caja_id=caja_id)
+        if fecha_desde:
+            pagos = pagos.filter(fecha__date__gte=fecha_desde)
+        if fecha_hasta:
+            pagos = pagos.filter(fecha__date__lte=fecha_hasta)
+        return pagos[:50]
+
     @staticmethod
     def procesar_pago(comanda, metodo: str, monto, vuelto,
                        referencia: str, caja) -> None:

@@ -1,11 +1,10 @@
 
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from core.rol_utils import es_admin
 from core.excepciones import RecursoNoEncontrado
-from inventario.models import Receta
-from menu.models import Categoria, Plato
+from inventario.services import RecetaService
 from .services import CategoriaService, PlatoService
 
 @login_required
@@ -18,7 +17,7 @@ def catalogo_platos(request):
 @user_passes_test(es_admin)
 def gestion_menu(request):
     categorias = CategoriaService.listar_categorias()
-    recetas = Receta.objects.all()
+    recetas = RecetaService.listar_recetas()
     return render(request, 'menu/gestion_menu.html', {
         'categorias': categorias,
         'recetas': recetas,
@@ -69,8 +68,8 @@ def crear_plato(request):
 @user_passes_test(es_admin)
 def editar_plato(request, plato_id):
     try:
-        plato = Plato.objects.get(id=plato_id)
-    except Plato.DoesNotExist:
+        plato = PlatoService.obtener_por_id(plato_id)
+    except RecursoNoEncontrado:
         messages.error(request, 'Plato no encontrado')
         return redirect('gestion_menu')
 
@@ -82,14 +81,14 @@ def editar_plato(request, plato_id):
                 precio=request.POST.get('precio', plato.precio),
                 descripcion=request.POST.get('descripcion', ''),
                 disponible=request.POST.get('disponible') == 'on',
-                categoria=get_object_or_404(Categoria, id=request.POST.get('categoria')),
+                categoria_id=request.POST.get('categoria'),
                 imagen=request.FILES.get('imagen'),
             )
             messages.success(request, 'Plato actualizado')
             return redirect('gestion_menu')
         except Exception as e:
             messages.error(request, f'Error: {str(e)}')
-    categorias = Categoria.objects.all()
+    categorias = CategoriaService.listar_categorias()
     return render(request, 'menu/gestion_menu.html', {
         'editar': plato, 'categorias': categorias
     })

@@ -28,6 +28,12 @@ class CategoriaService:
 
 class PlatoService:
     @staticmethod
+    def obtener_por_id(plato_id: int) -> Plato:
+        plato = Plato.objects.filter(id=plato_id).first()
+        if not plato:
+            raise RecursoNoEncontrado('Plato no encontrado')
+        return plato
+    @staticmethod
     @transaction.atomic
     def crear(nombre: str, precio, categoria_id: int,
               receta_id: int, descripcion: str = '',
@@ -57,18 +63,14 @@ class PlatoService:
 
     @staticmethod
     def actualizar(plato_id: int, **kwargs) -> Plato:
-        plato = Plato.objects.filter(id=plato_id).first()
-        if not plato:
-            raise RecursoNoEncontrado('Plato no encontrado')
+        plato = PlatoService.obtener_por_id(plato_id)
+        categoria_id = kwargs.pop('categoria_id', None)
+        if categoria_id:
+            kwargs['categoria'] = CategoriaService.obtener_por_id(int(categoria_id))
         for attr, value in kwargs.items():
-            if attr == 'categoria':
-                plato.categoria = value
-            elif attr == 'receta':
-                plato.receta = value
-            elif attr == 'imagen' and value:
-                plato.imagen = value
-            else:
-                setattr(plato, attr, value)
+            if attr == 'imagen' and not value:
+                continue
+            setattr(plato, attr, value)
         plato.save()
         return plato
 

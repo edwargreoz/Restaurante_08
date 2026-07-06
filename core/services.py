@@ -44,6 +44,12 @@ class DashboardService:
 
 class UsuarioService:
     @staticmethod
+    def obtener_por_id(user_id: int) -> User:
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            raise RecursoNoEncontrado('Usuario no encontrado')
+        return user
+    @staticmethod
     def listar_usuarios():
         return User.objects.all().order_by('-is_active', 'username')
 
@@ -56,6 +62,35 @@ class UsuarioService:
         if grupo_nombre:
             grupo, _ = Group.objects.get_or_create(name=grupo_nombre)
             user.groups.add(grupo)
+        return user
+
+    @staticmethod
+    def actualizar(user_id: int, solicitante_id: int, **campos) -> User:
+        from django.contrib.auth.models import Group
+        user = UsuarioService.obtener_por_id(user_id)
+        is_active = campos.get('is_active', user.is_active)
+        if not is_active and user_id == solicitante_id:
+            raise ReglaNegocioViolada('No puedes desactivar tu propio usuario')
+        for attr in ('username', 'first_name', 'last_name', 'email'):
+            if attr in campos:
+                setattr(user, attr, campos[attr])
+        user.is_active = is_active
+        password = campos.get('password')
+        if password:
+            user.set_password(password)
+        rol = campos.get('rol')
+        if rol == 'Admin':
+            user.is_superuser = True
+            user.is_staff = True
+        else:
+            user.is_superuser = False
+            user.is_staff = False
+        user.save()
+        if rol is not None:
+            user.groups.clear()
+            if rol != 'Admin':
+                grupo, _ = Group.objects.get_or_create(name=rol)
+                user.groups.add(grupo)
         return user
 
     @staticmethod

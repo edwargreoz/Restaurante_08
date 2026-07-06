@@ -3,8 +3,6 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.shortcuts import get_object_or_404
-from django.contrib.auth.models import User
 from core.rol_utils import es_admin
 from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
 from .forms import UsuarioForm
@@ -89,19 +87,27 @@ def crear_usuario(request):
 @login_required
 @user_passes_test(es_admin)
 def editar_usuario(request, user_id):
-    usuario = get_object_or_404(User, id=user_id)
+    try:
+        usuario = UsuarioService.obtener_por_id(user_id)
+    except RecursoNoEncontrado:
+        messages.error(request, 'Usuario no encontrado')
+        return redirect('lista_usuarios')
 
     if request.method == 'POST':
         form = UsuarioForm(request.POST, instance=usuario)
         if form.is_valid():
-            if usuario.id == request.user.id and form.cleaned_data.get('is_active') is False:
-                messages.error(request, 'No puedes desactivar tu propio usuario.')
-            else:
-                form.save()
+            try:
+                UsuarioService.actualizar(
+                    user_id=user_id,
+                    solicitante_id=request.user.id,
+                    **form.cleaned_data
+                )
                 messages.success(request, 'Usuario actualizado correctamente.')
                 if usuario.id == request.user.id:
                     return redirect('dashboard')
                 return redirect('lista_usuarios')
+            except (ReglaNegocioViolada, RecursoNoEncontrado) as e:
+                messages.error(request, str(e))
         else:
             messages.error(request, 'Error al actualizar el usuario.')
     else:

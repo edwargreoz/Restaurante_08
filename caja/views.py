@@ -1,9 +1,8 @@
 
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from core.excepciones import CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioViolada
-from pedidos.models import Comanda
 from caja.models import Caja, Pago
 from core.rol_utils import es_mozo_o_cajero, es_cajero_o_admin
 from .services import CajaService, PagoService, ReporteService
@@ -11,10 +10,11 @@ from .services import CajaService, PagoService, ReporteService
 @login_required
 @user_passes_test(es_mozo_o_cajero)
 def cobrar_comanda(request, comanda_id):
-    comanda = get_object_or_404(
-        Comanda.objects.prefetch_related('lineas__plato', 'pagos'),
-        id=comanda_id, estado='LISTA'
-    )
+    try:
+        comanda = PagoService.obtener_comanda_para_cobro(comanda_id)
+    except RecursoNoEncontrado as e:
+        messages.error(request, str(e))
+        return redirect('lista_comandas_cobro')
     if request.method == 'POST':
         try:
             caja_activa = CajaService.obtener_activa()
@@ -63,9 +63,7 @@ def cobrar_comanda(request, comanda_id):
 @login_required
 @user_passes_test(es_cajero_o_admin)
 def lista_comandas_cobro(request):
-    comandas = Comanda.objects.filter(
-        estado__in=['ABIERTA', 'LISTA']
-    ).select_related('mesa', 'mozo').order_by('-fecha_apertura')
+    comandas = PagoService.listar_comandas_para_cobro()
     try:
         caja_abierta = CajaService.obtener_activa()
     except CajaNoAbierta:
@@ -111,14 +109,7 @@ def reportes_turno(request):
     fecha_hasta = request.GET.get('fecha_hasta')
     reporte = PagoService.reporte_ventas(caja_id, fecha_desde, fecha_hasta)
     cajas = CajaService.listar_todas()
-    pagos = Pago.objects.select_related('comanda__mesa', 'comanda__mozo', 'caja').all()
-    if caja_id:
-        pagos = pagos.filter(caja_id=caja_id)
-    if fecha_desde:
-        pagos = pagos.filter(fecha__date__gte=fecha_desde)
-    if fecha_hasta:
-        pagos = pagos.filter(fecha__date__lte=fecha_hasta)
-    pagos = pagos[:50]
+    pagos = PagoService.listar_pagos_con_filtros(caja_id, fecha_desde, fecha_hasta)
     return render(request, 'reportes/reportes_turno.html', {
         'reporte': reporte,
         'cajas': cajas,
