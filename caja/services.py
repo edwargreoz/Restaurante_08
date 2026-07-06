@@ -25,6 +25,10 @@ class CajaService:
         )
 
     @staticmethod
+    def listar_todas():
+        return Caja.objects.all()
+
+    @staticmethod
     @transaction.atomic
     def cerrar_turno(caja_id: int) -> dict:
         caja = Caja.objects.filter(id=caja_id, estado='ABIERTA').first()

@@ -2,16 +2,14 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-
-#Raiza modificó dashboard_view y añadio los imports de mesa, comanda e insumo
-from mesas.models import Mesa
-from pedidos.models import Comanda
-from inventario.models import Insumo
-from django.db import models
-#Raiza
-from django.utils import timezone #para mostrar fecha y hora en el dashboard
-from datetime import timedelta #para calcular pedidos del dia
-from caja.models import Caja,Pago #para mostrar ingresos del dia en el dashboard
+from django.contrib import messages
+from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import User
+from core.rol_utils import es_admin
+from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
+from .forms import UsuarioForm
+from .services import DashboardService, UsuarioService
+from django.contrib.auth.decorators import user_passes_test
 
 
 def login_view(request):
@@ -20,26 +18,18 @@ def login_view(request):
             return redirect('kds_panel')
         return redirect('dashboard')
     if request.method == 'POST':
-        # Obtener credenciales del formulario
         username = request.POST.get('username')
         password = request.POST.get('password')
-
-        # Autenticar usuario (Sesion 04 - auth.authenticate)
         user = authenticate(request, username=username, password=password)
-
         if user is not None:
-            # Iniciar sesion si las credenciales son correctas
             login(request, user)
             if user.groups.filter(name='Cocinero').exists() and not user.is_superuser:
                 return redirect('kds_panel')
             return redirect('dashboard')
         else:
-            # Error: credenciales invalidas
             return render(request, 'auth/login.html', {
                 'error': 'Usuario o contrasena incorrectos'
             })
-
-    # GET: mostrar formulario de login
     return render(request, 'auth/login.html')
 
 
@@ -54,28 +44,10 @@ def dashboard_view(request):
     context = {}
 
     if es_mozo:
-        context['mesas_libres'] = Mesa.objects.filter(estado='LIBRE').count()
-        context['mesas_ocupadas'] = Mesa.objects.filter(estado='OCUPADA').count()
-        context['comandas_activas'] = Comanda.objects.filter(
-            estado__in=['ABIERTA', 'EN_PREPARACION']
-        ).count()
-        context['alertas_stock'] = Insumo.objects.filter(
-            stock_actual__lt=models.F('stock_minimo')
-        ).count()
-        context['ultimas_comandas'] = Comanda.objects.filter(
-            estado__in=['ABIERTA', 'EN_PREPARACION']
-        ).select_related('mesa', 'mozo').order_by('-fecha_apertura')[:5]
-        context['alertas_detalle'] = Insumo.objects.filter(
-            stock_actual__lt=models.F('stock_minimo')
-        )[:5]
+        context.update(DashboardService.datos_mozo())
 
     if es_cajero:
-        hoy = timezone.now().date()
-        context['ventas_hoy'] = Pago.objects.filter(
-            fecha__date__gte=hoy,
-            fecha__date__lt=hoy + timedelta(days=1)
-        ).aggregate(total=models.Sum('monto'))['total'] or 0
-        context['caja_actual'] = Caja.objects.filter(estado='ABIERTA').first()
+        context.update(DashboardService.datos_cajero())
 
     return render(request, 'core/dashboard.html', context)
 
@@ -84,18 +56,11 @@ def logout_view(request):
     logout(request)
     return redirect('login')
 
-# --- GESTIÓN DE USUARIOS ---
-from django.contrib.auth.models import User
-from django.contrib import messages
-from django.shortcuts import get_object_or_404
-from core.rol_utils import es_admin
-from django.contrib.auth.decorators import user_passes_test
-from .forms import UsuarioForm
 
 @login_required
 @user_passes_test(es_admin)
 def lista_usuarios(request):
-    usuarios = User.objects.all().order_by('-is_active', 'username')
+    usuarios = UsuarioService.listar_usuarios()
     return render(request, 'core/usuarios/lista_usuarios.html', {'usuarios': usuarios})
 
 @login_required
@@ -104,14 +69,18 @@ def crear_usuario(request):
     if request.method == 'POST':
         form = UsuarioForm(request.POST)
         if form.is_valid():
-            form.save()
+            UsuarioService.crear(
+                username=form.cleaned_data['username'],
+                password=form.cleaned_data['password1'],
+                email=form.cleaned_data.get('email', ''),
+            )
             messages.success(request, 'Usuario creado correctamente.')
             return redirect('lista_usuarios')
         else:
             messages.error(request, 'Error al crear el usuario. Por favor verifica los datos.')
     else:
         form = UsuarioForm()
-    
+
     return render(request, 'core/usuarios/form_usuario.html', {
         'form': form,
         'titulo': 'Crear Nuevo Usuario'
@@ -147,14 +116,10 @@ def editar_usuario(request, user_id):
 @login_required
 @user_passes_test(es_admin)
 def eliminar_usuario(request, user_id):
-    usuario = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
-        if usuario.id == request.user.id:
-            messages.error(request, 'No puedes desactivar tu propio usuario.')
-            return redirect('lista_usuarios')
-        usuario.is_active = False
-        usuario.save()
-        messages.success(request, f'El usuario {usuario.username} ha sido desactivado.')
-        return redirect('lista_usuarios')
-
+        try:
+            UsuarioService.desactivar(user_id, request.user.id)
+            messages.success(request, 'Usuario desactivado.')
+        except (ReglaNegocioViolada, RecursoNoEncontrado) as e:
+            messages.error(request, str(e))
     return redirect('lista_usuarios')

@@ -44,6 +44,10 @@ class DashboardService:
 
 class UsuarioService:
     @staticmethod
+    def listar_usuarios():
+        return User.objects.all().order_by('-is_active', 'username')
+
+    @staticmethod
     def crear(username, password, grupo_nombre=None, **extra) -> User:
         from django.contrib.auth.models import Group
         user = User.objects.create_user(
