@@ -129,16 +129,12 @@ def editar_receta(request, receta_id):
         return redirect('lista_recetas')
 
     if request.method == 'POST':
-        nombre_receta = request.POST.get('nombre_receta')
-        insumos_ids = request.POST.getlist('insumos[]')
-        cantidades = request.POST.getlist('cantidades[]')
-        unidades_list = request.POST.getlist('unidades[]')
-        if nombre_receta:
-            receta.nombre = nombre_receta
-            receta.save()
-        if insumos_ids:
-            receta.insumos.all().delete()
-            try:
+        try:
+            insumos_data = None
+            insumos_ids = request.POST.getlist('insumos[]')
+            if insumos_ids:
+                cantidades = request.POST.getlist('cantidades[]')
+                unidades_list = request.POST.getlist('unidades[]')
                 insumos_data = []
                 for insumo_id, cantidad, unidad in zip(insumos_ids, cantidades, unidades_list):
                     if not insumo_id or not cantidad:
@@ -148,11 +144,16 @@ def editar_receta(request, receta_id):
                         'cantidad': cantidad,
                         'unidad': unidad,
                     })
-                if insumos_data:
-                    RecetaService.crear(receta.nombre, insumos_data)
-                    messages.success(request, f'Receta "{receta.nombre}" actualizada')
-            except Exception as e:
-                messages.error(request, f'Error: {str(e)}')
+            RecetaService.actualizar(
+                receta_id,
+                nombre=request.POST.get('nombre_receta'),
+                insumos_data=insumos_data,
+            )
+            messages.success(request, 'Receta actualizada')
+        except RecursoNoEncontrado:
+            messages.error(request, 'Receta no encontrada')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
         return redirect('lista_recetas')
     insumos = InsumoService.listar_insumos()
     return render(request, 'inventario/crear_receta.html', {
@@ -165,12 +166,10 @@ def editar_receta(request, receta_id):
 @user_passes_test(es_admin)
 def eliminar_receta(request, receta_insumo_id):
     if request.method == 'POST':
-        from .models import RecetaInsumo
         try:
-            ri = RecetaInsumo.objects.get(id=receta_insumo_id)
-            ri.delete()
+            RecetaService.eliminar_insumo(receta_insumo_id)
             messages.success(request, 'Insumo eliminado de la receta')
-        except RecetaInsumo.DoesNotExist:
+        except RecursoNoEncontrado:
             messages.error(request, 'Insumo de receta no encontrado')
     return redirect('lista_recetas')
 

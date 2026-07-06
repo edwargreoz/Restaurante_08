@@ -100,7 +100,7 @@ class RecetaService:
 
     @staticmethod
     def obtener_por_id(receta_id: int) -> Receta:
-        receta = Receta.objects.filter(id=receta_id).first()
+        receta = Receta.objects.prefetch_related('insumos__insumo').filter(id=receta_id).first()
         if not receta:
             raise RecursoNoEncontrado('Receta no encontrada')
         return receta
@@ -117,6 +117,32 @@ class RecetaService:
                     unidad=item.get('unidad', 'UNIDAD'),
                 )
         return receta
+
+    @staticmethod
+    def actualizar(receta_id: int, nombre: str = None, insumos_data: list = None) -> Receta:
+        receta = RecetaService.obtener_por_id(receta_id)
+        if nombre:
+            receta.nombre = nombre
+            receta.full_clean()
+            receta.save(update_fields=['nombre'])
+        if insumos_data:
+            receta.insumos.all().delete()
+            for item in insumos_data:
+                RecetaInsumo.objects.create(
+                    receta=receta,
+                    insumo_id=item['insumo_id'],
+                    cantidad_por_porcion=item['cantidad'],
+                    unidad=item.get('unidad', 'UNIDAD'),
+                )
+        return receta
+
+    @staticmethod
+    def eliminar_insumo(receta_insumo_id: int):
+        try:
+            ri = RecetaInsumo.objects.get(id=receta_insumo_id)
+            ri.delete()
+        except RecetaInsumo.DoesNotExist:
+            raise RecursoNoEncontrado('Insumo de receta no encontrado')
 
     @staticmethod
     def eliminar(receta_id: int):

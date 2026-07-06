@@ -53,6 +53,28 @@ class CajaService:
 
 class PagoService:
     @staticmethod
+    def procesar_pago(comanda, metodo: str, monto, vuelto,
+                       referencia: str, caja) -> None:
+        from django.core.exceptions import ValidationError
+        try:
+            comanda.pagar(
+                metodo=metodo, monto=monto, vuelto=vuelto,
+                referencia=referencia, caja=caja,
+            )
+        except ValidationError as e:
+            raise ReglaNegocioViolada(str(e))
+
+    @staticmethod
+    def procesar_pago_split(comanda, pagos_lista: list, caja) -> None:
+        from django.core.exceptions import ValidationError
+        try:
+            comanda.pagar_split(pagos_lista, caja=caja)
+        except ValidationError as e:
+            if hasattr(e, 'message_dict'):
+                msgs = [str(m) for sub in e.message_dict.values() for m in sub]
+                raise ReglaNegocioViolada('; '.join(msgs))
+            raise ReglaNegocioViolada(str(e))
+    @staticmethod
     def reporte_ventas(caja_id=None, fecha_desde=None, fecha_hasta=None) -> dict:
         pagos = Pago.objects.all()
         if caja_id:

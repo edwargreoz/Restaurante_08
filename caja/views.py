@@ -2,12 +2,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
-from django.core.exceptions import ValidationError
 from core.excepciones import CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioViolada
 from pedidos.models import Comanda
 from caja.models import Caja, Pago
 from core.rol_utils import es_mozo_o_cajero, es_cajero_o_admin
-from .services import CajaService, PagoService
+from .services import CajaService, PagoService, ReporteService
 
 @login_required
 @user_passes_test(es_mozo_o_cajero)
@@ -37,15 +36,15 @@ def cobrar_comanda(request, comanda_id):
                         'vuelto': vueltos[i] if i < len(vueltos) else '0',
                         'referencia': referencias[i] if i < len(referencias) else '',
                     })
-                comanda.pagar_split(pagos_lista, caja=caja_activa)
+                PagoService.procesar_pago_split(comanda, pagos_lista, caja=caja_activa)
                 messages.success(request, 'Pago dividido registrado correctamente')
                 return redirect('dashboard')
-            except ValidationError as e:
-                for msg in getattr(e, 'message_dict', [str(e)]):
-                    messages.error(request, str(msg))
+            except (ReglaNegocioViolada, RecursoNoEncontrado) as e:
+                messages.error(request, str(e))
         else:
             try:
-                comanda.pagar(
+                PagoService.procesar_pago(
+                    comanda,
                     metodo=request.POST.get('metodo'),
                     monto=request.POST.get('monto'),
                     vuelto=request.POST.get('vuelto', 0),
@@ -54,7 +53,7 @@ def cobrar_comanda(request, comanda_id):
                 )
                 messages.success(request, 'Pago registrado correctamente')
                 return redirect('dashboard')
-            except ValidationError as e:
+            except (ReglaNegocioViolada, RecursoNoEncontrado) as e:
                 messages.error(request, str(e))
     return render(request, 'caja/cobrar_comanda.html', {
         'comanda': comanda,
