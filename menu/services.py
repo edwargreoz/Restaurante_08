@@ -1,6 +1,6 @@
 
 from django.db import transaction
-from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
+from core.excepciones import RecursoNoEncontrado
 from menu.models import Categoria, Plato
 from inventario.models import Receta
 

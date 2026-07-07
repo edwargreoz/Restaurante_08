@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from core.rol_utils import es_admin, es_mozo
-from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada, StockInsuficiente
+from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
 from .services import InsumoService, RecetaService
 from .models import Insumo
 

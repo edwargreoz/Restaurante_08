@@ -1,5 +1,5 @@
 
-from django.db.models import Sum, F, Q
+from django.db.models import Sum, F
 from django.utils import timezone
 from datetime import timedelta
 from mesas.models import Mesa

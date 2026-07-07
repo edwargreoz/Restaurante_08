@@ -149,6 +149,8 @@ REST_FRAMEWORK = {
         'anon': '100/day',
         'user': '1000/day',
     },
+
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 SPECTACULAR_SETTINGS = {

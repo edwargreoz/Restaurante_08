@@ -2,10 +2,9 @@
 from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
-from django.db.models import Sum, Count, Q, F
+from django.db.models import Sum, Count
 from core.excepciones import (
-    CajaNoAbierta, RecursoNoEncontrado, MontoInvalido,
-    ReferenciaInvalida, ReglaNegocioViolada,
+    CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioViolada,
 )
 from caja.models import Caja, Pago
 from pedidos.models import Comanda

@@ -7,7 +7,7 @@ from dominio.entidades.insumo import Insumo
 class InsumoRepository:
     def obtener_por_id(self, insumo_id: int) -> Optional[Insumo]:
         try:
-            m = InsumoModel.objects.get(id=insumo_id, activo=True)
+            m = InsumoModel.objects.get(id=insumo_id)
             return self._a_entidad(m)
         except InsumoModel.DoesNotExist:
             return None

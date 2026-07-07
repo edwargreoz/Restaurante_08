@@ -7,7 +7,7 @@ from dominio.entidades.plato import Plato
 class PlatoRepository:
     def obtener_por_id(self, plato_id: int) -> Optional[Plato]:
         try:
-            p = PlatoModel.objects.get(id=plato_id, activo=True)
+            p = PlatoModel.objects.get(id=plato_id)
             return Plato(
                 id=p.id, nombre=p.nombre, precio=p.precio,
                 categoria_id=p.categoria_id, receta_id=p.receta_id,
@@ -21,5 +21,5 @@ class PlatoRepository:
             Plato(id=p.id, nombre=p.nombre, precio=p.precio,
                   categoria_id=p.categoria_id, receta_id=p.receta_id,
                   disponible=p.disponible)
-            for p in PlatoModel.objects.filter(disponible=True, activo=True)
+            for p in PlatoModel.objects.filter(disponible=True)
         ]

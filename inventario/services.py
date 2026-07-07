@@ -3,10 +3,9 @@ from decimal import Decimal
 from django.db import transaction
 from django.db.models import F
 from core.excepciones import (
-    RecursoNoEncontrado, StockInsuficiente, ProductoSinStock,
-    UnidadConversionInvalida, ReglaNegocioViolada,
+    RecursoNoEncontrado, ReglaNegocioViolada,
 )
-from inventario.models import Insumo, Receta, RecetaInsumo, MovimientoInsumo, UnidadConversion
+from inventario.models import Insumo, Receta, RecetaInsumo, MovimientoInsumo, UnidadConversion, convertir_unidad
 from menu.models import Plato
 
 
@@ -158,7 +157,6 @@ class RecetaService:
 
         resultado = {'insumos': [], 'disponible': True, 'faltantes': []}
         for ri in receta.insumos.select_related('insumo').all():
-            from inventario.models import convertir_unidad
             necesario = ri.cantidad_por_porcion * Decimal(str(cantidad_platos))
             necesario_base = convertir_unidad(necesario, ri.unidad, ri.insumo.unidad)
             insumo_data = {

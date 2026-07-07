@@ -3,9 +3,9 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from core.excepciones import CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioViolada
-from caja.models import Caja, Pago
+from caja.models import Pago
 from core.rol_utils import es_mozo_o_cajero, es_cajero_o_admin
-from .services import CajaService, PagoService, ReporteService
+from .services import CajaService, PagoService
 
 @login_required
 @user_passes_test(es_mozo_o_cajero)
