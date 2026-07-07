@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from core.rol_utils import es_admin, es_mozo
-from core.excepciones import RecursoNoEncontrado
+from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada, StockInsuficiente
 from .services import InsumoService, RecetaService
 from .models import Insumo
 
@@ -35,8 +35,8 @@ def crear_insumo(request):
                 costo_unitario=request.POST.get('costo_unitario', 0),
             )
             messages.success(request, 'Insumo creado')
-        except Exception as e:
-            messages.error(request, f'Error: {str(e)}')
+        except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
+            messages.error(request, str(e))
     return redirect('gestion_insumos')
 
 @login_required
@@ -60,8 +60,8 @@ def editar_insumo(request, insumo_id):
             )
             messages.success(request, 'Insumo actualizado')
             return redirect('gestion_insumos')
-        except Exception as e:
-            messages.error(request, f'Error: {str(e)}')
+        except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
+            messages.error(request, str(e))
     return render(request, 'inventario/gestion_insumos.html', {
         'editar': insumo,
         'insumos': InsumoService.listar_insumos(),
@@ -110,8 +110,8 @@ def crear_receta(request):
                 })
             RecetaService.crear(nombre_receta, insumos_data)
             messages.success(request, f'Receta "{nombre_receta}" creada')
-        except Exception as e:
-            messages.error(request, f'Error: {str(e)}')
+        except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
+            messages.error(request, str(e))
         return redirect('lista_recetas')
     insumos = InsumoService.listar_insumos()
     return render(request, 'inventario/crear_receta.html', {
@@ -150,10 +150,8 @@ def editar_receta(request, receta_id):
                 insumos_data=insumos_data,
             )
             messages.success(request, 'Receta actualizada')
-        except RecursoNoEncontrado:
-            messages.error(request, 'Receta no encontrada')
-        except Exception as e:
-            messages.error(request, f'Error: {str(e)}')
+        except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
+            messages.error(request, str(e))
         return redirect('lista_recetas')
     insumos = InsumoService.listar_insumos()
     return render(request, 'inventario/crear_receta.html', {

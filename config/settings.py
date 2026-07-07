@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'django_filters',
+    'drf_spectacular',
 
     # Apps del dominio del restaurante
     'core',         # Autenticacion y dashboard
@@ -148,6 +149,12 @@ REST_FRAMEWORK = {
         'anon': '100/day',
         'user': '1000/day',
     },
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Gestión para Restaurantes y Food Service API',
+    'DESCRIPTION': 'API REST del sistema de gestión restaurantera',
+    'VERSION': '1.0.0',
 }
 
 SIMPLE_JWT = {

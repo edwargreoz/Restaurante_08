@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from core.rol_utils import es_admin
-from core.excepciones import RecursoNoEncontrado
+from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
 from inventario.services import RecetaService
 from .services import CategoriaService, PlatoService
 
@@ -60,8 +60,8 @@ def crear_plato(request):
             messages.success(request, 'Plato creado')
         except RecursoNoEncontrado as e:
             messages.error(request, str(e))
-        except Exception as e:
-            messages.error(request, f'Error: {str(e)}')
+        except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
+            messages.error(request, str(e))
     return redirect('gestion_menu')
 
 @login_required
@@ -86,8 +86,8 @@ def editar_plato(request, plato_id):
             )
             messages.success(request, 'Plato actualizado')
             return redirect('gestion_menu')
-        except Exception as e:
-            messages.error(request, f'Error: {str(e)}')
+        except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
+            messages.error(request, str(e))
     categorias = CategoriaService.listar_categorias()
     return render(request, 'menu/gestion_menu.html', {
         'editar': plato, 'categorias': categorias

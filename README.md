@@ -1,20 +1,23 @@
-﻿# Gestión para Restaurantes
+﻿# Gestión para Restaurantes y Food Service
 
-Sistema de gestión integral para restaurantes: mesas, pedidos, inventario, caja, reservas y reportes.
+Sistema web de gestión integral para restaurantes: mesas, pedidos, cocina (KDS),
+caja, inventario, menú y reservas.
+
+## Stack
+
+| Capa          | Tecnología                                    |
+|---------------|-----------------------------------------------|
+| Backend       | Python 3.11 / Django 5.0.6                    |
+| API           | Django REST Framework 3.15.2 + JWT            |
+| Base de datos | PostgreSQL 15                                 |
+| Frontend      | Django Templates + Bootstrap 5.3 CDN          |
+| Caché/WS      | Redis 7 (WebSockets + Caché)                  |
+| Contenedores  | Docker Compose                                |
 
 ## Requisitos
 
 - **Docker** + **Docker Compose** (recomendado), o
 - Python 3.11+, PostgreSQL 15
-
-## Stack
-
-| Capa        | Tecnología                                    |
-|-------------|-----------------------------------------------|
-| Backend     | Django 5.0.6, DRF 3.15.2, SimpleJWT          |
-| Base de datos | PostgreSQL 15                               |
-| Frontend    | Django Templates + Bootstrap 5.3 CDN          |
-| API         | REST en `/api/v1/` con JWT auth               |
 
 ## Inicio rápido (Docker)
 
@@ -24,13 +27,12 @@ docker compose up --build
 
 El servidor inicia en `http://localhost:8000`.
 
-### Crear superusuario
+### Migraciones y superusuario
 
 ```bash
-docker exec -it django_app python manage.py createsuperuser
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py createsuperuser
 ```
-
-Credenciales predefinidas: `RaizaNat` / `Raiza123` (superuser).
 
 ## Inicio rápido (local)
 
@@ -55,33 +57,34 @@ DB_HOST=db
 DB_PORT=5432
 ```
 
+## Documentación API
+
+- Swagger UI: `http://localhost:8000/api/docs/`
+- Schema OpenAPI: `http://localhost:8000/api/schema/`
+
 ## Tests
 
 ```bash
-docker exec django_app python manage.py test tests
+# Con Docker
+docker compose exec web python -m pytest --cov=. --cov-report=term
+
+# Sin Docker
+python -m pytest tests/ --cov=. --cov-report=term
 ```
-
-## API
-
-| Endpoint                    | Método | Auth     |
-|-----------------------------|--------|----------|
-| `/api/v1/auth/token/`       | POST   | —        |
-| `/api/v1/auth/token/refresh/` | POST | —        |
-| `/api/v1/mesas/`            | GET/POST | Mozo   |
-| `/api/v1/comandas/`         | GET/POST | Mozo   |
-| `/api/v1/categorias/`       | GET    | Cualquiera |
-| `/api/v1/platos/`           | GET    | Cualquiera |
-| `/api/v1/insumos/`          | GET    | Admin     |
-| `/api/v1/recetas/`          | GET    | Admin     |
-| `/api/v1/reportes/ventas_turno/` | GET | Cajero |
 
 ## Módulos
 
-- **mesas** — CRUD de mesas, unión de mesas
-- **pedidos** — comandas, lineas, cocina (KDS)
-- **menu** — categorías, platos, recetas
-- **inventario** — insumos, movimientos, unidad de conversión jerárquica
-- **caja** — apertura/cierre de turno, pagos, reportes
-- **reservas** — reservas con unión de mesas
-- **core** — dashboard, usuarios
-- **api** — REST endpoints con DRF ViewSets
+| Módulo       | Descripción                                       |
+|--------------|---------------------------------------------------|
+| **mesas**    | CRUD de mesas, unión de mesas, plano del salón    |
+| **pedidos**  | Comandas, líneas de comanda, cocina (KDS)         |
+| **menu**     | Categorías, platos, recetas                       |
+| **inventario** | Insumos, movimientos, unidad de conversión jerárquica |
+| **caja**     | Apertura/cierre de turno, pagos, reportes         |
+| **reservas** | Reservas con unión de mesas                       |
+| **core**     | Dashboard, usuarios, autenticación                |
+| **api**      | REST endpoints con DRF ViewSets                   |
+
+## Credenciales predefinidas
+
+- **Superuser:** `RaizaNat` / `Raiza123`
