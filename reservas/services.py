@@ -130,7 +130,7 @@ class ReservaService:
 def _notificar_plano():
     try:
         from channels.layers import get_channel_layer
-        from asgiref.sync import async_to_safe
+        from asgiref.sync import async_to_sync as async_to_safe
         channel_layer = get_channel_layer()
         async_to_safe(channel_layer.group_send)(
             'plano', {'type': 'plano_update', 'data': {'action': 'refresh'}}

@@ -8,7 +8,6 @@ from mesas.models import Mesa, UnionMesa
 from pedidos.models import Comanda
 from caja.models import Caja
 from channels.layers import get_channel_layer
-from asgiref.sync import async_to_safe
 
 
 class MesaService:
@@ -163,7 +162,7 @@ class UnionMesaService:
 def _notificar_plano():
     try:
         from channels.layers import get_channel_layer
-        from asgiref.sync import async_to_safe
+        from asgiref.sync import async_to_sync as async_to_safe
         channel_layer = get_channel_layer()
         async_to_safe(channel_layer.group_send)(
             'plano', {'type': 'plano_update', 'data': {'action': 'refresh'}}
