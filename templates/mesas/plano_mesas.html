@@ -16,64 +16,116 @@
         <span class="badge bg-danger">Ocupada</span>
         <span class="badge bg-warning text-dark">Reservada</span>
         <span class="badge bg-secondary">Limpieza</span>
-        <a href="{% url 'unir_mesas' %}" class="btn btn-sm ms-3" style="border: 1px solid #b77a2f; color: #b77a2f; background: #fdf6ee;">Unir Mesas</a>
         {% if user.is_superuser %}
         <a href="{% url 'lista_mesas_admin' %}" class="btn btn-sm btn-dark ms-2">Gestión Mesas</a>
         {% endif %}
     </div>
 </div>
 
-<div class="row">
-    {% for mesa in mesas %}
-    <div class="col-md-3 mb-3">
-        <div class="card card-mesa
-            {% if mesa.id in union_mesas_ids %}border-dark
-            {% elif mesa.estado == 'LIBRE' %}border-success
-            {% elif mesa.estado == 'OCUPADA' %}border-danger                    
-            {% elif mesa.estado == 'RESERVADA' %}border-warning                                        
-            {% else %}border-secondary{% endif %}">
-            <a href="{% url 'detalle_mesa' mesa.id %}" class="card-link-mesa d-block text-decoration-none text-dark">
-                <div class="card-body text-center">
-                    <h5 class="card-title">Mesa {{ mesa.numero }}</h5>
-                    {% if mesa.estado == 'RESERVADA' %}
-                        <img src="{% static 'icons/mesaReservada.png' %}" alt="Reservada" height="30" class="mb-1">
-                    {% endif %}
-                    <p class="card-text">Capacidad: {{ mesa.capacidad }}</p>
-                    <p class="card-text">
-                        <small class="text-muted">{{ mesa.get_zona_display }}</small>
-                    </p>
-                    {% if mesa.id in union_mesas_ids %}
-                        <span class="badge mb-1" style="background:#b77a2f;color:#fff;">
-                            {{ union_labels|dict_key:mesa.id }}
-                        </span>
-                    {% endif %}
-                    <span class="badge
-                        {% if mesa.estado == 'LIBRE' %}bg-success
-                        {% elif mesa.estado == 'OCUPADA' %}bg-danger                    
-                        {% elif mesa.estado == 'RESERVADA' %}bg-warning text-dark                                        
-                        {% else %}bg-secondary{% endif %}">
-                        {{ mesa.get_estado_display }}   
-                    </span>
+<div class="plano-container">
+    <div class="row">
+        {% for item in items %}
+            {% if item.type == 'union' %}
+            <div class="col-md-3 mb-3">
+                <div class="card card-mesa mesa-card union-card
+                     {% if item.estado == 'LIBRE' %}border-success
+                     {% elif item.estado == 'OCUPADA' %}border-danger
+                     {% elif item.estado == 'RESERVADA' %}border-warning
+                     {% else %}border-secondary{% endif %}"
+                     data-mesa-id="{{ item.mesas.0.id }}"
+                     data-union-id="{{ item.union_id }}"
+                     data-mesa-numero="{{ item.nums.0 }}"
+                     data-mesa-zona="{{ item.zona }}">
+                    <a href="{% url 'detalle_mesa' item.mesas.0.id %}" class="card-link-mesa d-block text-decoration-none text-dark">
+                        <div class="card-body text-center">
+                            <div class="union-card-icon">
+                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#b77a2f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
+                                </svg>
+                            </div>
+                            <h5 class="card-title union-card-title">
+                                {% for num in item.nums %}Mesa {{ num }}{% if not forloop.last %} + {% endif %}{% endfor %}
+                            </h5>
+                            <p class="card-text union-card-capacity">Capacidad total: {{ item.capacidad }} pax</p>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    {% if item.zona == 'SALON' %}Salon Principal
+                                    {% elif item.zona == 'TERRAZA' %}Terraza
+                                    {% elif item.zona == 'VIP' %}VIP
+                                    {% else %}{{ item.zona }}{% endif %}
+                                </small>
+                            </p>
+                            <span class="badge
+                                {% if item.estado == 'LIBRE' %}bg-success
+                                {% elif item.estado == 'OCUPADA' %}bg-danger
+                                {% elif item.estado == 'RESERVADA' %}bg-warning text-dark
+                                {% else %}bg-secondary{% endif %}">
+                                {{ item.estado }}
+                            </span>
+                        </div>
+                    </a>
                 </div>
-            </a>
-            {% if mesa.estado == 'LIMPIEZA' %}
-            <div class="card-footer bg-transparent border-0 text-center pb-3 pt-0">
-                <form action="{% url 'marcar_mesa_libre' mesa.id %}" method="post">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
-                        <i class="bi bi-check-circle"></i> Marcar Libre
-                    </button>
-                </form>
+            </div>
+            {% else %}
+            <div class="col-md-3 mb-3">
+                <div class="card card-mesa mesa-card
+                     {% if item.mesa.id in union_mesas_ids %}border-dark
+                     {% elif item.mesa.estado == 'LIBRE' %}border-success
+                     {% elif item.mesa.estado == 'OCUPADA' %}border-danger
+                     {% elif item.mesa.estado == 'RESERVADA' %}border-warning
+                     {% else %}border-secondary{% endif %}"
+                     data-mesa-id="{{ item.mesa.id }}"
+                     data-mesa-numero="{{ item.mesa.numero }}"
+                     data-mesa-zona="{{ item.mesa.zona }}">
+                    <a href="{% url 'detalle_mesa' item.mesa.id %}" class="card-link-mesa d-block text-decoration-none text-dark">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">Mesa {{ item.mesa.numero }}</h5>
+                            {% if item.mesa.estado == 'RESERVADA' %}
+                                <img src="{% static 'icons/mesaReservada.png' %}" alt="Reservada" height="30" class="mb-1">
+                            {% endif %}
+                            <p class="card-text">Capacidad: {{ item.mesa.capacidad }}</p>
+                            <p class="card-text">
+                                <small class="text-muted">{{ item.mesa.get_zona_display }}</small>
+                            </p>
+                            {% if item.mesa.id in union_mesas_ids %}
+                                <span class="union-badge">{{ union_labels|dict_key:item.mesa.id }}</span>
+                            {% endif %}
+                            <span class="badge
+                                {% if item.mesa.estado == 'LIBRE' %}bg-success
+                                {% elif item.mesa.estado == 'OCUPADA' %}bg-danger
+                                {% elif item.mesa.estado == 'RESERVADA' %}bg-warning text-dark
+                                {% else %}bg-secondary{% endif %}">
+                                {{ item.mesa.get_estado_display }}
+                            </span>
+                        </div>
+                    </a>
+                    {% if item.mesa.estado == 'LIMPIEZA' %}
+                    <div class="card-footer bg-transparent border-0 text-center pb-3 pt-0">
+                        <form action="{% url 'marcar_mesa_libre' item.mesa.id %}" method="post">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
+                                <i class="bi bi-check-circle"></i> Marcar Libre
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
             {% endif %}
-        </div>    
-    </div>
-    {% empty %}
-    <div class="col-12">
-        <div class="alert alert-info">
-            No hay mesas registradas, agregalas desde el panel de administración.
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                No hay mesas registradas, agregalas desde el panel de administración.
+            </div>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 </div>
+
+{% endblock %}
+
+{% block extra_js %}
+{% csrf_token %}
+<script src="{% static 'js/mesas/plano_websocket.js' %}"></script>
+<script src="{% static 'js/mesas/drag_drop_unir.js' %}"></script>
 {% endblock %}

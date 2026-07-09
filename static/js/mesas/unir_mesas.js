@@ -2,7 +2,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const cards = document.querySelectorAll('.union-mesa-card');
     const checkboxes = document.querySelectorAll('.union-mesa-card input[type="checkbox"]');
 
-    // --- Validación de zonas al seleccionar mesas para unir ---
     function actualizarEstadoZonas() {
         const seleccionadas = document.querySelectorAll('.union-mesa-card input[type="checkbox"]:checked:not(:disabled)');
         let zonaSeleccionada = null;
@@ -12,7 +11,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         checkboxes.forEach(function (cb) {
-            if (cb.disabled) return; // Ya unida, no tocar
+            if (cb.disabled) return;
 
             const card = cb.closest('.union-mesa-card');
             const zona = cb.getAttribute('data-zona');
@@ -49,7 +48,6 @@ document.addEventListener('DOMContentLoaded', function () {
         cb.addEventListener('change', actualizarEstadoZonas);
     });
 
-    // --- Filtrar dropdown de "Agregar mesa a unión" por zona ---
     const selects = document.querySelectorAll('.select-agregar-mesa');
     selects.forEach(function (select) {
         const zonaUnion = select.getAttribute('data-zona-union');
@@ -62,4 +60,22 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
+    // WebSocket para actualizar lista de uniones en tiempo real
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/plano/`;
+    let socket = new WebSocket(wsUrl);
+
+    socket.onmessage = function (e) {
+        const data = JSON.parse(e.data);
+        if (data.action === 'refresh') {
+            setTimeout(function () {
+                location.reload();
+            }, 500);
+        }
+    };
+
+    socket.onclose = function () {
+        setTimeout(function () { location.reload(); }, 3000);
+    };
 });

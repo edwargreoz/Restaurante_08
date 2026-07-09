@@ -1,5 +1,3 @@
-<!--templates/mesas/detalle_mesa.html-->
-
 {% extends 'base.html' %}
 {% load static %}
 {% block title %}Mesa {{ mesa.numero }}{% endblock %}
@@ -9,75 +7,134 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Mesa {{ mesa.numero }}</h1>
-    <a href="{% url 'plano_mesas' %}" class="btn btn-secondary">Volver al Plano</a>
-</div>
-
-<div class="row">
-        <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                Informacion de la Mesa
-            </div>
-            <div class="card-body">
-                <p><strong>Numero:</strong> {{ mesa.numero }}</p>
-                <p><strong>Capacidad:</strong> {{ mesa.capacidad }} personas</p>
-                <p><strong>Zona:</strong> {{ mesa.get_zona_display }}</p>
-                <p><strong>Estado:</strong>
-                    <span class="badge
-                        {% if mesa.estado == 'LIBRE' %}bg-success
-                        {% elif mesa.estado == 'OCUPADA' %}bg-danger
-                        {% elif mesa.estado == 'RESERVADA' %}bg-warning text-dark
-                        {% else %}bg-secondary{% endif %}">
-                        {{ mesa.get_estado_display }}
-                    </span>
-                </p>
-                {% if union_activa %}
-                <p><strong>Unión activa:</strong></p>
-                <div class="union-item" style="background:#fdf6ee;border-left:4px solid #b77a2f;padding:0.6rem 1rem;border-radius:8px;margin-top:0.3rem;">
-                    <span style="font-weight:600;">
-                        {% for m in union_activa.mesas.all %}
-                            Mesa {{ m.numero }}{% if not forloop.last %} + {% endif %}
-                        {% endfor %}
-                    </span>
-                    <small class="d-block text-muted">Capacidad total: {{ union_activa.capacidad_total }} personas</small>
-                </div>
-                {% endif %}
-            </div>
+<div class="detalle-page-wrapper">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <a href="{% url 'plano_mesas' %}" class="btn-back-plane">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Volver
+            </a>
+            <h1 class="detalle-title">
+                {% if union_activa %}{% for m in union_activa.mesas.all %}Mesa {{ m.numero }}{% if not forloop.last %} + {% endif %}{% endfor %}{% else %}Mesa {{ mesa.numero }}{% endif %}
+            </h1>
         </div>
+        <span class="detalle-estado-badge
+            {% if mesa.estado == 'LIBRE' %}estado-libre
+            {% elif mesa.estado == 'OCUPADA' %}estado-ocupada
+            {% elif mesa.estado == 'RESERVADA' %}estado-reservada
+            {% else %}estado-limpieza{% endif %}">
+            <span class="detalle-estado-dot"></span>
+            {{ mesa.get_estado_display }}
+        </span>
     </div>
 
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-            Comanda Activa
+    <div class="row g-4">
+        <div class="col-md-5">
+            <div class="detalle-card mesa-info-card">
+                <div class="mesa-info-header">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                    </svg>
+                    Informacion de la Mesa
+                </div>
+                <div class="detalle-card-body">
+                    <div class="mesa-info-grid">
+                        <div class="mesa-info-item">
+                            <span class="mesa-info-label">Numero</span>
+                            <span class="mesa-info-value">#{{ mesa.numero }}</span>
+                        </div>
+                        <div class="mesa-info-item">
+                            <span class="mesa-info-label">Capacidad</span>
+                            <span class="mesa-info-value">{{ mesa.capacidad }} <small>personas</small></span>
+                        </div>
+                        <div class="mesa-info-item">
+                            <span class="mesa-info-label">Zona</span>
+                            <span class="mesa-info-value">{{ mesa.get_zona_display }}</span>
+                        </div>
+                        <div class="mesa-info-item">
+                            <span class="mesa-info-label">Union</span>
+                            <span class="mesa-info-value">
+                                {% if union_activa %}
+                                <span class="union-indicator">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b77a2f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
+                                    </svg>
+                                    {% for m in union_activa.mesas.all %}
+                                        Mesa {{ m.numero }}{% if not forloop.last %} + {% endif %}
+                                    {% endfor %}
+                                </span>
+                                {% else %}
+                                <span class="text-muted">Sin union</span>
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    {% if union_activa %}
+                    <div class="p-3 border-top">
+                        <form method="POST" action="{% url 'deshacer_union' union_activa.id %}" onsubmit="return confirm('¿Separar mesas? Se anularán las comandas activas y se liberarán las mesas.')">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2 py-2 fw-bold" style="border-radius:10px;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                </svg>
+                                Separar mesas
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            <div class="card-body">
+        </div>
+
+        <div class="col-md-7">
+            <div class="detalle-card comanda-card">
+                <div class="comanda-card-header">
+                    <div class="comanda-card-header-left">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                        Comanda
+                    </div>
                     {% if comanda_activa %}
-                    <p><strong>Mozo:</strong> {{ comanda_activa.mozo.get_full_name|default:comanda_activa.mozo.username }}</p>
-                    <p><strong>Estado:</strong>
-                    <span class="badge bg-primary">{{ comanda_activa.get_estado_display }}</span>
-                    </p>
-                    <div class="table-wrapper">
-                        <table class="table table-comanda">
+                    <span class="badge bg-primary fs-6 px-3 py-1">{{ comanda_activa.get_estado_display }}</span>
+                    {% endif %}
+                </div>
+                <div class="detalle-card-body p-0">
+                    {% if comanda_activa %}
+                    <div class="comanda-mozo-bar">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        Mozo: <strong>{{ comanda_activa.mozo.get_full_name|default:comanda_activa.mozo.username }}</strong>
+                    </div>
+                    <div class="comanda-table-wrapper">
+                        <table class="comanda-table">
                             <thead>
                                 <tr>
-                                    <th class="col-plato">Plato</th>
-                                    <th class="col-cant">Cant.</th>
-                                    <th class="col-precio">Precio</th>
-                                    <th class="col-subtotal">Subtotal</th>
-                                    <th class="col-estado">Estado</th>
+                                    <th>Plato</th>
+                                    <th>Cant.</th>
+                                    <th>Precio</th>
+                                    <th>Subtotal</th>
+                                    <th>Estado</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for linea in comanda_activa.lineas.all %}
-                                <tr>
-                                    <td class="col-plato">{{ linea.plato.nombre }}</td>
-                                    <td class="col-cant">{{ linea.cantidad }}</td>
-                                    <td class="col-precio">S/ {{ linea.plato.precio }}</td>
-                                    <td class="col-subtotal">S/ {{ linea.subtotal }}</td>
-                                    <td class="col-estado">
+                                <tr class="comanda-row">
+                                    <td class="comanda-plato">{{ linea.plato.nombre }}</td>
+                                    <td class="comanda-cant">{{ linea.cantidad }}</td>
+                                    <td class="comanda-precio">S/ {{ linea.plato.precio }}</td>
+                                    <td class="comanda-subtotal">S/ {{ linea.subtotal }}</td>
+                                    <td class="comanda-estado">
                                         <span class="badge badge-estado
                                             {% if linea.estado == 'PENDIENTE' %}bg-warning text-dark
                                             {% elif linea.estado == 'EN_PREP' %}bg-info text-white
@@ -89,91 +146,127 @@
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="5" class="empty-row">Sin platos agregados</td>
+                                    <td colspan="5" class="comanda-empty">Sin platos agregados</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                             <tfoot>
-                                <tr>
-                                    <th colspan="3">Total</th>
-                                    <th>S/ {{ comanda_activa.total }}</th>
-                                    <th></th>
+                                <tr class="comanda-total-row">
+                                    <td colspan="3">Total</td>
+                                    <td>S/ {{ comanda_activa.total }}</td>
+                                    <td></td>
                                 </tr>
                             </tfoot>
                         </table>
                     </div>
-                    <div class="d-flex gap-2 mt-3 flex-wrap">
+                    <div class="comanda-actions">
                         {% if comanda_activa.estado == 'LISTA' %}
-                        <a href="{% url 'cobrar_comanda' comanda_activa.id %}" class="btn btn-success fw-bold px-4">
+                        <a href="{% url 'cobrar_comanda' comanda_activa.id %}" class="btn-cobrar">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                <line x1="1" y1="10" x2="23" y2="10"></line>
+                            </svg>
                             Ir a Cobrar
                         </a>
                         {% else %}
-                        <span class="btn btn-secondary fw-bold px-4 disabled" title="Todos los platos deben estar listos para poder cobrar">
+                        <span class="btn-cobrar-disabled" title="Todos los platos deben estar listos para poder cobrar">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                                <line x1="1" y1="10" x2="23" y2="10"></line>
+                            </svg>
                             Ir a Cobrar
                         </span>
                         {% endif %}
-                        <form method="POST" action="{% url 'anular_comanda' comanda_activa.id %}" style="display:inline;">
+                        <form method="POST" action="{% url 'anular_comanda' comanda_activa.id %}" class="d-inline">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-danger fw-bold px-4" onclick="return confirm('¿Anular comanda? Se liberará la mesa y se restaurará el stock.')">
+                            <button type="submit" class="btn-anular" onclick="return confirm('¿Anular comanda? Se liberara la mesa y se restaurara el stock.')">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                                </svg>
                                 Cancelar comanda
                             </button>
                         </form>
                     </div>
                     {% else %}
-                    <p class="text-muted">Sin comanda activa</p>
-                    <form method="POST" action="{% url 'abrir_comanda' mesa.id %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-success">Abrir Comanda</button>
-                    </form>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-{% if comanda_activa %}
-
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">Agregar Plato a la Comanda</div>
-            <div class="card-body">
-                <form method="POST" action="{% url 'agregar_plato_comanda' comanda_activa.id %}">
-                    {% csrf_token %}
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Plato</label>
-                            <select name="plato_id" class="form-select" required>
-                                <option value="">Seleccionar...</option>
-                                {% for categoria in categorias %}
-                                <optgroup label="{{ categoria.nombre }}">
-                                    {% for plato in categoria.platos.all %}
-                                    <option value="{{ plato.id }}" {% if not plato.disponible %}disabled{% endif %}>
-                                        {{ plato.nombre }} - S/ {{ plato.precio }}
-                                    </option>
-                                    {% endfor %}
-                                </optgroup>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-2 mb-3">
-                            <label class="form-label">Cantidad</label>
-                            <input type="number" name="cantidad" class="form-control" value="1" min="1" required>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Observación</label>
-                            <input type="text" name="observacion" class="form-control" placeholder="ej: sin cebolla">
-                        </div>
-                        <div class="col-md-2 mb-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">Agregar</button>
-                        </div>
+                    <div class="comanda-empty-state">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#adb5bd" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        <p>Sin comanda activa</p>
+                        <form method="POST" action="{% url 'abrir_comanda' mesa.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-open-comanda">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="9 11 12 14 22 4"></polyline>
+                                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                                </svg>
+                                Abrir Comanda
+                            </button>
+                        </form>
                     </div>
-                </form>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
+
+    {% if comanda_activa %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="detalle-card add-plato-card">
+                <div class="add-plato-header">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="16"></line>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    Agregar Plato
+                </div>
+                <div class="detalle-card-body">
+                    <form method="POST" action="{% url 'agregar_plato_comanda' comanda_activa.id %}">
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <div class="col-md-5">
+                                <label class="form-label fw-semibold">Plato</label>
+                                <select name="plato_id" class="form-select form-select-lg" required>
+                                    <option value="">Seleccionar...</option>
+                                    {% for categoria in categorias %}
+                                    <optgroup label="{{ categoria.nombre }}">
+                                        {% for plato in categoria.platos.all %}
+                                        <option value="{{ plato.id }}" {% if not plato.disponible %}disabled{% endif %}>
+                                            {{ plato.nombre }} - S/ {{ plato.precio }}
+                                        </option>
+                                        {% endfor %}
+                                    </optgroup>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label fw-semibold">Cantidad</label>
+                                <input type="number" name="cantidad" class="form-control form-control-lg" value="1" min="1" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Observacion</label>
+                                <input type="text" name="observacion" class="form-control form-control-lg" placeholder="ej: sin cebolla">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn-add-plato w-100">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Agregar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
-
-{% endif %}
-
 {% endblock %}

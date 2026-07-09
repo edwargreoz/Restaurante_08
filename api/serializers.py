@@ -44,21 +44,16 @@ class MesaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Mesa
         fields = '__all__'
+
 class UnionMesaSerializer(serializers.ModelSerializer):
-    """
-    Serializer para UnionMesa.
-    Incluye las mesas como campo anidado de solo lectura
-    y expone capacidad_total como campo calculado.
-    """
-    mesas = MesaSerializer(
-        many=True,
-        read_only=True,
-        source='mesas'
+    mesas = MesaSerializer(many=True, read_only=True)
+    mesas_ids = serializers.PrimaryKeyRelatedField(
+        many=True, write_only=True, queryset=Mesa.activos.all(), source='mesas'
     )
     capacidad_total = serializers.SerializerMethodField()
     class Meta:
         model = UnionMesa
-        fields = ['id', 'mesas', 'activa', 'fecha_creacion', 'capacidad_total']
+        fields = ['id', 'mesas', 'mesas_ids', 'activo', 'creado_en', 'capacidad_total']
     def get_capacidad_total(self, obj):
         return obj.capacidad_total()
 class LineaComandaSerializer(serializers.ModelSerializer):
@@ -141,7 +136,7 @@ class ReservaSerializer(serializers.ModelSerializer):
         fields = ['id', 'mesa', 'mesa_numero', 'union_mesa', 'union_mesa_nombre',
                   'cliente_nombre', 'cliente_contacto',
                   'fecha', 'hora_inicio', 'hora_fin', 'num_personas',
-                  'observacion', 'activa', 'creado_por', 'creado_por_nombre', 'fecha_creacion']
+                  'observacion', 'activo', 'creado_por', 'creado_por_nombre', 'creado_en']
 
     def get_union_mesa_nombre(self, obj):
         if obj.union_mesa:

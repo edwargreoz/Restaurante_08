@@ -43,7 +43,7 @@
                 <td>{{ reserva.fecha|date:"d/m/Y" }} <br><small class="text-muted" style="color: #a0aec0;">{{ reserva.hora_inicio|time:"h:i A" }} - {{ reserva.hora_fin|time:"h:i A" }}</small></td>
                 <td>{{ reserva.num_personas }} pax</td>
                 <td>
-                    {% if reserva.activa %}
+                    {% if reserva.activo %}
                         <span class="badge badge-active">Activa</span>
                     {% elif reserva.finalizada %}
                         <span class="badge badge-completed">Finalizada</span>
@@ -53,7 +53,7 @@
                 </td>
                 <td>
                     <div class="d-flex gap-2">
-                        {% if reserva.activa %}
+                        {% if reserva.activo %}
                             <a href="{% url 'editar_reserva' reserva.id %}" class="btn-cancel" style="border-color: #f39c12; color: #f39c12; text-decoration: none; padding: 4px 8px; line-height: normal; display: inline-block;">Editar</a>
                             <form action="{% url 'finalizar_reserva' reserva.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de finalizar esta reserva?');">
                                 {% csrf_token %}

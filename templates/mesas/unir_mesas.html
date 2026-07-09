@@ -19,7 +19,7 @@
     <div class="col-md-7">
         <div class="card">
             <div class="card-header">
-                <strong>Selecciona las mesas a unir (mínimo 2)</strong>
+                <strong>Arrastra una mesa sobre otra para unirlas</strong>
             </div>
 
             <div class="card-body">
@@ -29,12 +29,13 @@
                     <div class="row">
                         {% for mesa in mesas %}
                         <div class="col-md-4 col-6 mb-2">
-                            <label class="card card-mesa union-mesa-card p-3 text-center
-                                {% if mesa.id in union_mesas_ids %}border-dark opacity-50
-                                {% elif mesa.estado == 'LIBRE' %}border-success
-                                {% elif mesa.estado == 'OCUPADA' %}border-danger
-                                {% elif mesa.estado == 'RESERVADA' %}border-warning
-                                {% else %}border-secondary{% endif %}">
+                            <div class="card card-mesa union-mesa-card mesa-card p-3 text-center"
+                                 data-mesa-id="{{ mesa.id }}"
+                                 {% if mesa.id in union_mesas_ids %}style="border-color:#6c757d;opacity:0.5;"
+                                 {% elif mesa.estado == 'LIBRE' %}style="border-color:#198754;"
+                                 {% elif mesa.estado == 'OCUPADA' %}style="border-color:#dc3545;"
+                                 {% elif mesa.estado == 'RESERVADA' %}style="border-color:#ffc107;"
+                                 {% else %}style="border-color:#6c757d;{% endif %}">
 
                                 <input type="checkbox" name="mesas" value="{{ mesa.id }}"
                                     data-zona="{{ mesa.zona }}"
@@ -59,7 +60,7 @@
                                         {{ mesa.get_estado_display }}
                                     </span>
                                 {% endif %}
-                            </label>
+                            </div>
                         </div>
                         {% endfor %}
                     </div>
@@ -91,7 +92,7 @@
 
                             <span class="union-item-detalle">
                                 Capacidad total: {{ union.capacidad_total }} personas
-                                · {{ union.fecha_creacion|date:"d/m/Y H:i" }}
+                                · {{ union.creado_en|date:"d/m/Y H:i" }}
                             </span>
                         </div>
 
