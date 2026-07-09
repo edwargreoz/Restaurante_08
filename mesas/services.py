@@ -2,24 +2,22 @@ from django.db import transaction
 from django.utils import timezone
 from core.excepciones import (
     RecursoNoEncontrado, MesaConComandaActiva,
-    CapacidadExcedida, UnionInvalida, CajaNoAbierta,
+    CapacidadExcedida, UnionInvalida, CajaNoAbierta, ReglaNegocioViolada,
 )
 from mesas.models import Mesa, UnionMesa
 from pedidos.models import Comanda
 from caja.models import Caja
-from channels.layers import get_channel_layer
 
 
 class MesaService:
     @staticmethod
     @transaction.atomic
     def obtener_o_crear_comanda_activa(mesa_id: int, usuario) -> Comanda:
-        from pedidos.services import ComandaService
-        return ComandaService.abrir(mesa_id, usuario)
+        return Comanda.abrir(mesa_id, usuario)
 
     @staticmethod
     def cambiar_estado(mesa_id: int, nuevo_estado: str) -> Mesa:
-        mesa = Mesa.objects.filter(id=mesa_id, activo=True).first()
+        mesa = Mesa.activos.filter(id=mesa_id).first()
         if not mesa:
             raise RecursoNoEncontrado('Mesa no encontrada')
         mesa.estado = nuevo_estado
@@ -29,15 +27,15 @@ class MesaService:
 
     @staticmethod
     def marcar_libre(mesa_id: int) -> Mesa:
-        mesa = Mesa.objects.filter(id=mesa_id, activo=True).first()
+        mesa = Mesa.activos.filter(id=mesa_id).first()
         if not mesa:
             raise RecursoNoEncontrado('Mesa no encontrada')
         if mesa.estado != 'LIMPIEZA':
             raise ReglaNegocioViolada('Solo se puede marcar libre una mesa en limpieza')
-        tiene_reserva = mesa.reservas.filter(activa=True).exists()
-        union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
+        tiene_reserva = mesa.reservas.filter(activo=True).exists()
+        union = UnionMesa.activos.filter(mesas=mesa).first()
         if union:
-            tiene_reserva = tiene_reserva or union.reservas.filter(activa=True).exists()
+            tiene_reserva = tiene_reserva or union.reservas.filter(activo=True).exists()
         mesa.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
         mesa.save(update_fields=['estado'])
         _notificar_plano()
@@ -51,7 +49,7 @@ class UnionMesaService:
         if len(mesa_ids) < 2:
             raise UnionInvalida('Selecciona al menos 2 mesas')
 
-        mesas = Mesa.objects.filter(id__in=mesa_ids, activo=True)
+        mesas = Mesa.activos.filter(id__in=mesa_ids)
         if mesas.count() < 2:
             raise UnionInvalida('Las mesas seleccionadas no existen')
 
@@ -63,8 +61,8 @@ class UnionMesaService:
             raise UnionInvalida('No puedes unir mesas de diferentes zonas')
 
         selected_ids = set(m.id for m in mesas)
-        uniones_activas = UnionMesa.objects.filter(activa=True).prefetch_related('mesas')
-        for u in uniones_activas:
+        uniones_activas = UnionMesa.activos.prefetch_related('mesas')
+        for u in uniones_activos:
             union_ids = set(m.id for m in u.mesas.all())
             if union_ids == selected_ids:
                 raise UnionInvalida('Ya existe una unión activa con esas mesas')
@@ -77,16 +75,15 @@ class UnionMesaService:
             mesa_id__in=mesa_ids,
             estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
         )
-        if comandas_activas.exists():
+        if comandas_activos.exists():
             for m in mesas:
                 if m.estado == 'LIBRE':
                     m.estado = 'OCUPADA'
                     m.save(update_fields=['estado'])
-        if comandas_activas.count() >= 2:
-            principal = comandas_activas.first()
-            from pedidos.services import ComandaService
-            for otras in comandas_activas[1:]:
-                ComandaService.fusionar(principal.id, otras.id)
+        if comandas_activos.count() >= 2:
+            principal = comandas_activos.first()
+            for otras in comandas_activos[1:]:
+                principal.fusionar(otras)
 
         _notificar_plano()
         return union
@@ -94,10 +91,10 @@ class UnionMesaService:
     @staticmethod
     @transaction.atomic
     def agregar_mesa(union_id: int, mesa_id: int, usuario) -> UnionMesa:
-        union = UnionMesa.objects.filter(id=union_id, activa=True).first()
+        union = UnionMesa.activos.filter(id=union_id).first()
         if not union:
             raise RecursoNoEncontrado('Unión no encontrada')
-        mesa = Mesa.objects.filter(id=mesa_id, activo=True).first()
+        mesa = Mesa.activos.filter(id=mesa_id).first()
         if not mesa:
             raise RecursoNoEncontrado('Mesa no encontrada')
 
@@ -123,9 +120,8 @@ class UnionMesaService:
                 raise CajaNoAbierta('No hay un turno de caja abierto')
             mesa.estado = 'OCUPADA'
             mesa.save(update_fields=['estado'])
-            from pedidos.services import ComandaService
-            comanda_nueva = ComandaService.abrir(mesa.id, usuario)
-            ComandaService.fusionar(comanda_union.id, comanda_nueva.id)
+            comanda_nueva = Comanda.abrir(mesa.id, usuario)
+            comanda_union.fusionar(comanda_nueva)
 
         _notificar_plano()
         return union
@@ -133,27 +129,26 @@ class UnionMesaService:
     @staticmethod
     @transaction.atomic
     def deshacer(union_id: int, usuario) -> None:
-        union = UnionMesa.objects.filter(id=union_id, activa=True).first()
+        union = UnionMesa.activos.filter(id=union_id).first()
         if not union:
             raise RecursoNoEncontrado('Unión no encontrada')
         if union.esta_reservada():
             raise UnionInvalida('No puedes deshacer una unión con reserva activa')
 
-        from pedidos.services import ComandaService
         mesa_ids = [m.id for m in union.mesas.all()]
         comandas_activas = Comanda.objects.filter(
             mesa_id__in=mesa_ids,
             estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
         )
         errores = []
-        for comanda in comandas_activas:
+        for comanda in comandas_activos:
             try:
-                ComandaService.anular(comanda.id, usuario)
+                comanda.anular(usuario=usuario)
             except Exception as e:
                 errores.append(str(e))
 
-        union.activa = False
-        union.save(update_fields=['activa'])
+        union.activo = False
+        union.save(update_fields=['activo', 'actualizado_en'])
         _notificar_plano()
         if errores:
             raise UnionInvalida('; '.join(errores))

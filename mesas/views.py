@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
+from django.core.exceptions import ValidationError as DjangoValidationError
 from core.rol_utils import es_mozo, es_admin
 from core.excepciones import (
     RecursoNoEncontrado, UnionInvalida, ReglaNegocioViolada, CajaNoAbierta,
@@ -70,7 +71,7 @@ def abrir_comanda(request, mesa_id):
         try:
             MesaService.obtener_o_crear_comanda_activa(mesa_id, request.user)
             messages.success(request, 'Comanda abierta')
-        except ReglaNegocioViolada as e:
+        except (ReglaNegocioViolada, DjangoValidationError) as e:
             messages.error(request, str(e))
     return redirect('detalle_mesa', mesa_id=mesa_id)
 
@@ -90,10 +91,9 @@ def anular_comanda(request, comanda_id):
     comanda = get_object_or_404(Comanda, id=comanda_id)
     if request.method == 'POST':
         try:
-            from pedidos.services import ComandaService
-            ComandaService.anular(comanda.id, request.user)
+            comanda.anular(usuario=request.user)
             messages.success(request, 'Comanda anulada, mesa liberada')
-        except ReglaNegocioViolada as e:
+        except (ReglaNegocioViolada, DjangoValidationError) as e:
             messages.error(request, str(e))
     return redirect('detalle_mesa', mesa_id=comanda.mesa.id)
 
