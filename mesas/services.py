@@ -62,7 +62,7 @@ class UnionMesaService:
 
         selected_ids = set(m.id for m in mesas)
         uniones_activas = UnionMesa.activos.prefetch_related('mesas')
-        for u in uniones_activos:
+        for u in uniones_activas:
             union_ids = set(m.id for m in u.mesas.all())
             if union_ids == selected_ids:
                 raise UnionInvalida('Ya existe una unión activa con esas mesas')
@@ -75,14 +75,14 @@ class UnionMesaService:
             mesa_id__in=mesa_ids,
             estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
         )
-        if comandas_activos.exists():
+        if comandas_activas.exists():
             for m in mesas:
                 if m.estado == 'LIBRE':
                     m.estado = 'OCUPADA'
                     m.save(update_fields=['estado'])
-        if comandas_activos.count() >= 2:
-            principal = comandas_activos.first()
-            for otras in comandas_activos[1:]:
+        if comandas_activas.count() >= 2:
+            principal = comandas_activas.first()
+            for otras in comandas_activas[1:]:
                 principal.fusionar(otras)
 
         _notificar_plano()
@@ -141,7 +141,7 @@ class UnionMesaService:
             estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
         )
         errores = []
-        for comanda in comandas_activos:
+        for comanda in comandas_activas:
             try:
                 comanda.anular(usuario=usuario)
             except Exception as e:
