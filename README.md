@@ -11,13 +11,13 @@ caja, inventario, menú y reservas.
 | API           | Django REST Framework 3.15.2 + JWT            |
 | Base de datos | PostgreSQL 15                                 |
 | Frontend      | Django Templates + Bootstrap 5.3 CDN          |
-| Caché/WS      | Redis 7 (WebSockets + Caché)                  |
+| Caché/WS      | Redis 7 + Django Channels 4                   |
 | Contenedores  | Docker Compose                                |
 
 ## Requisitos
 
 - **Docker** + **Docker Compose** (recomendado), o
-- Python 3.11+, PostgreSQL 15
+- Python 3.11+, PostgreSQL 15, Redis 7
 
 ## Inicio rápido (Docker)
 
@@ -42,20 +42,33 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-Requiere PostgreSQL corriendo con las credenciales del `.env`.
+Requiere PostgreSQL y Redis corriendo con las credenciales del `.env`.
 
 ## Variables de entorno (`.env`)
 
 ```env
-SECRET_KEY=clave-secreta
+SECRET_KEY=tu-clave-secreta-aqui
 DEBUG=True
+ALLOWED_HOSTS=*
+
 DB_ENGINE=django.db.backends.postgresql
 DB_NAME=restaurant_db
 DB_USER=restaurant_user
 DB_PASSWORD=restaurant_pass
 DB_HOST=db
 DB_PORT=5432
+
+REDIS_HOST=redis
+REDIS_PORT=6379
 ```
+
+## WebSockets
+
+| Endpoint                     | Descripción                              |
+|------------------------------|------------------------------------------|
+| `ws://localhost:8000/ws/kds/` | Actualizaciones en tiempo real del KDS   |
+| `ws://localhost:8000/ws/plano/` | Estado de mesas en tiempo real          |
+| `ws://localhost:8000/ws/comanda/<id>/` | Actualizaciones de una comanda específica |
 
 ## Documentación API
 
@@ -74,16 +87,77 @@ python -m pytest tests/ --cov=. --cov-report=term
 
 ## Módulos
 
-| Módulo       | Descripción                                       |
-|--------------|---------------------------------------------------|
-| **mesas**    | CRUD de mesas, unión de mesas, plano del salón    |
-| **pedidos**  | Comandas, líneas de comanda, cocina (KDS)         |
-| **menu**     | Categorías, platos, recetas                       |
+| Módulo         | Descripción                                       |
+|----------------|---------------------------------------------------|
+| **utils**      | ModeloBase con soft delete y ManagerActivos       |
+| **mesas**      | CRUD de mesas, unión de mesas, plano del salón    |
+| **pedidos**    | Comandas, líneas de comanda, cocina (KDS)         |
+| **menu**       | Categorías, platos, recetas                       |
 | **inventario** | Insumos, movimientos, unidad de conversión jerárquica |
-| **caja**     | Apertura/cierre de turno, pagos, reportes         |
-| **reservas** | Reservas con unión de mesas                       |
-| **core**     | Dashboard, usuarios, autenticación                |
-| **api**      | REST endpoints con DRF ViewSets                   |
+| **caja**       | Apertura/cierre de turno, pagos, reportes         |
+| **reservas**   | Reservas con unión de mesas                       |
+| **core**       | Dashboard, usuarios, autenticación                |
+| **api**        | REST endpoints con DRF ViewSets                   |
+| **consumers**  | WebSocket consumers (KDS, plano, comanda)         |
+
+## Arquitectura
+
+```
+                    ┌─────────────┐
+                    │   Cliente   │
+                    │  (Browser)  │
+                    └──────┬──────┘
+                           │ HTTP / WebSocket
+                    ┌──────▼──────┐
+                    │   Daphne    │
+                    │  (ASGI)     │
+                    └──────┬──────┘
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+       ┌──────▼─────┐ ┌───▼────┐ ┌────▼────┐
+       │   Django   │ │Channels│ │  Redis  │
+       │   REST API │ │  WS    │ │ (caché) │
+       └──────┬─────┘ └───┬────┘ └─────────┘
+              │            │
+       ┌──────▼────────────▼──────┐
+       │     PostgreSQL 15        │
+       └──────────────────────────┘
+```
+
+## Estructura del proyecto
+
+```
+├── api/                # ViewSets, serializers, permissions
+├── caja/               # Caja, pagos, turnos
+├── config/             # Settings, ASGI, routing, URLs
+│   ├── asgi.py
+│   ├── routing.py      # WebSocket routing
+│   ├── settings.py
+│   └── urls.py
+├── consumers/          # WebSocket consumers
+│   ├── kds_consumer.py
+│   ├── plano_consumer.py
+│   └── comanda_consumer.py
+├── core/               # Dashboard, excepciones
+│   └── excepciones.py  # Jerarquía de excepciones de dominio
+├── dominio/            # Capa hexagonal (entidades puras)
+├── infraestructura/    # Adaptadores Django
+├── inventario/         # Insumos, recetas, unidad de conversión
+├── menu/               # Categorías, platos
+├── mesas/              # Mesas, union de mesas
+├── pedidos/            # Comandas, líneas de comanda
+├── reservas/           # Reservas
+├── templates/          # Templates HTML
+├── tests/              # Tests del sistema
+├── utils/              # ModeloBase con soft delete
+│   └── models.py
+├── .env.example        # Variables de entorno de ejemplo
+├── docker-compose.yml  # Django + PostgreSQL + Redis
+├── Dockerfile
+├── requirements.txt
+└── manage.py
+```
 
 ## Credenciales predefinidas
 
