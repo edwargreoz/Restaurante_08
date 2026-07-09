@@ -158,7 +158,3 @@ python -m pytest tests/ --cov=. --cov-report=term
 ├── requirements.txt
 └── manage.py
 ```
-
-## Credenciales predefinidas
-
-- **Superuser:** `RaizaNat` / `Raiza123`
