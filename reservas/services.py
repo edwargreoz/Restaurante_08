@@ -65,6 +65,96 @@ class ReservaService:
         return reserva
 
     @staticmethod
+    @transaction.atomic
+    def editar(reserva_id: int, mesas_ids: list, fecha, hora_inicio, hora_fin,
+               num_personas: int, cliente_nombre: str,
+               cliente_contacto: str = '', observacion: str = '',
+               usuario=None) -> Reserva:
+        reserva = Reserva.objects.filter(id=reserva_id).first()
+        if not reserva:
+            raise RecursoNoEncontrado('Reserva no encontrada')
+        if not reserva.activo:
+            raise ReglaNegocioViolada('No puedes editar una reserva cancelada')
+
+        vieja_mesa = reserva.mesa
+        vieja_union = reserva.union_mesa
+
+        mesas_actuales_ids = []
+        if vieja_mesa:
+            mesas_actuales_ids.append(vieja_mesa.id)
+        elif vieja_union:
+            mesas_actuales_ids = [m.id for m in vieja_union.mesas.all()]
+
+        datos = ReservaService._validar_datos(
+            mesas_ids, fecha, hora_inicio, hora_fin,
+            num_personas, cliente_nombre, cliente_contacto, observacion,
+            mesas_actuales_ids=mesas_actuales_ids,
+        )
+
+        ms = datos['mesas']
+
+        if len(ms) == 1:
+            reserva.mesa = ms.first()
+            reserva.union_mesa = None
+        else:
+            union_mesa_obj = UnionMesa.objects.create(activo=True)
+            union_mesa_obj.mesas.set(ms)
+            union_mesa_obj.save()
+            reserva.mesa = None
+            reserva.union_mesa = union_mesa_obj
+
+        reserva.cliente_nombre = datos['cliente_nombre']
+        reserva.cliente_contacto = datos['cliente_contacto']
+        reserva.fecha = datos['fecha']
+        reserva.hora_inicio = datos['hora_inicio']
+        reserva.hora_fin = datos['hora_fin']
+        reserva.num_personas = datos['num_personas']
+        reserva.observacion = datos['observacion']
+        reserva.save()
+
+        if vieja_mesa and vieja_mesa != reserva.mesa:
+            vieja_mesa.estado = 'LIBRE'
+            vieja_mesa.save(update_fields=['estado'])
+        if vieja_union and vieja_union != reserva.union_mesa:
+            vieja_union.activo = False
+            vieja_union.save(update_fields=['activo'])
+            for m in vieja_union.mesas.all():
+                if m not in ms:
+                    m.estado = 'LIBRE'
+                    m.save(update_fields=['estado'])
+
+        for m in ms:
+            m.estado = 'RESERVADA'
+            m.save(update_fields=['estado'])
+
+        _notificar_plano()
+        return reserva
+
+    @staticmethod
+    @transaction.atomic
+    def eliminar_definitivamente(reserva_id: int) -> None:
+        reserva = Reserva.objects.filter(id=reserva_id).first()
+        if not reserva:
+            raise RecursoNoEncontrado('Reserva no encontrada')
+        if reserva.activo:
+            raise ReglaNegocioViolada(
+                'No puedes eliminar una reserva que todavía está activa. Debes cancelarla primero.'
+            )
+        if reserva.mesa and reserva.mesa.estado == 'RESERVADA':
+            reserva.mesa.estado = 'LIBRE'
+            reserva.mesa.save(update_fields=['estado'])
+        elif reserva.union_mesa:
+            for m in reserva.union_mesa.mesas.all():
+                if m.estado == 'RESERVADA':
+                    m.estado = 'LIBRE'
+                    m.save(update_fields=['estado'])
+            if reserva.union_mesa.activo:
+                reserva.union_mesa.activo = False
+                reserva.union_mesa.save(update_fields=['activo'])
+        reserva.delete()
+        _notificar_plano()
+
+    @staticmethod
     def _validar_datos(mesas_ids, fecha, hora_inicio, hora_fin,
                        num_personas, cliente_nombre, cliente_contacto,
                        observacion, mesas_actuales_ids=None):

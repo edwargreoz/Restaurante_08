@@ -1,9 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
-
-
-class ReglaNegocioViolada(Exception):
-    pass
+from core.excepciones import ReglaNegocioViolada
 
 
 @dataclass

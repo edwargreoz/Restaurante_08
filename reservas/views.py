@@ -80,26 +80,12 @@ def finalizar_reserva(request, reserva_id):
 @login_required
 @user_passes_test(es_admin)
 def eliminar_reserva(request, reserva_id):
-    reserva = get_object_or_404(Reserva, id=reserva_id)
-
-    if reserva.activo:
-        messages.error(request, 'No puedes eliminar una reserva que todavía está activo. Debes cancelarla primero.')
-        return redirect('lista_reservas')
-
     if request.method == 'POST':
-        if reserva.mesa and reserva.mesa.estado == 'RESERVADA':
-            reserva.mesa.estado = 'LIBRE'
-            reserva.mesa.save(update_fields=['estado'])
-        elif reserva.union_mesa:
-            for m in reserva.union_mesa.mesas.all():
-                if m.estado == 'RESERVADA':
-                    m.estado = 'LIBRE'
-                    m.save(update_fields=['estado'])
-            if reserva.union_mesa.activo:
-                reserva.union_mesa.activo = False
-                reserva.union_mesa.save(update_fields=['activo'])
-        reserva.delete()
-        messages.success(request, f'Reserva de {reserva.cliente_nombre} eliminada permanentemente')
+        try:
+            ReservaService.eliminar_definitivamente(reserva_id)
+            messages.success(request, 'Reserva eliminada permanentemente')
+        except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
+            messages.error(request, str(e))
     return redirect('lista_reservas')
 
 
@@ -123,7 +109,8 @@ def editar_reserva(request, reserva_id):
 
     if request.method == 'POST':
         try:
-            datos = ReservaService._validar_datos(
+            ReservaService.editar(
+                reserva_id=reserva_id,
                 mesas_ids=request.POST.getlist('mesas_ids'),
                 fecha=request.POST.get('fecha'),
                 hora_inicio=request.POST.get('hora_inicio'),
@@ -132,49 +119,9 @@ def editar_reserva(request, reserva_id):
                 cliente_nombre=request.POST.get('cliente_nombre'),
                 cliente_contacto=request.POST.get('cliente_contacto', '').strip(),
                 observacion=request.POST.get('observacion', ''),
-                mesas_actuales_ids=mesas_actuales_ids,
+                usuario=request.user,
             )
-
-            ms = datos['mesas']
-            vieja_mesa = reserva.mesa
-            vieja_union = reserva.union_mesa
-
-            if len(ms) == 1:
-                reserva.mesa = ms.first()
-                reserva.union_mesa = None
-            else:
-                from mesas.models import UnionMesa
-                union_mesa_obj = UnionMesa.objects.create(activo=True)
-                union_mesa_obj.mesas.set(ms)
-                union_mesa_obj.save()
-                reserva.mesa = None
-                reserva.union_mesa = union_mesa_obj
-
-            reserva.cliente_nombre = datos['cliente_nombre']
-            reserva.cliente_contacto = datos['cliente_contacto']
-            reserva.fecha = datos['fecha']
-            reserva.hora_inicio = datos['hora_inicio']
-            reserva.hora_fin = datos['hora_fin']
-            reserva.num_personas = datos['num_personas']
-            reserva.observacion = datos['observacion']
-            reserva.save()
-
-            if vieja_mesa and vieja_mesa != reserva.mesa:
-                vieja_mesa.estado = 'LIBRE'
-                vieja_mesa.save(update_fields=['estado'])
-            if vieja_union and vieja_union != reserva.union_mesa:
-                vieja_union.activo = False
-                vieja_union.save(update_fields=['activo'])
-                for m in vieja_union.mesas.all():
-                    if m not in ms:
-                        m.estado = 'LIBRE'
-                        m.save(update_fields=['estado'])
-
-            for m in ms:
-                m.estado = 'RESERVADA'
-                m.save(update_fields=['estado'])
-
-            messages.success(request, f'Reserva de {reserva.cliente_nombre} actualizada con éxito')
+            messages.success(request, 'Reserva actualizada con éxito')
             return redirect('lista_reservas')
 
         except (ReglaNegocioViolada, CapacidadExcedida, ValueError, TypeError) as e:
