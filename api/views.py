@@ -56,20 +56,15 @@ class RecetaInsumoViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ReservaViewSet(viewsets.ModelViewSet):
     permission_classes = [EsMozo | EsAdmin]
-    queryset = Reserva.objects.select_related('mesa', 'creado_por').all()
+    queryset = Reserva.activos.select_related('mesa', 'creado_por').all()
     serializer_class = ReservaSerializer
 
     def perform_destroy(self, instance):
         instance.cancelar()
 
 class MesaViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    ViewSet de solo lectura para Mesas.
-    ReadOnlyModelViewSet: solo GET (list + retrieve),
-    no permite crear, editar ni eliminar desde la API.
-    """
     permission_classes = [EsMozo | EsAdmin]
-    queryset = Mesa.objects.all()
+    queryset = Mesa.activos.all()
     serializer_class = MesaSerializer
 
     @action(detail=False, methods=['get'])
@@ -84,10 +79,8 @@ class MesaViewSet(viewsets.ReadOnlyModelViewSet):
     
 
 class UnionMesaViewSet(viewsets.ModelViewSet):
-    """Crud completo para el tema de union de mesas
-    Aqui vamos a crear, leer , actualizar y elimanr uniones"""
     permission_classes = [EsMozo | EsAdmin]
-    queryset = UnionMesa.objects.all()
+    queryset = UnionMesa.activos.all()
     serializer_class = UnionMesaSerializer
 
 class ComandaViewSet(viewsets.ModelViewSet):
