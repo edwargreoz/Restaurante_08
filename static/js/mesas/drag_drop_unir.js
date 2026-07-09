@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': getCSRFToken(),
                 },
-                body: JSON.stringify({ mesas: [origenId, destinoId] }),
+                body: JSON.stringify({ mesas_ids: [origenId, destinoId] }),
             })
             .then(response => {
                 if (!response.ok) throw new Error('Error al unir mesas');
