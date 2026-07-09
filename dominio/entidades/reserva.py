@@ -13,5 +13,5 @@ class Reserva:
     hora_inicio: time
     hora_fin: time
     num_personas: int
-    activa: bool = True
+    activo: bool = True
     finalizada: bool = False

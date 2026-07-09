@@ -68,7 +68,7 @@ class UnionMesa(ModeloBase):
         return self.capacidad_total()
 
     def esta_reservada(self):
-        return self.reservas.filter(activa=True).exists()
+        return self.reservas.filter(activo=True).exists()
 
     def __str__(self):
         mesas_str = ' + '.join(

@@ -82,8 +82,8 @@ def finalizar_reserva(request, reserva_id):
 def eliminar_reserva(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
 
-    if reserva.activa:
-        messages.error(request, 'No puedes eliminar una reserva que todavía está activa. Debes cancelarla primero.')
+    if reserva.activo:
+        messages.error(request, 'No puedes eliminar una reserva que todavía está activo. Debes cancelarla primero.')
         return redirect('lista_reservas')
 
     if request.method == 'POST':
@@ -95,9 +95,9 @@ def eliminar_reserva(request, reserva_id):
                 if m.estado == 'RESERVADA':
                     m.estado = 'LIBRE'
                     m.save(update_fields=['estado'])
-            if reserva.union_mesa.activa:
-                reserva.union_mesa.activa = False
-                reserva.union_mesa.save(update_fields=['activa'])
+            if reserva.union_mesa.activo:
+                reserva.union_mesa.activo = False
+                reserva.union_mesa.save(update_fields=['activo'])
         reserva.delete()
         messages.success(request, f'Reserva de {reserva.cliente_nombre} eliminada permanentemente')
     return redirect('lista_reservas')
@@ -108,7 +108,7 @@ def eliminar_reserva(request, reserva_id):
 def editar_reserva(request, reserva_id):
     reserva = get_object_or_404(Reserva, id=reserva_id)
 
-    if not reserva.activa:
+    if not reserva.activo:
         messages.error(request, 'No puedes editar una reserva cancelada.')
         return redirect('lista_reservas')
 
@@ -144,7 +144,7 @@ def editar_reserva(request, reserva_id):
                 reserva.union_mesa = None
             else:
                 from mesas.models import UnionMesa
-                union_mesa_obj = UnionMesa.objects.create(activa=True)
+                union_mesa_obj = UnionMesa.objects.create(activo=True)
                 union_mesa_obj.mesas.set(ms)
                 union_mesa_obj.save()
                 reserva.mesa = None
@@ -163,8 +163,8 @@ def editar_reserva(request, reserva_id):
                 vieja_mesa.estado = 'LIBRE'
                 vieja_mesa.save(update_fields=['estado'])
             if vieja_union and vieja_union != reserva.union_mesa:
-                vieja_union.activa = False
-                vieja_union.save(update_fields=['activa'])
+                vieja_union.activo = False
+                vieja_union.save(update_fields=['activo'])
                 for m in vieja_union.mesas.all():
                     if m not in ms:
                         m.estado = 'LIBRE'

@@ -16,5 +16,5 @@ class ReservaRepository:
             id=r.id, mesa_id=r.mesa_id, union_mesa_id=r.union_mesa_id,
             cliente_nombre=r.cliente_nombre, fecha=r.fecha,
             hora_inicio=r.hora_inicio, hora_fin=r.hora_fin,
-            num_personas=r.num_personas, activa=r.activa, finalizada=r.finalizada,
+            num_personas=r.num_personas, activo=r.activo, finalizada=r.finalizada,
         )

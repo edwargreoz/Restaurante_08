@@ -25,7 +25,7 @@ class ReservaService:
 
         ms = datos['mesas']
         mesa_obj = ms.first() if len(ms) == 1 else None
-        union_mesa_obj = None if mesa_obj else UnionMesa.objects.create(activa=True)
+        union_mesa_obj = None if mesa_obj else UnionMesa.objects.create(activo=True)
 
         if union_mesa_obj:
             union_mesa_obj.mesas.set(ms)
@@ -47,7 +47,7 @@ class ReservaService:
         reserva = Reserva.objects.filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
-        if not reserva.activa:
+        if not reserva.activo:
             raise ReglaNegocioViolada('Esta reserva ya estaba cancelada')
         reserva.cancelar()
         _notificar_plano()
@@ -58,7 +58,7 @@ class ReservaService:
         reserva = Reserva.objects.filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
-        if not reserva.activa:
+        if not reserva.activo:
             raise ReglaNegocioViolada('Esta reserva ya no está activa')
         reserva.finalizar()
         _notificar_plano()

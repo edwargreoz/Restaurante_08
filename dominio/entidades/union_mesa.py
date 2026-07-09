@@ -6,4 +6,4 @@ from typing import Optional
 class UnionMesa:
     id: Optional[int]
     mesa_ids: list = field(default_factory=list)
-    activa: bool = True
+    activo: bool = True
