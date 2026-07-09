@@ -1,10 +1,9 @@
 from django.db import models
 from django.core.validators import MinValueValidator
-from django.core.exceptions import ValidationError
-from django.utils import timezone
+from utils.models import ModeloBase
 
 
-class Reserva(models.Model):
+class Reserva(ModeloBase):
     mesa = models.ForeignKey(
         'mesas.Mesa', on_delete=models.CASCADE,
         related_name='reservas', null=True, blank=True
@@ -20,12 +19,7 @@ class Reserva(models.Model):
     hora_fin = models.TimeField()
     num_personas = models.IntegerField(validators=[MinValueValidator(1)])
     observacion = models.TextField(blank=True)
-    activa = models.BooleanField(default=True)
     finalizada = models.BooleanField(default=False)
-    creado_por = models.ForeignKey(
-        'auth.User', on_delete=models.SET_NULL, null=True
-    )
-    fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-fecha', 'hora_inicio']
@@ -42,38 +36,10 @@ class Reserva(models.Model):
         else:
             return f'{self.cliente_nombre} - Mesa {self.mesa.numero} ({self.fecha}) - {estado}'
 
-    def clean(self):
-        if self.hora_inicio and self.hora_fin and self.hora_inicio >= self.hora_fin:
-            raise ValidationError('La hora de inicio debe ser menor a la hora de fin')
-        
-        if not self.mesa and not self.union_mesa:
-            raise ValidationError('Debe especificar una mesa o una unión de mesas')
-        if self.mesa and self.union_mesa:
-            raise ValidationError('No puede especificar una mesa y una unión de mesas al mismo tiempo')
-
-        if self.num_personas:
-            if self.mesa and self.num_personas > self.mesa.capacidad:
-                raise ValidationError(f'La mesa solo tiene capacidad para {self.mesa.capacidad} personas')
-            elif self.union_mesa and self.num_personas > self.union_mesa.capacidad_total():
-                raise ValidationError(f'La unión de mesas solo tiene capacidad para {self.union_mesa.capacidad_total()} personas')
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        es_nueva = self.pk is None
-        super().save(*args, **kwargs)
-        if es_nueva and self.activa:
-            if self.mesa:
-                self.mesa.estado = 'RESERVADA'
-                self.mesa.save(update_fields=['estado'])
-            elif self.union_mesa:
-                for m in self.union_mesa.mesas.all():
-                    m.estado = 'RESERVADA'
-                    m.save(update_fields=['estado'])
-
     def cancelar(self):
         self.activa = False
         self.save(update_fields=['activa'])
-        
+
         if self.mesa:
             tiene_otra_reserva = Reserva.objects.filter(
                 mesa=self.mesa, activa=True
@@ -89,7 +55,6 @@ class Reserva(models.Model):
                 for m in self.union_mesa.mesas.all():
                     m.estado = 'LIBRE'
                     m.save(update_fields=['estado'])
-                # Desactivar la unión para que las mesas dejen de estar "unidas"
                 self.union_mesa.activa = False
                 self.union_mesa.save(update_fields=['activa'])
 
@@ -97,7 +62,7 @@ class Reserva(models.Model):
         self.activa = False
         self.finalizada = True
         self.save(update_fields=['activa', 'finalizada'])
-        
+
         if self.mesa:
             tiene_otra_reserva = Reserva.objects.filter(
                 mesa=self.mesa, activa=True
@@ -113,7 +78,5 @@ class Reserva(models.Model):
                 for m in self.union_mesa.mesas.all():
                     m.estado = 'LIMPIEZA'
                     m.save(update_fields=['estado'])
-                # Desactivar la unión para que las mesas dejen de estar "unidas"
                 self.union_mesa.activa = False
                 self.union_mesa.save(update_fields=['activa'])
-
