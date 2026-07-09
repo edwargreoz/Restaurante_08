@@ -124,7 +124,7 @@ class CocinaLineaSerializer(serializers.ModelSerializer):
         return obj.cantidad * obj.plato.precio
     
 class CocinaComandaSerializer(serializers.ModelSerializer):
-    lineas = CocinaLineaSerializer(many=True,read_only=True, source='lineas')
+    lineas = CocinaLineaSerializer(many=True, read_only=True)
     numero_mesa= serializers.CharField(source='mesa.numero', read_only= True)
     mozo_nombre= serializers.CharField(source ='mozo.get_full_name',read_only=True)
 

@@ -30,6 +30,8 @@ INSTALLED_APPS = [
     'django_filters',
     'drf_spectacular',
 
+    'utils',
+
     # Apps del dominio del restaurante
     'core',         # Autenticacion y dashboard
     'mesas',        # Gestion de mesas del salon

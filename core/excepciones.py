@@ -1,30 +1,68 @@
+class AppError(Exception):
+    """Base de todas las expciones de la aplicacion web"""
 
-class RecursoNoEncontrado(Exception):
+class ReglaNegocioViolada(AppError):
     pass
 
-class StockInsuficiente(Exception):
+class RecursoNoEncontrado(AppError):
     pass
 
-class ProductoSinStock(Exception):
+class AccesoNoAutorizado(AppError):
     pass
 
-class UnidadConversionInvalida(Exception):
+# Aqui las exepciones del dominio #
+
+class MesaConComandaActiva(ReglaNegocioViolada):
     pass
 
-class ReglaNegocioViolada(Exception):
+
+class CajaNoAbierta(ReglaNegocioViolada):
     pass
 
-class CajaNoAbierta(Exception):
+
+class ProductoSinStock(ReglaNegocioViolada):
     pass
 
-class MontoInvalido(Exception):
+
+class TransicionEstadoInvalida(ReglaNegocioViolada):
     pass
 
-class ReferenciaInvalida(Exception):
+
+class CapacidadExcedida(ReglaNegocioViolada):
     pass
 
-class MesaConComandaActiva(Exception):
+
+class StockInsuficiente(ReglaNegocioViolada):
     pass
 
-class UnionInvalida(Exception):
+
+class PlatoNoDisponible(ReglaNegocioViolada):
+    pass
+
+
+class ComandaNoDisponible(ReglaNegocioViolada):
+    pass
+
+
+class MontoInvalido(ReglaNegocioViolada):
+    pass
+
+
+class ReferenciaInvalida(ReglaNegocioViolada):
+    pass
+
+
+class UnionInvalida(ReglaNegocioViolada):
+    pass
+
+
+class InsumoAgotado(ReglaNegocioViolada):
+    pass
+
+
+class UnidadConversionInvalida(ReglaNegocioViolada):
+    pass
+
+
+class MargenInvalidoError(ReglaNegocioViolada):
     pass

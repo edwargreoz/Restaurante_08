@@ -4,6 +4,9 @@ from rest_framework.response import Response
 from django.db import transaction
 from django.db.models import Q
 
+#Agregado momentaneamente hasta que leonardo cree los servicios
+from django.core.exceptions import ValidationError
+
 from mesas.models import Mesa, UnionMesa
 from menu.models import Categoria, Plato
 from inventario.models import Insumo, Receta, RecetaInsumo
@@ -166,7 +169,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def pagar(self,request, pk=None):
         comanda = self.get_object()
-        if comanda.estado not in ('ABIERTA','LISTA'):
+        if comanda.estado != 'LISTA':
             return Response(
                 {'error': 'La comanda no esta lista para pagar'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -206,7 +209,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def pagar_split(self, request, pk=None):
         comanda = self.get_object()
-        if comanda.estado not in ('ABIERTA', 'LISTA'):
+        if comanda.estado != 'LISTA':
             return Response(
                 {'error': 'La comanda no esta lista para pagar'},
                 status=status.HTTP_400_BAD_REQUEST
