@@ -122,23 +122,6 @@
     </div>
 </div>
 
-{% if union_groups %}
-<div class="union-panel" id="unionPanel">
-    <div class="union-panel-header">
-        <span class="union-panel-title">Uniones activas</span>
-        <span class="union-panel-count">{{ union_groups|length }}</span>
-    </div>
-    <div class="union-panel-body">
-        {% for union_id, nums in union_groups.items %}
-        <div class="union-panel-item" data-union-id="{{ union_id }}">
-            <span class="union-panel-item-label">Mesa {{ nums|join:' + Mesa ' }}</span>
-            <button type="button" class="union-panel-desunir-btn" data-union-id="{{ union_id }}">Desunir</button>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
 {% endblock %}
 
 {% block extra_js %}

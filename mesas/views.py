@@ -22,14 +22,12 @@ def plano_mesas(request):
     union_mesas_ids = set()
     union_labels = {}
     union_ids = {}
-    union_groups = {}
     processed_mesa_ids = set()
     items = []
     for union in uniones:
         miembros = list(union.mesas.all())
         nums = sorted([m.numero for m in miembros])
         label = ' + '.join([f'Mesa {x}' for x in nums])
-        union_groups[union.id] = nums
         estados = set(m.estado for m in miembros)
         if 'OCUPADA' in estados:
             estado_resumen = 'OCUPADA'
@@ -67,7 +65,6 @@ def plano_mesas(request):
         'union_mesas_ids': union_mesas_ids,
         'union_labels': union_labels,
         'union_ids': union_ids,
-        'union_groups': union_groups,
     })
 
 
@@ -202,7 +199,7 @@ def deshacer_union(request, union_id):
             messages.success(request, 'Unión deshecha, comandas anuladas, mesas liberadas')
         except (RecursoNoEncontrado, UnionInvalida) as e:
             messages.error(request, str(e))
-    return redirect('unir_mesas')
+    return redirect('plano_mesas')
 
 
 # ----------------- VISTAS DE ADMINISTRADOR (CRUD MESAS) -----------------

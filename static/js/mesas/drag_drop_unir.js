@@ -8,41 +8,6 @@ document.addEventListener('DOMContentLoaded', function () {
         return match ? match[1] : '';
     }
 
-    // --- Desunir desde el panel ---
-    document.querySelectorAll('.union-panel-desunir-btn').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var unionId = this.getAttribute('data-union-id');
-            var item = this.closest('.union-panel-item');
-            desunir(unionId, item);
-        });
-    });
-
-    function desunir(unionId, targetEl) {
-        targetEl.style.opacity = '0.5';
-        fetch('/mesas/deshacer-union/' + unionId + '/', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRFToken() },
-        })
-        .then(function (response) {
-            if (!response.ok) throw new Error('Error al desunir');
-            targetEl.classList.add('desunir-success');
-            var cards = document.querySelectorAll('.mesa-card');
-            cards.forEach(function (c) { c.classList.add('desunir-success'); });
-            setTimeout(function () { window.location.reload(); }, 800);
-        })
-        .catch(function (error) {
-            targetEl.style.opacity = '1';
-            targetEl.classList.add('shake-error');
-            var cards = document.querySelectorAll('.mesa-card');
-            cards.forEach(function (c) { c.classList.add('shake-error'); });
-            setTimeout(function () {
-                targetEl.classList.remove('shake-error');
-                cards.forEach(function (c) { c.classList.remove('shake-error'); });
-            }, 600);
-            alert('Error al desunir: ' + error.message);
-        });
-    }
-
     // --- Drag & Drop para unir ---
     mesas.forEach(function (mesa) {
         if (mesa.hasAttribute('data-union-id')) return;
