@@ -2,10 +2,11 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
-from django.core.exceptions import ValidationError
 from django.db.models import Q
 from core.rol_utils import es_mozo, es_cocinero, es_mozo_o_cocinero
 from pedidos.models import Comanda, LineaComanda
+from pedidos.services import ComandaService, LineaComandaService
+from core.excepciones import AppError, StockInsuficiente
 from mesas.models import Mesa
 from menu.models import Categoria
 
@@ -24,23 +25,20 @@ def tomar_pedido(request, mesa_id):
     })
 def _procesar_agregar_plato(request, comanda):
     try:
-        comanda.agregar_platos([{
+        ComandaService.agregar_platos(comanda.id, [{
             'plato_id': int(request.POST.get('plato_id')),
             'cantidad': int(request.POST.get('cantidad', 1)),
             'observacion': request.POST.get('observacion', ''),
         }], usuario=request.user)
         messages.success(request, 'Plato agregado')
         return True
-    except ValidationError as e:
-        if hasattr(e, 'error_dict'):
-            errores = e.message_dict.get('errores', [str(e)])
-            for error in errores:
-                if isinstance(error, dict):
-                    messages.error(request, error.get('error', str(error)))
-                else:
-                    messages.error(request, error)
-        else:
-            messages.error(request, str(e))
+    except StockInsuficiente as e:
+        errores = e.args[0].get('errores', []) if e.args else []
+        for error in errores:
+            messages.error(request, error.get('error', str(error)))
+        return False
+    except AppError as e:
+        messages.error(request, str(e))
         return False
 
 @login_required
@@ -71,11 +69,10 @@ def kds_panel(request):
 @user_passes_test(es_mozo_o_cocinero)
 def enviar_cocina(request, linea_id):
     if request.method == 'POST':
-        linea = get_object_or_404(LineaComanda, id=linea_id)
         try:
-            linea.enviar_cocina()
+            LineaComandaService.enviar_cocina(linea_id)
             messages.success(request, 'Línea enviada a cocina')
-        except ValidationError as e:
+        except AppError as e:
             messages.error(request, str(e))
     return redirect('kds_panel')
 
@@ -83,10 +80,9 @@ def enviar_cocina(request, linea_id):
 @user_passes_test(es_cocinero)
 def marcar_listo(request, linea_id):
     if request.method == 'POST':
-        linea = get_object_or_404(LineaComanda, id = linea_id)
         try:
-            linea.marcar_listo()
+            LineaComandaService.marcar_listo(linea_id)
             messages.success(request, 'Linea marcada como lista')
-        except ValidationError as e:
+        except AppError as e:
             messages.error(request, str(e))
     return redirect('kds_panel')

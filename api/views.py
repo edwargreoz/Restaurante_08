@@ -4,17 +4,15 @@ from rest_framework.response import Response
 from django.db import transaction
 from django.db.models import Q
 
-#Agregado momentaneamente hasta que leonardo cree los servicios
-from django.core.exceptions import ValidationError
-
 from mesas.models import Mesa, UnionMesa
 from menu.models import Categoria, Plato
 from inventario.models import Insumo, Receta, RecetaInsumo
 from reservas.models import Reserva
 from pedidos.models import Comanda, LineaComanda
+from pedidos.services import ComandaService, LineaComandaService
 
-from core.excepciones import CajaNoAbierta, ReglaNegocioViolada, RecursoNoEncontrado
-from caja.services import CajaService, PagoService
+from core.excepciones import CajaNoAbierta, ReglaNegocioViolada, RecursoNoEncontrado, AppError
+from caja.services import PagoService
     
 from .filters import ComandaFilter, PlatoFilter
 from .serializers import (
@@ -106,8 +104,8 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error' : 'mesa_id es obligatorio'},
                 status= status.HTTP_400_BAD_REQUEST)
         try:
-            comanda = Comanda.abrir(mesa_id, request.user)
-        except ValidationError as e:
+            comanda = ComandaService.abrir(mesa_id, request.user)
+        except AppError as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
@@ -128,13 +126,15 @@ class ComandaViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         with transaction.atomic():
-            comanda = Comanda.objects.select_for_update().get(id=comanda.id)
             try:
-                comanda.agregar_platos(serializer.validated_data['platos'], usuario=request.user)
-            except ValidationError as e:
+                ComandaService.agregar_platos(comanda.id, serializer.validated_data['platos'], usuario=request.user)
+            except AppError as e:
+                if hasattr(e, 'args') and e.args and isinstance(e.args[0], dict):
+                    error_data = e.args[0]
+                else:
+                    error_data = {'error': str(e)}
                 return Response(
-                    e.message_dict if hasattr(e, 'message_dict')
-                    else {'error':str(e)},
+                    error_data,
                     status=status.HTTP_400_BAD_REQUEST
                 )
         serializer = self.get_serializer(comanda)
@@ -148,10 +148,9 @@ class ComandaViewSet(viewsets.ModelViewSet):
         """
         comanda = self.get_object()
         with transaction.atomic():
-            comanda = Comanda.objects.select_for_update().get(id=comanda.id)
             try:
-                comanda.anular(usuario=request.user)
-            except ValidationError as e:
+                ComandaService.anular(comanda.id, usuario=request.user)
+            except AppError as e:
                 return Response(
                     {'error': str(e)},
                     status=status.HTTP_400_BAD_REQUEST
@@ -174,28 +173,18 @@ class ComandaViewSet(viewsets.ModelViewSet):
         data = serializer.validated_data
 
         try:
-            caja_activa = CajaService.obtener_activa()
-        except CajaNoAbierta as e:
+            ComandaService.pagar(
+                comanda.id,
+                metodo=data['metodo'], monto=data['monto'],
+                vuelto=data.get('vuelto', 0),
+                referencia=data.get('referencia', '')
+            )
+        except AppError as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        with transaction.atomic():
-            comanda = Comanda.objects.select_for_update().get(id=comanda.id)
-            try:
-                PagoService.procesar_pago(
-                    comanda,
-                    metodo=data['metodo'], monto=data['monto'],
-                    vuelto=data.get('vuelto', 0),
-                    referencia=data.get('referencia', ''),
-                    caja=caja_activa,
-                )
-            except (ReglaNegocioViolada, RecursoNoEncontrado) as e:
-                return Response(
-                    {'error': str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        comanda.refresh_from_db()
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -214,22 +203,13 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         try:
-            caja_activa = CajaService.obtener_activa()
-        except CajaNoAbierta as e:
+            ComandaService.pagar_split(comanda.id, pagos_data)
+        except AppError as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        with transaction.atomic():
-            comanda = Comanda.objects.select_for_update().get(id=comanda.id)
-            try:
-                PagoService.procesar_pago_split(comanda, pagos_data, caja=caja_activa)
-            except (ReglaNegocioViolada, RecursoNoEncontrado) as e:
-                return Response(
-                    {'error': str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        comanda.refresh_from_db()
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -244,12 +224,13 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
     def enviar_cocina (self, request, pk=None):
         linea = self.get_object()
         try:
-            linea.enviar_cocina()
-        except ValidationError as e:
+            LineaComandaService.enviar_cocina(linea.id)
+        except AppError as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
                 )
+        linea.refresh_from_db()
         serializer = self.get_serializer(linea)
         return Response(serializer.data)
     
@@ -257,12 +238,13 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
     def marcar_listo(self,request,pk=None):
         linea = self.get_object()
         try:
-            linea.marcar_listo()
-        except ValidationError as e:
+            LineaComandaService.marcar_listo(linea.id)
+        except AppError as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
                 )
+        linea.refresh_from_db()
         serializer = self.get_serializer(linea)
         return Response(serializer.data)
 
