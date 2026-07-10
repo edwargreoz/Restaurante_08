@@ -40,7 +40,7 @@ class ComandaService:
         if mesa.estado not in ['LIBRE', 'RESERVADA']:
             raise MesaConComandaActiva('La mesa no está libre ni reservada')
 
-        union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
+        union = UnionMesa.objects.filter(mesas=mesa, activo=True).first()
         if union:
             for m in union.mesas.all():
                 comanda_m = Comanda.objects.filter(
@@ -149,6 +149,20 @@ class ComandaService:
 
             LineaComanda.objects.bulk_create(platos_a_crear)
             MovimientoInsumo.objects.bulk_create(movimientos)
+
+            # --- Regla InsumoAgotado ---
+            # Si algún insumo llegó a 0, marcar los platos que lo usan como no disponibles
+            insumos_agotados = set()
+            for mov in movimientos:
+                if mov.stock_posterior <= 0:
+                    insumos_agotados.add(mov.insumo_id)
+
+            if insumos_agotados:
+                platos_afectados = Plato.objects.filter(
+                    receta__insumos__insumo_id__in=insumos_agotados,
+                    disponible=True,
+                ).distinct()
+                platos_afectados.update(disponible=False)
 
         return platos_a_crear
 
@@ -337,33 +351,33 @@ def _validar_referencia_tarjeta(referencia: str):
 def _finalizar_reservas_comanda(comanda):
     from reservas.models import Reserva
     mesa = comanda.mesa
-    union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
-    for r in Reserva.objects.filter(mesa=mesa, activa=True):
+    union = UnionMesa.objects.filter(mesas=mesa, activo=True).first()
+    for r in Reserva.objects.filter(mesa=mesa, activo=True):
         r.finalizar()
     if union:
-        for r in Reserva.objects.filter(union_mesa=union, activa=True):
+        for r in Reserva.objects.filter(union_mesa=union, activo=True):
             r.finalizar()
 
 
 def _actualizar_estado_mesa_post_pago(comanda):
     mesa = comanda.mesa
-    union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
-    tiene_reserva = mesa.reservas.filter(activa=True).exists()
+    union = UnionMesa.objects.filter(mesas=mesa, activo=True).first()
+    tiene_reserva = mesa.reservas.filter(activo=True).exists()
     if union:
-        tiene_reserva = tiene_reserva or union.reservas.filter(activa=True).exists()
+        tiene_reserva = tiene_reserva or union.reservas.filter(activo=True).exists()
     mesa.estado = 'RESERVADA' if tiene_reserva else 'LIMPIEZA'
     mesa.save(update_fields=['estado'])
     if union:
         for m in union.mesas.all():
             if m.id != mesa.id:
-                tiene_r = m.reservas.filter(activa=True).exists() or union.reservas.filter(activa=True).exists()
+                tiene_r = m.reservas.filter(activo=True).exists() or union.reservas.filter(activo=True).exists()
                 m.estado = 'RESERVADA' if tiene_r else 'LIMPIEZA'
                 m.save(update_fields=['estado'])
 
 
 def _liberar_mesas(comanda):
     mesa = comanda.mesa
-    union = UnionMesa.objects.filter(mesas=mesa, activa=True).first()
+    union = UnionMesa.objects.filter(mesas=mesa, activo=True).first()
     mesas_a_liberar = [mesa]
     if union:
         mesas_a_liberar = list(union.mesas.all())
@@ -372,9 +386,9 @@ def _liberar_mesas(comanda):
             mesa=m, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
         ).exclude(id=comanda.id).exists()
         if not tiene_otra:
-            tiene_reserva = m.reservas.filter(activa=True).exists()
+            tiene_reserva = m.reservas.filter(activo=True).exists()
             if union:
-                tiene_reserva = tiene_reserva or union.reservas.filter(activa=True).exists()
+                tiene_reserva = tiene_reserva or union.reservas.filter(activo=True).exists()
             m.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
             m.save(update_fields=['estado'])
 

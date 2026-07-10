@@ -11,6 +11,7 @@ class ModeloBase(models.Model):
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null= True, blank=True,
+        related_name="+",
         on_delete=models.SET_NULL,
     )
     activo = models.BooleanField(default=True,db_index=True)

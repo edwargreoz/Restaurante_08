@@ -7,7 +7,6 @@ from consumers import kds_consumer, plano_consumer, comanda_consumer
 websocket_urlpatterns = [
     re_path(r'ws/kds/$', kds_consumer.KDSConsumer.as_asgi()),
     re_path(r'ws/plano/$', plano_consumer.PlanoConsumer.as_asgi()),
-    re_path(r'ws/kds/$', kds_consumer.KDSConsumer.as_asgi()),
     re_path(r'ws/comanda/(?P<comanda_id>\d+)/$', comanda_consumer.ComandaConsumer.as_asgi()),
 ]
 

@@ -4,6 +4,7 @@ from django.db import models
 from django.core.validators import MinValueValidator
 from decimal import Decimal
 from core.excepciones import UnidadConversionInvalida
+from utils.models import ModeloBase
 
 
 UNIDADES_BASE = {
@@ -28,7 +29,7 @@ def convertir_unidad(cantidad, de_unidad, a_unidad):
     en_base = cantidad * factor_de
     return en_base / factor_a
 
-class Insumo(models.Model):
+class Insumo(ModeloBase):
 
     UNIDADES = (
         ('UNIDAD', 'Unidad'),
@@ -88,7 +89,7 @@ class Insumo(models.Model):
         return f'{self.nombre} ({self.stock_actual} {self.unidad})'
 
 
-class Receta(models.Model):
+class Receta(ModeloBase):
     nombre = models.CharField(
         max_length=200,
         unique=True,
@@ -104,7 +105,7 @@ class Receta(models.Model):
         return self.nombre
 
 
-class RecetaInsumo(models.Model):
+class RecetaInsumo(ModeloBase):
 
     receta = models.ForeignKey(
         Receta,
@@ -143,7 +144,7 @@ class RecetaInsumo(models.Model):
         return f'{self.receta.nombre} -> {self.cantidad_por_porcion} {self.unidad} de {self.insumo.nombre}'
 
 
-class MovimientoInsumo(models.Model):
+class MovimientoInsumo(ModeloBase):
     TIPOS = (
         ('DEDUCCION', 'Deducción por comanda'),
         ('REPOSICION', 'Reposición por anulación'),
@@ -198,7 +199,7 @@ class MovimientoInsumo(models.Model):
         return f'{self.get_tipo_display()} - {self.insumo.nombre} ({self.cantidad})'
 
 
-class UnidadConversion(models.Model):
+class UnidadConversion(ModeloBase):
     nombre = models.CharField(max_length=100, verbose_name='Nombre de la unidad')
     es_base = models.BooleanField(default=False, verbose_name='¿Es unidad base?')
     insumo = models.ForeignKey(

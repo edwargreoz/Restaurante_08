@@ -2,8 +2,9 @@
 from django.db import models
 from django.core.validators import MinValueValidator
 from inventario.models import Receta
+from utils.models import ModeloBase
 
-class Categoria(models.Model):
+class Categoria(ModeloBase):
 
     nombre = models.CharField(
         max_length=100,
@@ -29,7 +30,7 @@ class Categoria(models.Model):
         return self.nombre
 
 
-class Plato(models.Model):
+class Plato(ModeloBase):
 
     nombre = models.CharField(
         max_length=200,

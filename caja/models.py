@@ -1,6 +1,7 @@
 
 from django.db import models
 from django.db.models import Sum, Count
+from utils.models import ModeloBase
 
 class PagoManager(models.Manager):
     def reporte_ventas(self, caja_id=None, fecha_desde=None, fecha_hasta=None):
@@ -20,7 +21,7 @@ class PagoManager(models.Manager):
             'por_metodo': totales_metodo,
         }
     
-class Caja(models.Model):
+class Caja(ModeloBase):
     """
     Registro de apertura y cierre de turno de caja.
     Controla el saldo inicial y final de cada turno.
@@ -77,7 +78,7 @@ class Caja(models.Model):
     
 
 
-class Pago(models.Model):
+class Pago(ModeloBase):
     """
     Registro de pago de una comanda.
     Almacena el metodo, monto y vuelto calculado.
