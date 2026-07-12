@@ -1,7 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db import transaction
 from django.db.models import Q
 
 from mesas.models import Mesa, UnionMesa
@@ -11,7 +10,7 @@ from reservas.models import Reserva
 from pedidos.models import Comanda, LineaComanda
 from pedidos.services import ComandaService, LineaComandaService
 
-from core.excepciones import CajaNoAbierta, ReglaNegocioViolada, RecursoNoEncontrado, AppError
+from core.excepciones import AppError
 from caja.services import PagoService
     
 from .filters import ComandaFilter, PlatoFilter
@@ -27,32 +26,38 @@ from .permissions import EsMozo, EsCocinero, EsCajero, EsAdmin
 
 
 class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet de solo lectura para consultar categorías del menú."""
     permission_classes = [EsMozo | EsAdmin]
     queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
 
 class PlatoViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet de solo lectura para consultar platos del menú con su precio y disponibilidad."""
     permission_classes = [EsMozo | EsAdmin]
     queryset = Plato.objects.select_related('categoria', 'receta').all()
     serializer_class = PlatoSerializer
     filterset_class = PlatoFilter
 
 class InsumoViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet de solo lectura para consultar insumos del inventario (solo admin)."""
     permission_classes = [EsAdmin]
     queryset = Insumo.objects.all()
     serializer_class = InsumoSerializer
 
 class RecetaViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet de solo lectura para consultar recetas asociadas a platos."""
     permission_classes = [EsAdmin]
     queryset = Receta.objects.all()
     serializer_class = RecetaSerializer
 
 class RecetaInsumoViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet de solo lectura para consultar los ingredientes de cada receta."""
     permission_classes = [EsAdmin]
     queryset = RecetaInsumo.objects.select_related('receta', 'insumo').all()
     serializer_class = RecetaInsumoSerializer
 
 class ReservaViewSet(viewsets.ModelViewSet):
+    """ViewSet para gestionar reservas. Soporta crear, editar, cancelar y finalizar."""
     permission_classes = [EsMozo | EsAdmin]
     queryset = Reserva.activos.select_related('mesa', 'creado_por').all()
     serializer_class = ReservaSerializer
@@ -61,6 +66,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
         instance.cancelar()
 
 class MesaViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet de solo lectura para consultar mesas y su estado actual en tiempo real."""
     permission_classes = [EsMozo | EsAdmin]
     queryset = Mesa.activos.all()
     serializer_class = MesaSerializer
@@ -77,14 +83,15 @@ class MesaViewSet(viewsets.ReadOnlyModelViewSet):
     
 
 class UnionMesaViewSet(viewsets.ModelViewSet):
+    """ViewSet para gestionar uniones de mesas (mesas combinadas)."""
     permission_classes = [EsMozo | EsAdmin]
     queryset = UnionMesa.activos.all()
     serializer_class = UnionMesaSerializer
 
 class ComandaViewSet(viewsets.ModelViewSet):
     """
-    ViewSet para gestionar comandas.
-    Incluye @action abrir para crear comandas nuevas.
+    ViewSet para gestionar comandas del restaurante.
+    Incluye acciones para abrir, agregar platos, anular, pagar y pagar con split.
     """
     permission_classes = [EsMozo | EsCajero|EsAdmin]
     queryset = Comanda.objects.prefetch_related('lineas__plato')
@@ -117,26 +124,25 @@ class ComandaViewSet(viewsets.ModelViewSet):
     def agregar_platos(self,request,pk=None):
         """
         POST /api/v1/comandas/{id}/platos/
-        Body: {"platos": [{"plato_id": 1, "cantidad": 2, "observacion": "sin sal"}, ...]}
         Agrega platos a una comanda verificando stock de insumos.
+        Body: {"platos": [{"plato_id": 1, "cantidad": 2, "observacion": "sin sal"}]}
         """ 
         comanda = self.get_object()
         
         serializer = AgregarPlatosRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        with transaction.atomic():
-            try:
-                ComandaService.agregar_platos(comanda.id, serializer.validated_data['platos'], usuario=request.user)
-            except AppError as e:
-                if hasattr(e, 'args') and e.args and isinstance(e.args[0], dict):
-                    error_data = e.args[0]
-                else:
-                    error_data = {'error': str(e)}
-                return Response(
-                    error_data,
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        try:
+            ComandaService.agregar_platos(comanda.id, serializer.validated_data['platos'], usuario=request.user)
+        except AppError as e:
+            if hasattr(e, 'args') and e.args and isinstance(e.args[0], dict):
+                error_data = e.args[0]
+            else:
+                error_data = {'error': str(e)}
+            return Response(
+                error_data,
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
@@ -147,25 +153,24 @@ class ComandaViewSet(viewsets.ModelViewSet):
         Anula una comanda y restaura el stock de insumos.
         """
         comanda = self.get_object()
-        with transaction.atomic():
-            try:
-                ComandaService.anular(comanda.id, usuario=request.user)
-            except AppError as e:
-                return Response(
-                    {'error': str(e)},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+        try:
+            ComandaService.anular(comanda.id, usuario=request.user)
+        except AppError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['post'])
     def pagar(self,request, pk=None):
+        """
+        POST /api/v1/comandas/{id}/pagar/
+        Registra el pago de una comanda. La comanda debe estar en estado LISTA.
+        Body: {"metodo": "EFECTIVO", "monto": 50.00, "vuelto": 0}
+        """
         comanda = self.get_object()
-        if comanda.estado != 'LISTA':
-            return Response(
-                {'error': 'La comanda no esta lista para pagar'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
         serializer = PagarRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -190,12 +195,12 @@ class ComandaViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def pagar_split(self, request, pk=None):
+        """
+        POST /api/v1/comandas/{id}/pagar-split/
+        Registra múltiples pagos para una comanda (pago dividido).
+        Body: {"pagos": [{"metodo": "EFECTIVO", "monto": 25.00}, {"metodo": "TARJETA", "monto": 25.00, "referencia": "1234"}]}
+        """
         comanda = self.get_object()
-        if comanda.estado != 'LISTA':
-            return Response(
-                {'error': 'La comanda no esta lista para pagar'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
         pagos_data = request.data.get('pagos', [])
         if not pagos_data:
             return Response(
@@ -214,6 +219,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class LineaComandaViewSet(viewsets.ModelViewSet):
+    """ViewSet para gestionar líneas de comanda (platos individuales). Permite enviar a cocina y marcar como listo."""
     permission_classes = [EsCocinero | EsAdmin]
     queryset = LineaComanda.objects.select_related('plato','comanda__mesa')
     serializer_class = LineaComandaSerializer
@@ -222,6 +228,10 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def enviar_cocina (self, request, pk=None):
+        """
+        POST /api/v1/lineas-comanda/{id}/enviar-cocina/
+        Envía una línea de comanda a preparación en cocina.
+        """
         linea = self.get_object()
         try:
             LineaComandaService.enviar_cocina(linea.id)
@@ -236,6 +246,10 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['patch'])
     def marcar_listo(self,request,pk=None):
+        """
+        PATCH /api/v1/lineas-comanda/{id}/marcar-listo/
+        Marca una línea de comanda como lista para entregar.
+        """
         linea = self.get_object()
         try:
             LineaComandaService.marcar_listo(linea.id)
@@ -249,6 +263,7 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 class CocinaViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet de solo lectura para el panel de cocina (KDS). Muestra comandas en preparación con sus líneas."""
     permission_classes = [EsCocinero | EsAdmin]
     serializer_class = CocinaComandaSerializer
 
@@ -261,14 +276,18 @@ class CocinaViewSet(viewsets.ReadOnlyModelViewSet):
         ).prefetch_related('lineas__plato').order_by('fecha_apertura')
 
 class ReportesViewSet(viewsets.ViewSet):
+    """ViewSet para consultar reportes de ventas del turno y stock crítico de insumos."""
     permission_classes = [EsCajero|EsAdmin]
 
     @action(detail=False,methods=['get'])
     def ventas_turno(self, request):
+        """
+        GET /api/v1/reportes/ventas-turno/
+        Retorna el resumen de ventas del turno. Params: caja_id, fecha_desde, fecha_hasta.
+        """
         data = PagoService.reporte_ventas(
             caja_id=request.query_params.get('caja_id'),
             fecha_desde=request.query_params.get('fecha_desde'),
             fecha_hasta=request.query_params.get('fecha_hasta'),
         )
         return Response(data)
-
