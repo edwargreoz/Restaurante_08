@@ -3,8 +3,8 @@ from django.utils import timezone
 from decimal import Decimal
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from django.db.models import Q
 
-from utils.models import ModeloBase
 from core.excepciones import (
     MesaConComandaActiva, CajaNoAbierta, RecursoNoEncontrado,
     StockInsuficiente, TransicionEstadoInvalida, PlatoNoDisponible,
@@ -164,6 +164,7 @@ class ComandaService:
                 ).distinct()
                 platos_afectados.update(disponible=False)
 
+        _notificar_comanda(comanda.id)
         return platos_a_crear
 
     @staticmethod
@@ -225,6 +226,7 @@ class ComandaService:
 
         _liberar_mesas(comanda)
         _notificar_plano()
+        _notificar_comanda(comanda.id)
         return comanda
 
     @staticmethod
@@ -255,6 +257,7 @@ class ComandaService:
         _finalizar_reservas_comanda(comanda)
         _actualizar_estado_mesa_post_pago(comanda)
         _notificar_plano()
+        _notificar_comanda(comanda.id)
         return comanda
 
     @staticmethod
@@ -290,6 +293,7 @@ class ComandaService:
         _finalizar_reservas_comanda(comanda)
         _actualizar_estado_mesa_post_pago(comanda)
         _notificar_plano()
+        _notificar_comanda(comanda.id)
         return comanda
 
 
@@ -297,8 +301,9 @@ class LineaComandaService:
     """Lógica de líneas de comanda (KDS)."""
 
     @staticmethod
-    def enviar_cocina(linea_id: int) -> LineaComanda:
-        linea = LineaComanda.objects.get(id=linea_id)
+    @transaction.atomic
+    def enviar_cocina(linea_id: int)->LineaComanda:
+        linea = LineaComanda.objects.select_for_update().get(id = linea_id)
         if linea.estado != 'PENDIENTE':
             raise TransicionEstadoInvalida(
                 'Solo se puede enviar a cocina en estado PENDIENTE'
@@ -307,16 +312,19 @@ class LineaComandaService:
         linea.save(update_fields=['estado'])
 
         comanda = linea.comanda
-        if all(l.estado == 'EN_PREP' for l in comanda.lineas.all()):
+        lineas = list(comanda.lineas.select_related('plato').all())
+        if all(l.estado == 'EN_PREP' for l in lineas):
             comanda.estado = 'EN_PREPARACION'
             comanda.save(update_fields=['estado'])
 
         _notificar_kds()
         return linea
+       
 
     @staticmethod
+    @transaction.atomic
     def marcar_listo(linea_id: int) -> LineaComanda:
-        linea = LineaComanda.objects.get(id=linea_id)
+        linea = LineaComanda.objects.select_for_update().get(id=linea_id)
         if linea.estado != 'EN_PREP':
             raise TransicionEstadoInvalida(
                 'Solo se puede marcar LISTO una línea EN_PREPARACION'
@@ -325,13 +333,23 @@ class LineaComandaService:
         linea.save(update_fields=['estado'])
 
         comanda = linea.comanda
-        if all(l.estado == 'LISTO' for l in comanda.lineas.all()):
+        lineas = list(comanda.lineas.select_related('plato').all())
+        if all(l.estado == 'LISTO' for l in lineas):
             comanda.estado = 'LISTA'
             comanda.save(update_fields=['estado'])
 
         _notificar_kds()
         _notificar_plano()
         return linea
+    @staticmethod
+    def obtener_panel_kds():
+        """Retorna comandas activas para el panel de cocina (KDS)."""
+        comanda_ids = LineaComanda.objects.filter(
+            estado__in=['PENDIENTE', 'EN_PREP']
+        ).values_list('comanda_id', flat=True).distinct()
+        return Comanda.objects.filter(
+            Q(estado='EN_PREPARACION') | Q(id__in=comanda_ids)
+        ).prefetch_related('lineas__plato', 'mozo', 'mesa').order_by('fecha_apertura')
 
 
 # --- Funciones auxiliares privadas del módulo ---
@@ -408,6 +426,17 @@ def _notificar_plano():
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             'plano', {'type': 'plano_update', 'data': {'action': 'refresh'}}
+        )
+    except Exception:
+        pass
+
+def _notificar_comanda(comanda_id: int):
+    """Notifica al WebSocket de una comanda específica."""
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'comanda_{comanda_id}',
+            {'type': 'comanda_update', 'data': {'action': 'refresh', 'comanda_id': comanda_id}}
         )
     except Exception:
         pass
