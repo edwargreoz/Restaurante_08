@@ -1,5 +1,6 @@
 from django.db import models
 from utils.models import ModeloBase
+from django.db.models import Sum, F, DecimalField, ExpressionWrapper
 
 class Comanda(ModeloBase):
     """
@@ -63,6 +64,17 @@ class Comanda(ModeloBase):
         return self.lineas.aggregate(
             total=models.Sum(models.F('cantidad') * models.F('plato__precio'))
         )['total'] or 0
+    
+    @staticmethod
+    def annotate_total(queryset):
+        return queryset.annotate(
+            totalCalculado=Sum(
+                ExpressionWrapper(
+                    F('lineas__cantidad') * F('lineas__plato__precio'),
+                    output_field=models.DecimalField(max_digits=12,decimal_places=2)
+                )
+            )
+        )
 
 class LineaComanda(ModeloBase):
     """
