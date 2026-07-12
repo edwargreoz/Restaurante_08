@@ -14,7 +14,7 @@ urlpatterns = [
     # Vistas web de mesas (plano del salon)
     path('', include('mesas.urls')),
     # API REST versionada 
-    path('api/v1/', include('api.urls')),
+    path('api/v1/', include('interfaces.api.urls')),
     # Vistas web de menu (catalogo, gestion)
     path('', include('menu.urls')),
     # Vistas web de pedidos (tomar pedido, KDS)

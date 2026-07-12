@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'pedidos',      # Comandas y lineas de comanda
     'inventario',   # Insumos y recetas
     'caja',         # Caja, pagos y turnos
-    'api',          # Capa REST (ViewSets, Serializers)
+    'interfaces.api',          # Capa REST (ViewSets, Serializers)
     'reservas',     # Reservas de mesas
 ]
 
@@ -138,7 +138,7 @@ REST_FRAMEWORK = {
     ],
 
     # Paginacion global 
-    'DEFAULT_PAGINATION_CLASS': 'api.pagination.PaginacionRestaurant',
+    'DEFAULT_PAGINATION_CLASS': 'interfaces.api.pagination.PaginacionRestaurant',
     'PAGE_SIZE': 15,
 
     # Backends de filtros 
