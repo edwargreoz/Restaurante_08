@@ -6,12 +6,3 @@ db.sqlite3
 *.log
 staticfiles/
 .DS_Store
-
-
-# Guías de trabajo del equipo
-Especificaciones_Arquitectura_Rubricas_2026.md
-GUIA_linnexnami.md
-GUIA_RaizaArce.md
-PLAN_MAESTRO.md
-GUIA_edwargreoz.md
-GUIA_Metroxtt.mdtrabajo/
