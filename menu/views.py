@@ -58,8 +58,6 @@ def crear_plato(request):
                 imagen=request.FILES.get('imagen'),
             )
             messages.success(request, 'Plato creado')
-        except RecursoNoEncontrado as e:
-            messages.error(request, str(e))
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
     return redirect('gestion_menu')
