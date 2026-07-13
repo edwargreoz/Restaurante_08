@@ -140,6 +140,7 @@ class ReporteService:
 
     @staticmethod
     def stock_critico():
+        from django.db.models import F
         from inventario.models import Insumo
         return Insumo.objects.filter(
             stock_actual__lt=F('stock_minimo')

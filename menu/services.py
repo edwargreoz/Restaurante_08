@@ -8,7 +8,7 @@ from inventario.models import Receta
 class CategoriaService:
     @staticmethod
     def listar_categorias():
-        return Categoria.objects.prefetch_related('platos').all()
+        return Categoria.objects.prefetch_related('platos__receta').all()
 
     @staticmethod
     def obtener_por_id(categoria_id: int) -> Categoria:

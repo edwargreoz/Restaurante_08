@@ -6,3 +6,6 @@ db.sqlite3
 *.log
 staticfiles/
 .DS_Store
+.coverage
+htmlcov/
+.pytest_cache/

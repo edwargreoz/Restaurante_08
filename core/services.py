@@ -51,7 +51,7 @@ class UsuarioService:
         return user
     @staticmethod
     def listar_usuarios():
-        return User.objects.all().order_by('-is_active', 'username')
+        return User.objects.prefetch_related('groups').order_by('-is_active', 'username')
 
     @staticmethod
     def crear(username, password, grupo_nombre=None, **extra) -> User:

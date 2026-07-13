@@ -1,11 +1,11 @@
 from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth.models import User
-from mesas.models import Mesa
-from pedidos.models import Comanda
 from core.excepciones import CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioViolada
 from caja.models import Caja, Pago
-from caja.services import CajaService, PagoService
+from caja.services import CajaService, PagoService, ReporteService
+from mesas.models import Mesa
+from pedidos.models import Comanda
 
 
 class CajaServiceTest(TestCase):
@@ -44,6 +44,16 @@ class CajaServiceTest(TestCase):
     def test_cerrar_turno_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
             CajaService.cerrar_turno(999)
+
+    def test_listar_todas(self):
+        CajaService.abrir_turno('MAÑANA', self.usuario)
+        CajaService.obtener_activa()
+        Caja.objects.create(
+            turno='CERRADA', cajero=self.usuario,
+            saldo_inicial=Decimal('0'), estado='CERRADA',
+        )
+        todas = CajaService.listar_todas()
+        self.assertEqual(todas.count(), 2)
 
 
 class PagoServiceTest(TestCase):
@@ -90,3 +100,54 @@ class PagoServiceTest(TestCase):
         reporte = PagoService.reporte_ventas(caja_id=self.caja.id)
         self.assertEqual(reporte['total_general'], Decimal('100'))
         self.assertEqual(reporte['total_pagos'], 2)
+
+    def test_reporte_ticket_promedio(self):
+        Pago.objects.create(
+            comanda=self.comanda, caja=self.caja, metodo='EFECTIVO',
+            monto=Decimal('200'), vuelto=Decimal('0'),
+        )
+        Pago.objects.create(
+            comanda=self.comanda, caja=self.caja, metodo='EFECTIVO',
+            monto=Decimal('100'), vuelto=Decimal('0'),
+        )
+        reporte = PagoService.reporte_ventas()
+        self.assertEqual(reporte['ticket_promedio'], Decimal('150'))
+
+    def test_reporte_por_metodo(self):
+        Pago.objects.create(
+            comanda=self.comanda, caja=self.caja, metodo='EFECTIVO',
+            monto=Decimal('100'), vuelto=Decimal('0'),
+        )
+        Pago.objects.create(
+            comanda=self.comanda, caja=self.caja, metodo='YAPE',
+            monto=Decimal('50'), vuelto=Decimal('0'),
+        )
+        reporte = PagoService.reporte_ventas()
+        self.assertEqual(len(reporte['por_metodo']), 2)
+
+    def test_obtener_comanda_para_cobro_no_existe(self):
+        with self.assertRaises(RecursoNoEncontrado):
+            PagoService.obtener_comanda_para_cobro(999)
+
+    def test_obtener_comanda_para_cobro_no_lista(self):
+        with self.assertRaises(RecursoNoEncontrado):
+            PagoService.obtener_comanda_para_cobro(self.comanda.id)
+
+    def test_listar_comandas_para_cobro(self):
+        self.comanda.estado = 'ABIERTA'
+        self.comanda.save()
+        resultado = PagoService.listar_comandas_para_cobro()
+        self.assertEqual(resultado.count(), 1)
+
+
+class ReporteServiceTest(TestCase):
+    def setUp(self):
+        self.usuario = User.objects.create_user(username='admin', password='test')
+
+    def test_stock_critico_vacio(self):
+        resultado = ReporteService.stock_critico()
+        self.assertEqual(resultado.count(), 0)
+
+    def test_top_platos_vacio(self):
+        resultado = ReporteService.top_platos()
+        self.assertEqual(len(list(resultado)), 0)
