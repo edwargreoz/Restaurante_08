@@ -75,11 +75,12 @@ class PlatoServiceTest(TestCase):
         self.plato.refresh_from_db()
         self.assertEqual(self.plato.precio, Decimal('30.00'))
 
-    def test_eliminar(self):
+    def test_eliminar_soft_delete(self):
         pid = self.plato.id
         PlatoService.eliminar(pid)
-        with self.assertRaises(RecursoNoEncontrado):
-            PlatoService.obtener_por_id(pid)
+        self.plato.refresh_from_db()
+        self.assertFalse(self.plato.activo)
+        self.assertTrue(Plato.objects.filter(id=pid).exists())
 
     def test_eliminar_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):

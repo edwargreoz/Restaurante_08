@@ -62,6 +62,7 @@ class PlatoService:
         return plato.disponible
 
     @staticmethod
+    @transaction.atomic
     def actualizar(plato_id: int, **kwargs) -> Plato:
         plato = PlatoService.obtener_por_id(plato_id)
         categoria_id = kwargs.pop('categoria_id', None)
@@ -71,7 +72,10 @@ class PlatoService:
             if attr == 'imagen' and not value:
                 continue
             setattr(plato, attr, value)
-        plato.save()
+        plato.save(update_fields=[
+            'nombre', 'descripcion', 'precio', 'categoria',
+            'receta', 'tiempo_preparacion_min', 'disponible', 'actualizado_en',
+        ])
         return plato
 
     @staticmethod
@@ -79,7 +83,7 @@ class PlatoService:
         plato = Plato.objects.filter(id=plato_id).first()
         if not plato:
             raise RecursoNoEncontrado('Plato no encontrado')
-        plato.delete()
+        plato.eliminar()
 
     @staticmethod
     def toggle_disponible(plato_id: int) -> Plato:
