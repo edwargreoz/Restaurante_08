@@ -85,7 +85,10 @@ class UsuarioService:
         else:
             user.is_superuser = False
             user.is_staff = False
-        user.save()
+        user.save(update_fields=[
+            'username', 'first_name', 'last_name', 'email',
+            'is_active', 'is_superuser', 'is_staff', 'password',
+        ])
         if rol is not None:
             user.groups.clear()
             if rol != 'Admin':
