@@ -36,13 +36,16 @@ class InsumoService:
         for attr, value in kwargs.items():
             setattr(insumo, attr, value)
         insumo.full_clean()
-        insumo.save()
+        insumo.save(update_fields=[
+            'nombre', 'unidad', 'stock_actual',
+            'stock_minimo', 'costo_unitario', 'actualizado_en',
+        ])
         return insumo
 
     @staticmethod
     def eliminar(insumo_id: int):
         insumo = InsumoService.obtener_por_id(insumo_id)
-        insumo.delete()
+        insumo.eliminar()
 
     @staticmethod
     @transaction.atomic
@@ -105,19 +108,23 @@ class RecetaService:
         return receta
 
     @staticmethod
+    @transaction.atomic
     def crear(nombre: str, insumos_data: list = None) -> Receta:
         receta, created = Receta.objects.get_or_create(nombre=nombre)
-        if insumos_data:
+        if insumos_data and created:
             for item in insumos_data:
-                RecetaInsumo.objects.create(
+                RecetaInsumo.objects.get_or_create(
                     receta=receta,
                     insumo_id=item['insumo_id'],
-                    cantidad_por_porcion=item['cantidad'],
-                    unidad=item.get('unidad', 'UNIDAD'),
+                    defaults={
+                        'cantidad_por_porcion': item['cantidad'],
+                        'unidad': item.get('unidad', 'UNIDAD'),
+                    }
                 )
         return receta
 
     @staticmethod
+    @transaction.atomic
     def actualizar(receta_id: int, nombre: str = None, insumos_data: list = None) -> Receta:
         receta = RecetaService.obtener_por_id(receta_id)
         if nombre:
@@ -125,28 +132,37 @@ class RecetaService:
             receta.full_clean()
             receta.save(update_fields=['nombre'])
         if insumos_data:
-            receta.insumos.all().delete()
+            receta.insumos.all().update(activo=False)
             for item in insumos_data:
-                RecetaInsumo.objects.create(
+                ri, created = RecetaInsumo.objects.get_or_create(
                     receta=receta,
                     insumo_id=item['insumo_id'],
-                    cantidad_por_porcion=item['cantidad'],
-                    unidad=item.get('unidad', 'UNIDAD'),
+                    defaults={
+                        'cantidad_por_porcion': item['cantidad'],
+                        'unidad': item.get('unidad', 'UNIDAD'),
+                    }
                 )
+                if not created:
+                    ri.cantidad_por_porcion = item['cantidad']
+                    ri.unidad = item.get('unidad', 'UNIDAD')
+                    ri.activo = True
+                    ri.save(update_fields=[
+                        'cantidad_por_porcion', 'unidad', 'activo', 'actualizado_en',
+                    ])
         return receta
 
     @staticmethod
     def eliminar_insumo(receta_insumo_id: int):
         try:
             ri = RecetaInsumo.objects.get(id=receta_insumo_id)
-            ri.delete()
+            ri.eliminar()
         except RecetaInsumo.DoesNotExist:
             raise RecursoNoEncontrado('Insumo de receta no encontrado')
 
     @staticmethod
     def eliminar(receta_id: int):
         receta = RecetaService.obtener_por_id(receta_id)
-        receta.delete()
+        receta.eliminar()
 
     @staticmethod
     def calcular_insumos_para_platos(receta_id: int, cantidad_platos: int) -> dict:
@@ -206,6 +222,7 @@ class UnidadConversionService:
         )
 
     @staticmethod
+    @transaction.atomic
     def crear_cadena(insumo_id: int, niveles: list) -> list:
         """Crea una cadena de unidades de conversión de abajo hacia arriba.
         niveles = [

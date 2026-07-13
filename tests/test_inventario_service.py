@@ -96,21 +96,23 @@ class RecetaServiceTest(TestCase):
         receta = RecetaService.crear('Salsa', [
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('3')},
         ])
-        self.assertEqual(receta.insumos.count(), 1)
+        self.assertEqual(receta.insumos.filter(activo=True).count(), 1)
         RecetaService.actualizar(receta.id, insumos_data=[
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('5')},
             {'insumo_id': self.insumo2.id, 'cantidad': Decimal('2')},
         ])
-        self.assertEqual(receta.insumos.count(), 2)
+        self.assertEqual(receta.insumos.filter(activo=True).count(), 2)
 
     def test_eliminar_insumo_de_receta(self):
         receta = RecetaService.crear('Salsa', [
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('3')},
             {'insumo_id': self.insumo2.id, 'cantidad': Decimal('2')},
         ])
-        ri = receta.insumos.first()
+        ri = receta.insumos.filter(activo=True).first()
         RecetaService.eliminar_insumo(ri.id)
-        self.assertEqual(receta.insumos.count(), 1)
+        ri.refresh_from_db()
+        self.assertFalse(ri.activo)
+        self.assertEqual(receta.insumos.filter(activo=True).count(), 1)
 
     def test_eliminar_insumo_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
@@ -133,14 +135,15 @@ class RecetaServiceTest(TestCase):
         self.assertFalse(resultado['disponible'])
         self.assertEqual(len(resultado['faltantes']), 1)
 
-    def test_eliminar_receta(self):
+    def test_eliminar_receta_soft_delete(self):
         receta = RecetaService.crear('Salsa', [
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('3')},
         ])
         rid = receta.id
         RecetaService.eliminar(rid)
-        with self.assertRaises(RecursoNoEncontrado):
-            RecetaService.obtener_por_id(rid)
+        receta.refresh_from_db()
+        self.assertFalse(receta.activo)
+        self.assertTrue(Receta.objects.filter(id=rid).exists())
 
 
 class InsumoServiceTest(TestCase):
