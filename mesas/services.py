@@ -6,6 +6,7 @@ from core.excepciones import (
 )
 from mesas.models import Mesa, UnionMesa
 from pedidos.models import Comanda
+from pedidos.services import ComandaService
 from caja.models import Caja
 
 
@@ -13,7 +14,7 @@ class MesaService:
     @staticmethod
     @transaction.atomic
     def obtener_o_crear_comanda_activa(mesa_id: int, usuario) -> Comanda:
-        return Comanda.abrir(mesa_id, usuario)
+        return ComandaService.abrir(mesa_id, usuario)
 
     @staticmethod
     def cambiar_estado(mesa_id: int, nuevo_estado: str) -> Mesa:
@@ -69,7 +70,7 @@ class UnionMesaService:
 
         union = UnionMesa.objects.create()
         union.mesas.set(mesas)
-        union.save()
+        
 
         comandas_activas = Comanda.objects.filter(
             mesa_id__in=mesa_ids,
@@ -83,7 +84,7 @@ class UnionMesaService:
         if comandas_activas.count() >= 2:
             principal = comandas_activas.first()
             for otras in comandas_activas[1:]:
-                principal.fusionar(otras)
+               ComandaService.fusionar(principal.id,otras.id)
 
         _notificar_plano()
         return union
@@ -120,8 +121,8 @@ class UnionMesaService:
                 raise CajaNoAbierta('No hay un turno de caja abierto')
             mesa.estado = 'OCUPADA'
             mesa.save(update_fields=['estado'])
-            comanda_nueva = Comanda.abrir(mesa.id, usuario)
-            comanda_union.fusionar(comanda_nueva)
+            comanda_nueva = ComandaService.abrir(mesa.id, usuario)
+            ComandaService.fusionar(comanda_union.id, comanda_nueva.id)
 
         _notificar_plano()
         return union
@@ -143,16 +144,19 @@ class UnionMesaService:
         errores = []
         for comanda in comandas_activas:
             try:
-                comanda.anular(usuario=usuario)
+                ComandaService.anular(comanda.id, usuario=usuario)
             except Exception as e:
                 errores.append(str(e))
 
-        union.activo = False
-        union.save(update_fields=['activo', 'actualizado_en'])
-        _notificar_plano()
         if errores:
             raise UnionInvalida('; '.join(errores))
 
+        for mesa in union.mesas.all():
+            mesa.estado = 'LIBRE'
+            mesa.save(update_fields=['estado'])
+        union.activo = False
+        union.save(update_fields=['activo', 'actualizado_en'])
+        _notificar_plano()
 
 def _notificar_plano():
     try:
