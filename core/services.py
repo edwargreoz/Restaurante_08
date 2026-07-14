@@ -1,5 +1,6 @@
 
 from django.db.models import Sum, F
+from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 from mesas.models import Mesa
@@ -54,6 +55,7 @@ class UsuarioService:
         return User.objects.prefetch_related('groups').order_by('-is_active', 'username')
 
     @staticmethod
+    @transaction.atomic
     def crear(username, password, grupo_nombre=None, **extra) -> User:
         from django.contrib.auth.models import Group
         user = User.objects.create_user(
@@ -65,6 +67,7 @@ class UsuarioService:
         return user
 
     @staticmethod
+    @transaction.atomic
     def actualizar(user_id: int, solicitante_id: int, **campos) -> User:
         from django.contrib.auth.models import Group
         user = UsuarioService.obtener_por_id(user_id)

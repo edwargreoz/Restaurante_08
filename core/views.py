@@ -33,18 +33,17 @@ def login_view(request):
 
 @login_required
 def dashboard_view(request):
-    es_mozo = request.user.is_superuser or request.user.groups.filter(name='Mozo').exists()
-    es_cajero = request.user.is_superuser or request.user.groups.filter(name='Cajero').exists()
-
-    if not es_mozo and not es_cajero:
+    es_mozo_grupo = request.user.is_superuser or request.user.groups.filter(name='Mozo').exists()
+    es_cajero_grupo = request.user.is_superuser or request.user.groups.filter(name='Cajero').exists()
+    if not es_mozo_grupo and not es_cajero_grupo:
         return redirect('kds_panel')
 
     context = {}
 
-    if es_mozo:
+    if es_mozo_grupo:
         context.update(DashboardService.datos_mozo())
 
-    if es_cajero:
+    if es_cajero_grupo:
         context.update(DashboardService.datos_cajero())
 
     return render(request, 'core/dashboard.html', context)
