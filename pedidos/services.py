@@ -69,102 +69,101 @@ class ComandaService:
         return comanda
 
     @staticmethod
+    @transaction.atomic
     def agregar_platos(comanda_id: int, platos_data: list, usuario=None) -> list:
         comanda = Comanda.objects.select_for_update().get(id=comanda_id)
         if comanda.estado not in ('ABIERTA', 'LISTA'):
             raise ComandaNoDisponible('La comanda no está abierta')
+        errores = []
+        platos_a_crear = []
+        movimientos = []
 
-        with transaction.atomic():
-            errores = []
-            platos_a_crear = []
-            movimientos = []
+        for item in platos_data:
+            plato_id = item.get('plato_id')
+            cantidad = item.get('cantidad', 1)
+            observacion = item.get('observacion', '')
 
-            for item in platos_data:
-                plato_id = item.get('plato_id')
-                cantidad = item.get('cantidad', 1)
-                observacion = item.get('observacion', '')
+            plato = Plato.objects.filter(id=plato_id, activo=True).first()
+            if not plato:
+                errores.append({'plato_id': plato_id, 'error': 'Plato no encontrado'})
+                continue
+            if not plato.disponible:
+                errores.append({'plato_id': plato_id, 'error': 'Plato no disponible'})
+                continue
+            if not plato.receta_id:
+                errores.append({
+                    'plato_id': plato_id,
+                    'plato': plato.nombre,
+                    'error': 'El plato no tiene una receta asignada'
+                })
+                continue
 
-                plato = Plato.objects.filter(id=plato_id, activo=True).first()
-                if not plato:
-                    errores.append({'plato_id': plato_id, 'error': 'Plato no encontrado'})
-                    continue
-                if not plato.disponible:
-                    errores.append({'plato_id': plato_id, 'error': 'Plato no disponible'})
-                    continue
-                if not plato.receta_id:
-                    errores.append({
-                        'plato_id': plato_id,
-                        'plato': plato.nombre,
-                        'error': 'El plato no tiene una receta asignada'
-                    })
-                    continue
+            recetas = plato.receta.insumos.select_related(
+                'insumo'
+            ).select_for_update(of=('insumo',))
+            faltantes = []
+            deducciones = []
 
-                recetas = plato.receta.insumos.select_related(
-                    'insumo'
-                ).select_for_update(of=('insumo',))
-                faltantes = []
-                deducciones = []
-
-                for receta in recetas:
-                    insumo = receta.insumo
-                    necesario_en_unidad_receta = receta.cantidad_por_porcion * Decimal(str(cantidad))
-                    necesario = convertir_unidad(
-                        necesario_en_unidad_receta,
-                        receta.unidad,
-                        insumo.unidad
+            for receta in recetas:
+                insumo = receta.insumo
+                necesario_en_unidad_receta = receta.cantidad_por_porcion * Decimal(str(cantidad))
+                necesario = convertir_unidad(
+                    necesario_en_unidad_receta,
+                    receta.unidad,
+                    insumo.unidad
+                )
+                if insumo.stock_actual < necesario:
+                    faltantes.append(
+                        f"{insumo.nombre}: disponible {insumo.stock_actual} {insumo.unidad}, "
+                        f"necesario {necesario} {insumo.unidad}"
                     )
-                    if insumo.stock_actual < necesario:
-                        faltantes.append(
-                            f"{insumo.nombre}: disponible {insumo.stock_actual} {insumo.unidad}, "
-                            f"necesario {necesario} {insumo.unidad}"
-                        )
-                        continue
-
-                    stock_anterior = insumo.stock_actual
-                    insumo.stock_actual -= necesario
-                    insumo.save(update_fields=['stock_actual'])
-
-                    deducciones.append(MovimientoInsumo(
-                        insumo=insumo, comanda=comanda,
-                        tipo='DEDUCCION', cantidad=necesario,
-                        stock_anterior=stock_anterior,
-                        stock_posterior=insumo.stock_actual,
-                        usuario=usuario,
-                        observacion=f"Plato: {plato.nombre} x{cantidad}"
-                    ))
-
-                if faltantes:
-                    errores.append({
-                        'plato_id': plato_id, 'plato': plato.nombre,
-                        'error': 'Stock insuficiente', 'detalle': faltantes
-                    })
                     continue
 
-                movimientos.extend(deducciones)
-                platos_a_crear.append(LineaComanda(
-                    comanda=comanda, plato=plato,
-                    cantidad=cantidad, observacion=observacion,
+                stock_anterior = insumo.stock_actual
+                insumo.stock_actual -= necesario
+                insumo.save(update_fields=['stock_actual'])
+
+                deducciones.append(MovimientoInsumo(
+                    insumo=insumo, comanda=comanda,
+                    tipo='DEDUCCION', cantidad=necesario,
+                    stock_anterior=stock_anterior,
+                    stock_posterior=insumo.stock_actual,
+                    usuario=usuario,
+                    observacion=f"Plato: {plato.nombre} x{cantidad}"
                 ))
 
-            if errores:
-                raise StockInsuficiente({'errores': errores})
+            if faltantes:
+                errores.append({
+                    'plato_id': plato_id, 'plato': plato.nombre,
+                    'error': 'Stock insuficiente', 'detalle': faltantes
+                })
+                continue
 
-            LineaComanda.objects.bulk_create(platos_a_crear)
-            MovimientoInsumo.objects.bulk_create(movimientos)
+            movimientos.extend(deducciones)
+            platos_a_crear.append(LineaComanda(
+                comanda=comanda, plato=plato,
+                cantidad=cantidad, observacion=observacion,
+            ))
 
-            # --- Regla InsumoAgotado ---
-            # Si algún insumo llegó a 0, marcar los platos que lo usan como no disponibles
-            insumos_agotados = set()
-            for mov in movimientos:
-                if mov.stock_posterior <= 0:
-                    insumos_agotados.add(mov.insumo_id)
+        if errores:
+            raise StockInsuficiente({'errores': errores})
 
-            if insumos_agotados:
-                platos_afectados = Plato.objects.filter(
-                    receta__insumos__insumo_id__in=insumos_agotados,
-                    disponible=True,
-                ).distinct()
-                platos_afectados.update(disponible=False)
+        LineaComanda.objects.bulk_create(platos_a_crear)
+        MovimientoInsumo.objects.bulk_create(movimientos)
+
+        # --- Regla InsumoAgotado ---
+        # Si algún insumo llegó a 0, marcar los platos que lo usan como no disponibles
+        insumos_agotados = set()
+        for mov in movimientos:
+            if mov.stock_posterior <= 0:
+                insumos_agotados.add(mov.insumo_id)
+
+        if insumos_agotados:
+            platos_afectados = Plato.objects.filter(
+                receta__insumos__insumo_id__in=insumos_agotados,
+                disponible=True,
+            ).distinct()
+            platos_afectados.update(disponible=False)
 
         _notificar_comanda(comanda.id)
         return platos_a_crear
@@ -377,13 +376,14 @@ def _validar_referencia_tarjeta(referencia: str):
 
 def _finalizar_reservas_comanda(comanda):
     from reservas.models import Reserva
+    from reservas.services import ReservaService
     mesa = comanda.mesa
     union = UnionMesa.objects.filter(mesas=mesa, activo=True).first()
     for r in Reserva.objects.filter(mesa=mesa, activo=True):
-        r.finalizar()
+        ReservaService.finalizar(r.id)
     if union:
         for r in Reserva.objects.filter(union_mesa=union, activo=True):
-            r.finalizar()
+            ReservaService.finalizar(r.id)
 
 
 def _actualizar_estado_mesa_post_pago(comanda):
