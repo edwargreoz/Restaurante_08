@@ -12,6 +12,7 @@ from pedidos.services import ComandaService, LineaComandaService
 
 from core.excepciones import AppError
 from caja.services import PagoService
+
     
 from .filters import ComandaFilter, PlatoFilter
 from .serializers import (
@@ -63,7 +64,8 @@ class ReservaViewSet(viewsets.ModelViewSet):
     serializer_class = ReservaSerializer
 
     def perform_destroy(self, instance):
-        instance.cancelar()
+        from reservas.services import ReservaService
+        ReservaService.cancelar(instance.id)
 
 class MesaViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar mesas y su estado actual en tiempo real."""
@@ -117,6 +119,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        comanda.refresh_from_db()
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
@@ -143,6 +146,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 error_data,
                 status=status.HTTP_400_BAD_REQUEST
             )
+        comanda.refresh_from_db()
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
@@ -160,6 +164,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+        comanda.refresh_from_db()
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -268,13 +273,11 @@ class CocinaViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CocinaComandaSerializer
 
     def get_queryset(self):
-        comanda_ids = LineaComanda.objects.filter(
-            estado__in=['PENDIENTE', 'EN_PREP']
-        ).values_list('comanda_id', flat=True).distinct()
+        comanda_ids = LineaComandaService.obtener_comandas_con_lineas_pendientes()
         return Comanda.objects.filter(
             Q(estado='EN_PREPARACION') | Q(id__in=comanda_ids)
         ).prefetch_related('lineas__plato').order_by('fecha_apertura')
-
+    
 class ReportesViewSet(viewsets.ViewSet):
     """ViewSet para consultar reportes de ventas del turno y stock crítico de insumos."""
     permission_classes = [EsCajero|EsAdmin]
