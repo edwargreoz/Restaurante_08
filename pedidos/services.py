@@ -15,6 +15,8 @@ from mesas.models import Mesa, UnionMesa
 from caja.models import Caja, Pago
 from inventario.models import RecetaInsumo, MovimientoInsumo, convertir_unidad
 from menu.models import Plato
+from mesas.services import _notificar_plano
+
 
 
 class ComandaService:
@@ -170,8 +172,8 @@ class ComandaService:
     @staticmethod
     @transaction.atomic
     def fusionar(comanda_id: int, otra_comanda_id: int) -> Comanda:
-        comanda = Comanda.objects.get(id=comanda_id)
-        otra = Comanda.objects.get(id=otra_comanda_id)
+        comanda = Comanda.objects.select_for_update().get(id=comanda_id)
+        otra = Comanda.objects.select_for_update().get(id=otra_comanda_id)
 
         if comanda.estado in ('COBRADA', 'ANULADA'):
             raise ComandaNoDisponible('La comanda principal no está activa')
@@ -351,6 +353,13 @@ class LineaComandaService:
             Q(estado='EN_PREPARACION') | Q(id__in=comanda_ids)
         ).prefetch_related('lineas__plato', 'mozo', 'mesa').order_by('fecha_apertura')
 
+    @staticmethod
+    def obtener_comandas_con_lineas_pendientes():
+        """Retorna IDs de comandas que tienen líneas PENDIENTE o EN_PREP."""
+        return LineaComanda.objects.filter(
+            estado__in=['PENDIENTE', 'EN_PREP']
+        ).values_list('comanda_id', flat=True).distinct()
+
 
 # --- Funciones auxiliares privadas del módulo ---
 
@@ -417,17 +426,7 @@ def _notificar_kds():
         async_to_sync(channel_layer.group_send)(
             'kds', {'type': 'kds_update', 'data': {'action': 'refresh'}}
         )
-    except Exception:
-        pass  # Si no hay Redis/Channels, no falla
-
-
-def _notificar_plano():
-    try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            'plano', {'type': 'plano_update', 'data': {'action': 'refresh'}}
-        )
-    except Exception:
+    except (ConnectionError, OSError, TimeoutError):
         pass
 
 def _notificar_comanda(comanda_id: int):
@@ -438,5 +437,5 @@ def _notificar_comanda(comanda_id: int):
             f'comanda_{comanda_id}',
             {'type': 'comanda_update', 'data': {'action': 'refresh', 'comanda_id': comanda_id}}
         )
-    except Exception:
+    except (ConnectionError, OSError, TimeoutError):
         pass
