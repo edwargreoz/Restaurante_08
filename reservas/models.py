@@ -40,43 +40,7 @@ class Reserva(ModeloBase):
         self.activo = False
         self.save(update_fields=['activo'])
 
-        if self.mesa:
-            tiene_otra_reserva = Reserva.objects.filter(
-                mesa=self.mesa, activo=True
-            ).exclude(id=self.id).exists()
-            if not tiene_otra_reserva:
-                self.mesa.estado = 'LIBRE'
-                self.mesa.save(update_fields=['estado'])
-        elif self.union_mesa:
-            tiene_otra_reserva = Reserva.objects.filter(
-                union_mesa=self.union_mesa, activo=True
-            ).exclude(id=self.id).exists()
-            if not tiene_otra_reserva:
-                for m in self.union_mesa.mesas.all():
-                    m.estado = 'LIBRE'
-                    m.save(update_fields=['estado'])
-                self.union_mesa.activo = False
-                self.union_mesa.save(update_fields=['activo'])
-
     def finalizar(self):
         self.activo = False
         self.finalizada = True
         self.save(update_fields=['activo', 'finalizada'])
-
-        if self.mesa:
-            tiene_otra_reserva = Reserva.objects.filter(
-                mesa=self.mesa, activo=True
-            ).exclude(id=self.id).exists()
-            if not tiene_otra_reserva:
-                self.mesa.estado = 'LIMPIEZA'
-                self.mesa.save(update_fields=['estado'])
-        elif self.union_mesa:
-            tiene_otra_reserva = Reserva.objects.filter(
-                union_mesa=self.union_mesa, activo=True
-            ).exclude(id=self.id).exists()
-            if not tiene_otra_reserva:
-                for m in self.union_mesa.mesas.all():
-                    m.estado = 'LIMPIEZA'
-                    m.save(update_fields=['estado'])
-                self.union_mesa.activo = False
-                self.union_mesa.save(update_fields=['activo'])

@@ -6,6 +6,7 @@ from core.excepciones import (
 )
 from reservas.models import Reserva
 from mesas.models import Mesa, UnionMesa
+from mesas.services import _notificar_plano
 
 
 class ReservaService:
@@ -43,6 +44,7 @@ class ReservaService:
         return reserva
 
     @staticmethod
+    @transaction.atomic
     def cancelar(reserva_id: int) -> Reserva:
         reserva = Reserva.objects.filter(id=reserva_id).first()
         if not reserva:
@@ -54,6 +56,7 @@ class ReservaService:
         return reserva
 
     @staticmethod
+    @transaction.atomic
     def finalizar(reserva_id: int) -> Reserva:
         reserva = Reserva.objects.filter(id=reserva_id).first()
         if not reserva:
@@ -110,7 +113,11 @@ class ReservaService:
         reserva.hora_fin = datos['hora_fin']
         reserva.num_personas = datos['num_personas']
         reserva.observacion = datos['observacion']
-        reserva.save()
+        reserva.save(update_fields=[
+            'mesa', 'union_mesa', 'cliente_nombre', 'cliente_contacto',
+            'fecha', 'hora_inicio', 'hora_fin', 'num_personas',
+            'observacion', 'actualizado_en'
+        ])
 
         if vieja_mesa and vieja_mesa != reserva.mesa:
             vieja_mesa.estado = 'LIBRE'
@@ -151,7 +158,7 @@ class ReservaService:
             if reserva.union_mesa.activo:
                 reserva.union_mesa.activo = False
                 reserva.union_mesa.save(update_fields=['activo'])
-        reserva.delete()
+        reserva.eliminar()
         _notificar_plano()
 
     @staticmethod
@@ -217,13 +224,4 @@ class ReservaService:
         }
 
 
-def _notificar_plano():
-    try:
-        from channels.layers import get_channel_layer
-        from asgiref.sync import async_to_sync as async_to_safe
-        channel_layer = get_channel_layer()
-        async_to_safe(channel_layer.group_send)(
-            'plano', {'type': 'plano_update', 'data': {'action': 'refresh'}}
-        )
-    except Exception:
-        pass
+
