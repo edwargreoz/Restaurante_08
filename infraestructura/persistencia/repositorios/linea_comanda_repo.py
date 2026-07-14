@@ -1,0 +1,32 @@
+from typing import Optional, List
+from pedidos.models import LineaComanda as LineaComandaModel
+from dominio.entidades.linea_comanda import LineaComanda
+
+
+class LineaComandaRepository:
+    def obtener_por_id(self, linea_id: int) -> Optional[LineaComanda]:
+        try:
+            l = LineaComandaModel.objects.get(id=linea_id)
+            return self._a_entidad(l)
+        except LineaComandaModel.DoesNotExist:
+            return None
+
+    def guardar(self, linea: LineaComanda) -> LineaComanda:
+        l, _ = LineaComandaModel.objects.update_or_create(
+            id=linea.id,
+            defaults={
+                'comanda_id': linea.comanda_id, 'plato_id': linea.plato_id,
+                'cantidad': linea.cantidad, 'observacion': linea.observacion,
+                'estado': linea.estado,
+            }
+        )
+        return self._a_entidad(l)
+
+    def listar_por_comanda(self, comanda_id: int) -> List[LineaComanda]:
+        return [self._a_entidad(l) for l in LineaComandaModel.objects.filter(comanda_id=comanda_id)]
+
+    def _a_entidad(self, l) -> LineaComanda:
+        return LineaComanda(
+            id=l.id, comanda_id=l.comanda_id, plato_id=l.plato_id,
+            cantidad=l.cantidad, observacion=l.observacion, estado=l.estado,
+        )

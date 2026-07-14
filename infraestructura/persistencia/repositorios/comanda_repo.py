@@ -23,6 +23,20 @@ class ComandaRepository:
             }
         )
         return self._modelo_a_entidad(modelo)
+    def listar_activas(self) -> List[Comanda]:
+        return [
+            self._modelo_a_entidad(m)
+            for m in ComandaModel.activos.filter(
+                estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
+            )
+        ]
+
+    def listar_por_mesa(self, mesa_id: int) -> List[Comanda]:
+        return [
+            self._modelo_a_entidad(m)
+            for m in ComandaModel.activos.filter(mesa_id=mesa_id)
+        ]
+
 
     def _modelo_a_entidad(self, modelo) -> Comanda:
         return Comanda(

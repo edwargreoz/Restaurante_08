@@ -18,6 +18,19 @@ class InsumoRepository:
             self._a_entidad(m)
             for m in InsumoModel.objects.filter(stock_actual__lt=F('stock_minimo'))
         ]
+    def guardar(self, insumo: Insumo) -> Insumo:
+        m, _ = InsumoModel.objects.update_or_create(
+            id=insumo.id,
+            defaults={
+                'nombre': insumo.nombre, 'unidad': insumo.unidad,
+                'stock_actual': insumo.stock_actual, 'stock_minimo': insumo.stock_minimo,
+                'costo_unitario': insumo.costo_unitario,
+            }
+        )
+        return self._a_entidad(m)
+
+    def listar(self) -> List[Insumo]:
+        return [self._a_entidad(m) for m in InsumoModel.objects.all()]
 
     def _a_entidad(self, m) -> Insumo:
         return Insumo(

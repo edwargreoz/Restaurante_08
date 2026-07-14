@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional,List
 from mesas.models import Mesa as MesaModel
 from dominio.entidades.mesa import Mesa
 
@@ -23,6 +23,9 @@ class MesaRepository:
 
     def listar_activas(self):
         return [self._a_entidad(m) for m in MesaModel.activos.all()]
+    
+    def listar_por_zona(self, zona: str) -> List[Mesa]:
+        return [self._a_entidad(m) for m in MesaModel.activos.filter(zona=zona)]
 
     def _a_entidad(self, m):
         return Mesa(id=m.id, numero=m.numero, capacidad=m.capacidad,
