@@ -16,6 +16,12 @@ class MesaForm(forms.ModelForm):
         numero = self.cleaned_data.get('numero')
         if numero is not None and numero <= 0:
             raise forms.ValidationError("El número de mesa debe ser mayor a 0.")
+        if numero is not None:
+            qs = Mesa.activos.filter(numero=numero)
+            if self.instance and self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise forms.ValidationError("Ya existe una mesa activa con este número.")
         return numero
 
     def clean(self):

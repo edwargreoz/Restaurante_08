@@ -18,7 +18,6 @@ class Mesa(ModeloBase):
     )
 
     numero = models.IntegerField(
-        unique=True,
         verbose_name='Numero de mesa'
     )
 
@@ -45,6 +44,13 @@ class Mesa(ModeloBase):
         ordering = ['numero']
         verbose_name = 'Mesa'
         verbose_name_plural = 'Mesas'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['numero'],
+                condition=models.Q(activo=True),
+                name='unique_mesa_numero_activa',
+            )
+        ]
 
     def __str__(self):
         return f'Mesa {self.numero} ({self.get_estado_display()})'
