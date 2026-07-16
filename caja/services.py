@@ -8,14 +8,18 @@ from core.excepciones import (
 )
 from caja.models import Caja, Pago
 from pedidos.models import Comanda
-
+from dominio.puertos.repositorios import ICajaRepository
 
 class CajaService:
-    @staticmethod
+    def __init__(self, caja_repo: ICajaRepository):
+        self.repo = caja_repo
+
     @transaction.atomic
-    def abrir_turno(turno_nombre: str, usuario,
+    def abrir_turno(self, turno_nombre: str, usuario,
                     saldo_inicial: Decimal = Decimal('0')) -> Caja:
-        caja_existente = Caja.objects.select_for_update().filter(estado='ABIERTA').first()
+        caja_existente = Caja.objects.select_for_update().filter(
+            estado='ABIERTA'
+        ).first()
         if caja_existente:
             raise ReglaNegocioViolada('Ya hay un turno de caja abierto')
         return Caja.objects.create(
@@ -23,21 +27,20 @@ class CajaService:
             saldo_inicial=saldo_inicial,
         )
 
-    @staticmethod
-    def obtener_activa() -> Caja:
-        caja = Caja.objects.filter(estado='ABIERTA').first()
-        if not caja:
+    def obtener_activa(self):
+        caja_domain = self.repo.obtener_abierta()
+        if not caja_domain:
             raise CajaNoAbierta('No hay un turno de caja abierto')
-        return caja
+        return Caja.objects.filter(estado='ABIERTA').first()
 
-    @staticmethod
-    def listar_todas():
+    def listar_todas(self):
         return Caja.objects.all()
 
-    @staticmethod
     @transaction.atomic
-    def cerrar_turno(caja_id: int) -> dict:
-        caja = Caja.objects.select_for_update().filter(id=caja_id, estado='ABIERTA').first()
+    def cerrar_turno(self, caja_id: int) -> dict:
+        caja = Caja.objects.select_for_update().filter(
+            id=caja_id, estado='ABIERTA'
+        ).first()
         if not caja:
             raise RecursoNoEncontrado('No hay turno abierto o no existe')
         comandas_pendientes = Comanda.objects.filter(
@@ -53,28 +56,28 @@ class CajaService:
         return {
             'caja': caja,
             'total_ventas': Pago.objects.filter(caja=caja).aggregate(
-                total=Sum('monto'))['total'] or 0,
+                total=Sum('monto')
+            )['total'] or 0,
         }
 
-
 class PagoService:
-    @staticmethod
-    def obtener_comanda_para_cobro(comanda_id: int):
+    def obtener_comanda_para_cobro(self, comanda_id: int):
         comanda = Comanda.objects.prefetch_related(
             'lineas__plato', 'pagos'
         ).filter(id=comanda_id, estado='LISTA').first()
         if not comanda:
-            raise RecursoNoEncontrado('Comanda no encontrada o no está lista para cobro')
+            raise RecursoNoEncontrado(
+                'Comanda no encontrada o no está lista para cobro'
+            )
         return comanda
 
-    @staticmethod
-    def listar_comandas_para_cobro():
+    def listar_comandas_para_cobro(self):
         return Comanda.objects.filter(
             estado__in=['ABIERTA', 'LISTA']
         ).select_related('mesa', 'mozo').order_by('-fecha_apertura')
 
-    @staticmethod
-    def listar_pagos_con_filtros(caja_id=None, fecha_desde=None, fecha_hasta=None):
+    def listar_pagos_con_filtros(self, caja_id=None,
+                                 fecha_desde=None, fecha_hasta=None):
         pagos = Pago.objects.select_related(
             'comanda__mesa', 'comanda__mozo', 'caja'
         ).all()
@@ -88,7 +91,7 @@ class PagoService:
 
     @staticmethod
     def procesar_pago(comanda, metodo: str, monto, vuelto,
-                       referencia: str, caja) -> None:
+                      referencia: str, caja) -> None:
         from pedidos.services import ComandaService
         ComandaService.pagar(
             comanda.id,
@@ -100,8 +103,10 @@ class PagoService:
     def procesar_pago_split(comanda, pagos_lista: list, caja) -> None:
         from pedidos.services import ComandaService
         ComandaService.pagar_split(comanda.id, pagos_lista, caja=caja)
+
     @staticmethod
-    def reporte_ventas(caja_id=None, fecha_desde=None, fecha_hasta=None) -> dict:
+    def reporte_ventas(caja_id=None, fecha_desde=None,
+                       fecha_hasta=None) -> dict:
         pagos = Pago.objects.all()
         if caja_id:
             pagos = pagos.filter(caja_id=caja_id)
@@ -112,18 +117,23 @@ class PagoService:
         totales_metodo = pagos.values('metodo').annotate(
             total=Sum('monto'), cantidad=Count('id')
         )
-        total_general = pagos.aggregate(total=Sum('monto'))['total'] or 0
+        total_general = pagos.aggregate(
+            total=Sum('monto')
+        )['total'] or 0
         for item in totales_metodo:
-            item['porcentaje'] = int(item['total'] / total_general * 100) if total_general else 0
-        ticket_promedio = total_general / pagos.count() if pagos.count() else 0
+            item['porcentaje'] = (
+                int(item['total'] / total_general * 100)
+                if total_general else 0
+            )
+        ticket_promedio = (
+            total_general / pagos.count() if pagos.count() else 0
+        )
         return {
             'total_general': total_general,
             'total_pagos': pagos.count(),
             'por_metodo': list(totales_metodo),
             'ticket_promedio': ticket_promedio,
         }
-
-
 class ReporteService:
     @staticmethod
     def ventas_del_dia():

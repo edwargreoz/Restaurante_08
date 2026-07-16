@@ -9,26 +9,25 @@ from mesas.models import Mesa, UnionMesa
 from mesas.services import _notificar_plano
 
 
+
 class ReservaService:
     HORA_APERTURA = time_obj(7, 0)
     HORA_CIERRE = time_obj(22, 0)
 
-    @staticmethod
     @transaction.atomic
-    def crear(mesas_ids: list, fecha, hora_inicio, hora_fin,
+    def crear(self, mesas_ids: list, fecha, hora_inicio, hora_fin,
               num_personas: int, cliente_nombre: str,
               cliente_contacto: str = '', observacion: str = '',
               usuario=None) -> Reserva:
-        datos = ReservaService._validar_datos(
+        datos = self._validar_datos(
             mesas_ids, fecha, hora_inicio, hora_fin,
             num_personas, cliente_nombre, cliente_contacto, observacion
         )
-
         ms = datos['mesas']
         mesa_obj = ms.first() if len(ms) == 1 else None
-        union_mesa_obj = None if mesa_obj else UnionMesa.objects.create(activo=True)
-
-        if union_mesa_obj:
+        union_mesa_obj = None
+        if len(ms) > 1:
+            union_mesa_obj = UnionMesa.objects.create(activo=True)
             union_mesa_obj.mesas.set(ms)
             union_mesa_obj.save()
 
@@ -36,27 +35,26 @@ class ReservaService:
             mesa=mesa_obj, union_mesa=union_mesa_obj,
             cliente_nombre=datos['cliente_nombre'],
             cliente_contacto=datos['cliente_contacto'],
-            fecha=datos['fecha'], hora_inicio=datos['hora_inicio'],
+            fecha=datos['fecha'],
+            hora_inicio=datos['hora_inicio'],
             hora_fin=datos['hora_fin'],
             num_personas=datos['num_personas'],
-            observacion=datos['observacion'], creado_por=usuario,
+            observacion=datos['observacion'],
+            creado_por=usuario,
         )
         return reserva
 
-    @staticmethod
     @transaction.atomic
-    def cancelar(reserva_id: int) -> Reserva:
+    def cancelar(self, reserva_id: int) -> Reserva:
         reserva = Reserva.objects.filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if not reserva.activo:
             raise ReglaNegocioViolada('Esta reserva ya estaba cancelada')
 
-        # 1. Soft delete de la reserva
         reserva.activo = False
         reserva.save(update_fields=['activo'])
 
-        # 2. Liberar mesa(s) si no tienen otra reserva activa
         if reserva.mesa:
             tiene_otra = Reserva.objects.filter(
                 mesa=reserva.mesa, activo=True
@@ -78,21 +76,18 @@ class ReservaService:
         _notificar_plano()
         return reserva
 
-    @staticmethod
     @transaction.atomic
-    def finalizar(reserva_id: int) -> Reserva:
+    def finalizar(self, reserva_id: int) -> Reserva:
         reserva = Reserva.objects.filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if not reserva.activo:
             raise ReglaNegocioViolada('Esta reserva ya no está activa')
 
-        # 1. Soft delete + marcar como finalizada
         reserva.activo = False
         reserva.finalizada = True
         reserva.save(update_fields=['activo', 'finalizada'])
 
-        # 2. Marcar mesa(s) en limpieza si no tienen otra reserva activa
         if reserva.mesa:
             tiene_otra = Reserva.objects.filter(
                 mesa=reserva.mesa, activo=True
@@ -114,17 +109,18 @@ class ReservaService:
         _notificar_plano()
         return reserva
 
-    @staticmethod
     @transaction.atomic
-    def editar(reserva_id: int, mesas_ids: list, fecha, hora_inicio, hora_fin,
-               num_personas: int, cliente_nombre: str,
-               cliente_contacto: str = '', observacion: str = '',
-               usuario=None) -> Reserva:
+    def editar(self, reserva_id: int, mesas_ids: list, fecha,
+               hora_inicio, hora_fin, num_personas: int,
+               cliente_nombre: str, cliente_contacto: str = '',
+               observacion: str = '', usuario=None) -> Reserva:
         reserva = Reserva.objects.filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if not reserva.activo:
-            raise ReglaNegocioViolada('No puedes editar una reserva cancelada')
+            raise ReglaNegocioViolada(
+                'No puedes editar una reserva cancelada'
+            )
 
         vieja_mesa = reserva.mesa
         vieja_union = reserva.union_mesa
@@ -133,16 +129,17 @@ class ReservaService:
         if vieja_mesa:
             mesas_actuales_ids.append(vieja_mesa.id)
         elif vieja_union:
-            mesas_actuales_ids = [m.id for m in vieja_union.mesas.all()]
+            mesas_actuales_ids = [
+                m.id for m in vieja_union.mesas.all()
+            ]
 
-        datos = ReservaService._validar_datos(
+        datos = self._validar_datos(
             mesas_ids, fecha, hora_inicio, hora_fin,
-            num_personas, cliente_nombre, cliente_contacto, observacion,
-            mesas_actuales_ids=mesas_actuales_ids,
+            num_personas, cliente_nombre, cliente_contacto,
+            observacion, mesas_actuales_ids=mesas_actuales_ids,
         )
 
         ms = datos['mesas']
-
         if len(ms) == 1:
             reserva.mesa = ms.first()
             reserva.union_mesa = None
@@ -161,9 +158,10 @@ class ReservaService:
         reserva.num_personas = datos['num_personas']
         reserva.observacion = datos['observacion']
         reserva.save(update_fields=[
-            'mesa', 'union_mesa', 'cliente_nombre', 'cliente_contacto',
-            'fecha', 'hora_inicio', 'hora_fin', 'num_personas',
-            'observacion', 'actualizado_en'
+            'mesa', 'union_mesa', 'cliente_nombre',
+            'cliente_contacto', 'fecha', 'hora_inicio',
+            'hora_fin', 'num_personas', 'observacion',
+            'actualizado_en',
         ])
 
         if vieja_mesa and vieja_mesa != reserva.mesa:
@@ -184,15 +182,15 @@ class ReservaService:
         _notificar_plano()
         return reserva
 
-    @staticmethod
     @transaction.atomic
-    def eliminar_definitivamente(reserva_id: int) -> None:
+    def eliminar_definitivamente(self, reserva_id: int) -> None:
         reserva = Reserva.objects.filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if reserva.activo:
             raise ReglaNegocioViolada(
-                'No puedes eliminar una reserva que todavía está activa. Debes cancelarla primero.'
+                'No puedes eliminar una reserva activa. '
+                'Debes cancelarla primero.'
             )
         if reserva.mesa and reserva.mesa.estado == 'RESERVADA':
             reserva.mesa.estado = 'LIBRE'
@@ -213,55 +211,67 @@ class ReservaService:
                        num_personas, cliente_nombre, cliente_contacto,
                        observacion, mesas_actuales_ids=None):
         if not mesas_ids:
-            raise ReglaNegocioViolada('Debe seleccionar al menos una mesa')
-
+            raise ReglaNegocioViolada(
+                'Debe seleccionar al menos una mesa'
+            )
         ms = Mesa.objects.filter(id__in=mesas_ids)
         if ms.count() != len(mesas_ids):
             raise ReglaNegocioViolada('Algunas mesas no existen')
-
         zonas = set(m.zona for m in ms)
         if len(zonas) > 1:
-            raise ReglaNegocioViolada('No puedes unir mesas de diferentes zonas')
-
+            raise ReglaNegocioViolada(
+                'No puedes unir mesas de diferentes zonas'
+            )
         mesas_actuales_ids = mesas_actuales_ids or []
         for m in ms:
             if m.id in mesas_actuales_ids:
                 continue
             if m.estado != 'LIBRE':
-                raise ReglaNegocioViolada(f'La mesa {m.numero} no está disponible')
-
+                raise ReglaNegocioViolada(
+                    f'La mesa {m.numero} no está disponible'
+                )
         capacidad = sum(m.capacidad for m in ms)
         if num_personas > capacidad:
             raise CapacidadExcedida(
                 f'Solo hay capacidad para {capacidad} personas'
             )
-
         if len(ms) > 1:
             for m in ms:
                 if (capacidad - m.capacidad) >= num_personas:
                     raise CapacidadExcedida(
                         'Has seleccionado más mesas de las necesarias'
                     )
-
         try:
             inicio = datetime.strptime(hora_inicio, '%H:%M').time()
             fin = datetime.strptime(hora_fin, '%H:%M').time()
         except (ValueError, TypeError):
             raise ReglaNegocioViolada('Formato de hora inválido')
-
-        if inicio < ReservaService.HORA_APERTURA or fin > ReservaService.HORA_CIERRE:
-            raise ReglaNegocioViolada('El horario de atención es de 07:00 a 22:00')
+        if inicio < ReservaService.HORA_APERTURA:
+            raise ReglaNegocioViolada(
+                'El horario de atención es de 07:00 a 22:00'
+            )
+        if fin > ReservaService.HORA_CIERRE:
+            raise ReglaNegocioViolada(
+                'El horario de atención es de 07:00 a 22:00'
+            )
         if inicio >= fin:
-            raise ReglaNegocioViolada('La hora de inicio debe ser anterior a la hora de fin')
-
+            raise ReglaNegocioViolada(
+                'La hora de inicio debe ser anterior a la hora de fin'
+            )
         if cliente_contacto:
             if '@' in cliente_contacto:
-                if not re.match(r"[^@]+@[^@]+\.[^@]+", cliente_contacto):
-                    raise ReglaNegocioViolada('Correo electrónico inválido')
+                if not re.match(
+                    r"[^@]+@[^@]+\.[^@]+", cliente_contacto
+                ):
+                    raise ReglaNegocioViolada(
+                        'Correo electrónico inválido'
+                    )
             else:
-                if not cliente_contacto.isdigit() or len(cliente_contacto) != 9:
-                    raise ReglaNegocioViolada('El celular debe tener 9 dígitos')
-
+                if (not cliente_contacto.isdigit()
+                        or len(cliente_contacto) != 9):
+                    raise ReglaNegocioViolada(
+                        'El celular debe tener 9 dígitos'
+                    )
         return {
             'mesas': ms, 'num_personas': num_personas,
             'cliente_nombre': cliente_nombre,
@@ -269,6 +279,4 @@ class ReservaService:
             'fecha': fecha, 'hora_inicio': hora_inicio,
             'hora_fin': hora_fin, 'observacion': observacion,
         }
-
-
 

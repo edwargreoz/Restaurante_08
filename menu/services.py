@@ -2,7 +2,7 @@
 from django.db import transaction
 from core.excepciones import RecursoNoEncontrado
 from dominio.puertos.repositorios import ICategoriaRepository, IPlatoRepository
-from menu.models import Categoria, Plato
+from menu.models import Categoria
 from inventario.models import Receta
 
 

@@ -7,13 +7,13 @@ from django.db.models import Q
 
 from core.excepciones import (
     MesaConComandaActiva, CajaNoAbierta, RecursoNoEncontrado,
-    StockInsuficiente, TransicionEstadoInvalida, PlatoNoDisponible,
+    StockInsuficiente, TransicionEstadoInvalida,
     ComandaNoDisponible, MontoInvalido, ReferenciaInvalida,
 )
 from pedidos.models import Comanda, LineaComanda
 from mesas.models import Mesa, UnionMesa
 from caja.models import Caja, Pago
-from inventario.models import RecetaInsumo, MovimientoInsumo, convertir_unidad
+from inventario.models import MovimientoInsumo, convertir_unidad
 from menu.models import Plato
 
 
