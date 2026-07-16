@@ -4,11 +4,20 @@ from django.contrib.auth.models import User
 from core.excepciones import RecursoNoEncontrado, UnidadConversionInvalida
 from inventario.models import Insumo, Receta, RecetaInsumo, UnidadConversion
 from inventario.services import InsumoService, RecetaService, UnidadConversionService
+from infraestructura.container import get_container
+
+
+def _insumo_service():
+    return InsumoService(insumo_repo=get_container().insumo_repo)
+
+
+def _receta_service():
+    return RecetaService(insumo_repo=get_container().insumo_repo)
 
 
 class UnidadConversionServiceTest(TestCase):
     def setUp(self):
-        self.insumo = InsumoService.crear('Harina', 'GR', stock_actual=Decimal('5000'))
+        self.insumo = _insumo_service().crear('Harina', 'GR', stock_actual=Decimal('5000'))
         self.unidad_base = UnidadConversion.objects.create(
             nombre='Gramo', es_base=True, insumo=self.insumo,
         )
@@ -60,87 +69,87 @@ class UnidadConversionServiceTest(TestCase):
 
 class RecetaServiceTest(TestCase):
     def setUp(self):
-        self.insumo1 = InsumoService.crear('Tomate', 'UNIDAD', stock_actual=Decimal('50'))
-        self.insumo2 = InsumoService.crear('Cebolla', 'UNIDAD', stock_actual=Decimal('30'))
+        self.insumo1 = _insumo_service().crear('Tomate', 'UNIDAD', stock_actual=Decimal('50'))
+        self.insumo2 = _insumo_service().crear('Cebolla', 'UNIDAD', stock_actual=Decimal('30'))
 
     def test_crear_y_listar_recetas(self):
-        receta = RecetaService.crear('Salsa', [
+        receta = _receta_service().crear('Salsa', [
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('3'), 'unidad': 'UNIDAD'},
             {'insumo_id': self.insumo2.id, 'cantidad': Decimal('2'), 'unidad': 'UNIDAD'},
         ])
         self.assertEqual(receta.nombre, 'Salsa')
         self.assertEqual(receta.insumos.count(), 2)
-        self.assertIn(receta, list(RecetaService.listar_recetas()))
+        self.assertIn(receta, list(_receta_service().listar_recetas()))
 
     def test_obtener_por_id_prefetch(self):
-        receta = RecetaService.crear('Salsa', [
+        receta = _receta_service().crear('Salsa', [
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('3')},
         ])
-        obtenida = RecetaService.obtener_por_id(receta.id)
+        obtenida = _receta_service().obtener_por_id(receta.id)
         self.assertEqual(obtenida.nombre, 'Salsa')
         list(obtenida.insumos.all())
 
     def test_obtener_por_id_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            RecetaService.obtener_por_id(999)
+            _receta_service().obtener_por_id(999)
 
     def test_actualizar_nombre(self):
-        receta = RecetaService.crear('Salsa', [
+        receta = _receta_service().crear('Salsa', [
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('3')},
         ])
-        RecetaService.actualizar(receta.id, nombre='Salsa Actualizada')
+        _receta_service().actualizar(receta.id, nombre='Salsa Actualizada')
         receta.refresh_from_db()
         self.assertEqual(receta.nombre, 'Salsa Actualizada')
 
     def test_actualizar_insumos(self):
-        receta = RecetaService.crear('Salsa', [
+        receta = _receta_service().crear('Salsa', [
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('3')},
         ])
         self.assertEqual(receta.insumos.filter(activo=True).count(), 1)
-        RecetaService.actualizar(receta.id, insumos_data=[
+        _receta_service().actualizar(receta.id, insumos_data=[
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('5')},
             {'insumo_id': self.insumo2.id, 'cantidad': Decimal('2')},
         ])
         self.assertEqual(receta.insumos.filter(activo=True).count(), 2)
 
     def test_eliminar_insumo_de_receta(self):
-        receta = RecetaService.crear('Salsa', [
+        receta = _receta_service().crear('Salsa', [
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('3')},
             {'insumo_id': self.insumo2.id, 'cantidad': Decimal('2')},
         ])
         ri = receta.insumos.filter(activo=True).first()
-        RecetaService.eliminar_insumo(ri.id)
+        _receta_service().eliminar_insumo(ri.id)
         ri.refresh_from_db()
         self.assertFalse(ri.activo)
         self.assertEqual(receta.insumos.filter(activo=True).count(), 1)
 
     def test_eliminar_insumo_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            RecetaService.eliminar_insumo(999)
+            _receta_service().eliminar_insumo(999)
 
     def test_calcular_insumos_para_platos(self):
-        receta = RecetaService.crear('Salsa', [
+        receta = _receta_service().crear('Salsa', [
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('3'), 'unidad': 'UNIDAD'},
         ])
-        resultado = RecetaService.calcular_insumos_para_platos(receta.id, 2)
+        resultado = _receta_service().calcular_insumos_para_platos(receta.id, 2)
         self.assertTrue(resultado['disponible'])
         self.assertEqual(len(resultado['insumos']), 1)
         self.assertEqual(resultado['insumos'][0]['necesario'], Decimal('6'))
 
     def test_calcular_insumos_stock_insuficiente(self):
-        receta = RecetaService.crear('Salsa', [
+        receta = _receta_service().crear('Salsa', [
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('30'), 'unidad': 'UNIDAD'},
         ])
-        resultado = RecetaService.calcular_insumos_para_platos(receta.id, 2)
+        resultado = _receta_service().calcular_insumos_para_platos(receta.id, 2)
         self.assertFalse(resultado['disponible'])
         self.assertEqual(len(resultado['faltantes']), 1)
 
     def test_eliminar_receta_soft_delete(self):
-        receta = RecetaService.crear('Salsa', [
+        receta = _receta_service().crear('Salsa', [
             {'insumo_id': self.insumo1.id, 'cantidad': Decimal('3')},
         ])
         rid = receta.id
-        RecetaService.eliminar(rid)
+        _receta_service().eliminar(rid)
         receta.refresh_from_db()
         self.assertFalse(receta.activo)
         self.assertTrue(Receta.objects.filter(id=rid).exists())
@@ -148,23 +157,23 @@ class RecetaServiceTest(TestCase):
 
 class InsumoServiceTest(TestCase):
     def setUp(self):
-        self.insumo = InsumoService.crear('Arroz', 'KG', stock_actual=Decimal('10'))
+        self.insumo = _insumo_service().crear('Arroz', 'KG', stock_actual=Decimal('10'))
 
     def test_crear_insumo(self):
-        insumo = InsumoService.crear('Azúcar', 'KG')
+        insumo = _insumo_service().crear('Azúcar', 'KG')
         self.assertEqual(insumo.nombre, 'Azúcar')
         self.assertEqual(insumo.stock_actual, Decimal('0'))
 
     def test_obtener_por_id(self):
-        obtenido = InsumoService.obtener_por_id(self.insumo.id)
+        obtenido = _insumo_service().obtener_por_id(self.insumo.id)
         self.assertEqual(obtenido.nombre, 'Arroz')
 
     def test_obtener_por_id_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            InsumoService.obtener_por_id(999)
+            _insumo_service().obtener_por_id(999)
 
     def test_actualizar(self):
-        InsumoService.actualizar(self.insumo.id, nombre='Arroz Integral', stock_minimo=Decimal('5'))
+        _insumo_service().actualizar(self.insumo.id, nombre='Arroz Integral', stock_minimo=Decimal('5'))
         self.insumo.refresh_from_db()
         self.assertEqual(self.insumo.nombre, 'Arroz Integral')
         self.assertEqual(self.insumo.stock_minimo, Decimal('5'))
