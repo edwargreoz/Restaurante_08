@@ -6,60 +6,65 @@ from caja.models import Caja, Pago
 from caja.services import CajaService, PagoService, ReporteService
 from mesas.models import Mesa
 from pedidos.models import Comanda
+from infraestructura.container import get_container
 
 
 class CajaServiceTest(TestCase):
     def setUp(self):
         self.usuario = User.objects.create_user(username='cajero', password='pass123')
+        container = get_container()
+        self.svc = CajaService(caja_repo=container.caja_repo)
 
     def test_abrir_turno_ok(self):
-        caja = CajaService.abrir_turno('TARDE', self.usuario, saldo_inicial=Decimal('100'))
+        caja = self.svc.abrir_turno('TARDE', self.usuario, saldo_inicial=Decimal('100'))
         self.assertEqual(caja.turno, 'TARDE')
         self.assertEqual(caja.cajero, self.usuario)
         self.assertEqual(caja.estado, 'ABIERTA')
         self.assertEqual(caja.saldo_inicial, Decimal('100'))
 
     def test_abrir_turno_duplicado(self):
-        CajaService.abrir_turno('MAÑANA', self.usuario)
+        self.svc.abrir_turno('MAÑANA', self.usuario)
         with self.assertRaises(ReglaNegocioViolada):
-            CajaService.abrir_turno('TARDE', self.usuario)
+            self.svc.abrir_turno('TARDE', self.usuario)
 
     def test_obtener_activa_existe(self):
-        CajaService.abrir_turno('MAÑANA', self.usuario)
-        caja = CajaService.obtener_activa()
+        self.svc.abrir_turno('MAÑANA', self.usuario)
+        caja = self.svc.obtener_activa()
         self.assertIsNotNone(caja)
         self.assertEqual(caja.estado, 'ABIERTA')
 
     def test_obtener_activa_no_existe(self):
         with self.assertRaises(CajaNoAbierta):
-            CajaService.obtener_activa()
+            self.svc.obtener_activa()
 
     def test_cerrar_turno_ok(self):
-        caja = CajaService.abrir_turno('MAÑANA', self.usuario)
-        resultado = CajaService.cerrar_turno(caja.id)
+        caja = self.svc.abrir_turno('MAÑANA', self.usuario)
+        resultado = self.svc.cerrar_turno(caja.id)
         self.assertEqual(resultado['total_ventas'], Decimal('0'))
         caja.refresh_from_db()
         self.assertEqual(caja.estado, 'CERRADA')
 
     def test_cerrar_turno_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            CajaService.cerrar_turno(999)
+            self.svc.cerrar_turno(999)
 
     def test_listar_todas(self):
-        CajaService.abrir_turno('MAÑANA', self.usuario)
-        CajaService.obtener_activa()
+        self.svc.abrir_turno('MAÑANA', self.usuario)
+        self.svc.obtener_activa()
         Caja.objects.create(
             turno='CERRADA', cajero=self.usuario,
             saldo_inicial=Decimal('0'), estado='CERRADA',
         )
-        todas = CajaService.listar_todas()
+        todas = self.svc.listar_todas()
         self.assertEqual(todas.count(), 2)
 
 
 class PagoServiceTest(TestCase):
     def setUp(self):
         self.usuario = User.objects.create_user(username='cajero', password='pass123')
-        self.caja = CajaService.abrir_turno('TARDE', self.usuario)
+        container = get_container()
+        self.caja_svc = CajaService(caja_repo=container.caja_repo)
+        self.caja = self.caja_svc.abrir_turno('TARDE', self.usuario)
         self.mesa = Mesa.objects.create(numero=1, capacidad=4)
         self.comanda = Comanda.objects.create(
             mesa=self.mesa, mozo=self.usuario, estado='COBRADA',

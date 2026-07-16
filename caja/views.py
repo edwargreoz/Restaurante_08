@@ -6,6 +6,12 @@ from core.excepciones import CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioVio
 from caja.models import Pago
 from core.rol_utils import es_mozo_o_cajero, es_cajero_o_admin
 from .services import CajaService, PagoService
+from infraestructura.container import get_container
+
+
+def _caja_service():
+    container = get_container()
+    return CajaService(caja_repo=container.caja_repo)
 
 @login_required
 @user_passes_test(es_mozo_o_cajero)
@@ -17,7 +23,7 @@ def cobrar_comanda(request, comanda_id):
         return redirect('lista_comandas_cobro')
     if request.method == 'POST':
         try:
-            caja_activa = CajaService.obtener_activa()
+            caja_activa = _caja_service().obtener_activa()
         except CajaNoAbierta as e:
             messages.error(request, str(e))
             return redirect('cobrar_comanda', comanda_id=comanda_id)
@@ -65,7 +71,7 @@ def cobrar_comanda(request, comanda_id):
 def lista_comandas_cobro(request):
     comandas = PagoService.listar_comandas_para_cobro()
     try:
-        caja_abierta = CajaService.obtener_activa()
+        caja_abierta = _caja_service().obtener_activa()
     except CajaNoAbierta:
         caja_abierta = None
     return render(request, 'caja/lista_comandas_cobro.html', {
@@ -77,14 +83,14 @@ def lista_comandas_cobro(request):
 @user_passes_test(es_cajero_o_admin)
 def apertura_turno(request):
     try:
-        caja_abierta = CajaService.obtener_activa()
+        caja_abierta = _caja_service().obtener_activa()
     except CajaNoAbierta:
         caja_abierta = None
 
     if request.method == 'POST':
         if 'abrir' in request.POST:
             try:
-                CajaService.abrir_turno(
+                _caja_service().abrir_turno(
                     turno_nombre=request.POST.get('turno'),
                     usuario=request.user,
                     saldo_inicial=request.POST.get('saldo_inicial', 0),
@@ -94,7 +100,7 @@ def apertura_turno(request):
                 messages.error(request, str(e))
         elif 'cerrar' in request.POST and caja_abierta:
             try:
-                resultado = CajaService.cerrar_turno(caja_abierta.id)
+                resultado = _caja_service().cerrar_turno(caja_abierta.id)
                 messages.success(request, f'Turno cerrado. Ventas: S/ {resultado["total_ventas"]}')
             except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
                 messages.error(request, str(e))
@@ -108,7 +114,7 @@ def reportes_turno(request):
     fecha_desde = request.GET.get('fecha_desde')
     fecha_hasta = request.GET.get('fecha_hasta')
     reporte = PagoService.reporte_ventas(caja_id, fecha_desde, fecha_hasta)
-    cajas = CajaService.listar_todas()
+    cajas = _caja_service().listar_todas()
     pagos = PagoService.listar_pagos_con_filtros(caja_id, fecha_desde, fecha_hasta)
     return render(request, 'reportes/reportes_turno.html', {
         'reporte': reporte,
