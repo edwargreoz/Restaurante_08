@@ -1,54 +1,50 @@
 from django.db import transaction
-from django.utils import timezone
 from core.excepciones import (
-    RecursoNoEncontrado, MesaConComandaActiva,
-    CapacidadExcedida, UnionInvalida, CajaNoAbierta, ReglaNegocioViolada,
-    AppError,
+    RecursoNoEncontrado, UnionInvalida,
+    CajaNoAbierta, ReglaNegocioViolada, AppError,
 )
-from mesas.models import Mesa, UnionMesa
-from pedidos.models import Comanda
-from caja.models import Caja
+from dominio.puertos.repositorios import IMesaRepository
 
 
 class MesaService:
-    @staticmethod
+    def __init__(self, mesa_repo: IMesaRepository):
+        self.repo = mesa_repo
+
     @transaction.atomic
-    def obtener_o_crear_comanda_activa(mesa_id: int, usuario) -> Comanda:
+    def obtener_o_crear_comanda_activa(self, mesa_id: int, usuario):
         from pedidos.services import ComandaService
         return ComandaService.abrir(mesa_id, usuario)
 
-    @staticmethod
-    def cambiar_estado(mesa_id: int, nuevo_estado: str) -> Mesa:
-        mesa = Mesa.activos.filter(id=mesa_id).first()
-        if not mesa:
+    def cambiar_estado(self, mesa_id: int, nuevo_estado: str):
+        mesa_domain = self.repo.obtener_por_id(mesa_id)
+        if not mesa_domain:
             raise RecursoNoEncontrado('Mesa no encontrada')
-        mesa.estado = nuevo_estado
-        mesa.save(update_fields=['estado'])
+        from mesas.models import Mesa
+        mesa_model = Mesa.activos.get(id=mesa_id)
+        mesa_model.estado = nuevo_estado
+        mesa_model.save(update_fields=['estado'])
         _notificar_plano()
-        return mesa
+        return mesa_model
 
-    @staticmethod
-    def marcar_libre(mesa_id: int) -> Mesa:
-        mesa = Mesa.activos.filter(id=mesa_id).first()
-        if not mesa:
+    def marcar_libre(self, mesa_id: int):
+        from mesas.models import Mesa, UnionMesa
+        mesa_domain = self.repo.obtener_por_id(mesa_id)
+        if not mesa_domain:
             raise RecursoNoEncontrado('Mesa no encontrada')
-        if mesa.estado != 'LIMPIEZA':
+        mesa_model = Mesa.activos.get(id=mesa_id)
+        if mesa_model.estado != 'LIMPIEZA':
             raise ReglaNegocioViolada('Solo se puede marcar libre una mesa en limpieza')
-        tiene_reserva = mesa.reservas.filter(activo=True).exists()
-        union = UnionMesa.activos.filter(mesas=mesa).first()
+        tiene_reserva = mesa_model.reservas.filter(activo=True).exists()
+        union = UnionMesa.activos.filter(mesas=mesa_model).first()
         if union:
             tiene_reserva = tiene_reserva or union.reservas.filter(activo=True).exists()
-        mesa.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
-        mesa.save(update_fields=['estado'])
+        mesa_model.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
+        mesa_model.save(update_fields=['estado'])
         _notificar_plano()
-        return mesa
+        return mesa_model
 
-    @staticmethod
-    def obtener_plano():
-        """
-        Construye el plano de mesas con estados, uniones y labels.
-        Retorna un dict con 'items', 'union_mesas_ids', 'union_labels', 'union_ids'.
-        """
+    def obtener_plano(self):
+        from mesas.models import Mesa, UnionMesa
         mesas = Mesa.activos.all()
         uniones = UnionMesa.activos.prefetch_related('mesas')
 
@@ -103,19 +99,17 @@ class MesaService:
             'union_ids': union_ids,
         }
 
-    @staticmethod
-    def obtener_detalle(mesa_id: int, usuario=None):
-        """
-        Retorna el detalle de una mesa incluyendo su comanda activa.
-        Si una comanda está huérfana (mesa no en uso), la anula automáticamente.
-        """
+    def obtener_detalle(self, mesa_id: int, usuario=None):
+        from mesas.models import Mesa, UnionMesa
+        from pedidos.models import Comanda
+        from menu.models import Categoria
+
         mesa = Mesa.objects.get(id=mesa_id)
 
         comanda = Comanda.objects.filter(
             mesa=mesa, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
         ).prefetch_related('lineas__plato').first()
 
-        # Auto-anular comandas huérfanas (mesa libre pero tiene comanda)
         if comanda and mesa.estado == 'LIBRE':
             try:
                 from pedidos.services import ComandaService
@@ -124,7 +118,6 @@ class MesaService:
                 pass
             comanda = None
 
-        # Buscar por unión (si esta mesa es secundaria)
         union_activa = UnionMesa.activos.filter(mesas=mesa).prefetch_related('mesas').first()
         if not comanda and union_activa:
             comanda = Comanda.objects.filter(
@@ -132,7 +125,6 @@ class MesaService:
                 estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
             ).prefetch_related('lineas__plato').first()
 
-        from menu.models import Categoria
         categorias = Categoria.objects.prefetch_related('platos').all()
 
         return {
@@ -142,21 +134,26 @@ class MesaService:
             'union_activa': union_activa,
         }
 
-    @staticmethod
-    def eliminar(mesa_id: int, usuario=None) -> None:
-        """Soft delete de una mesa."""
-        mesa = Mesa.activos.filter(id=mesa_id).first()
-        if not mesa:
+    def eliminar(self, mesa_id: int, usuario=None) -> None:
+        from mesas.models import Mesa
+        mesa_domain = self.repo.obtener_por_id(mesa_id)
+        if not mesa_domain:
             raise RecursoNoEncontrado('Mesa no encontrada')
-        if mesa.estado != 'LIBRE':
+        mesa_model = Mesa.activos.get(id=mesa_id)
+        if mesa_model.estado != 'LIBRE':
             raise ReglaNegocioViolada('No se puede eliminar una mesa que no está libre')
-        mesa.eliminar(usuario=usuario)
+        mesa_model.eliminar(usuario=usuario)
 
 
 class UnionMesaService:
-    @staticmethod
+    def __init__(self, mesa_repo: IMesaRepository):
+        self.mesa_repo = mesa_repo
+
     @transaction.atomic
-    def crear(mesa_ids: list) -> UnionMesa:
+    def crear(self, mesa_ids: list):
+        from mesas.models import Mesa, UnionMesa
+        from pedidos.models import Comanda
+
         if len(mesa_ids) < 2:
             raise UnionInvalida('Selecciona al menos 2 mesas')
 
@@ -174,13 +171,12 @@ class UnionMesaService:
         selected_ids = set(m.id for m in mesas)
         uniones_activas = UnionMesa.activos.prefetch_related('mesas')
         for u in uniones_activas:
-            union_ids = set(m.id for m in u.mesas.all())
-            if union_ids == selected_ids:
+            union_ids_set = set(m.id for m in u.mesas.all())
+            if union_ids_set == selected_ids:
                 raise UnionInvalida('Ya existe una unión activa con esas mesas')
 
         union = UnionMesa.objects.create()
         union.mesas.set(mesas)
-        
 
         comandas_activas = Comanda.objects.filter(
             mesa_id__in=mesa_ids,
@@ -195,53 +191,59 @@ class UnionMesaService:
             from pedidos.services import ComandaService
             principal = comandas_activas.first()
             for otras in comandas_activas[1:]:
-               ComandaService.fusionar(principal.id,otras.id)
+                ComandaService.fusionar(principal.id, otras.id)
 
         _notificar_plano()
         return union
 
-    @staticmethod
     @transaction.atomic
-    def agregar_mesa(union_id: int, mesa_id: int, usuario) -> UnionMesa:
+    def agregar_mesa(self, union_id: int, mesa_id: int, usuario):
+        from mesas.models import Mesa, UnionMesa
+        from pedidos.models import Comanda
+        from caja.models import Caja
+
         union = UnionMesa.activos.filter(id=union_id).first()
         if not union:
             raise RecursoNoEncontrado('Unión no encontrada')
-        mesa = Mesa.activos.filter(id=mesa_id).first()
-        if not mesa:
+        mesa_domain = self.mesa_repo.obtener_por_id(mesa_id)
+        if not mesa_domain:
             raise RecursoNoEncontrado('Mesa no encontrada')
+        mesa_model = Mesa.activos.get(id=mesa_id)
 
         if union.mesas.filter(id=mesa_id).exists():
-            raise UnionInvalida(f'Mesa {mesa.numero} ya está en la unión')
+            raise UnionInvalida(f'Mesa {mesa_model.numero} ya está en la unión')
         if union.esta_reservada():
             raise UnionInvalida('La unión está reservada')
-        if mesa.estado == 'RESERVADA':
+        if mesa_model.estado == 'RESERVADA':
             raise UnionInvalida('No puedes agregar una mesa reservada')
 
         zona_union = union.mesas.first().zona
-        if mesa.zona != zona_union:
+        if mesa_model.zona != zona_union:
             raise UnionInvalida('Las mesas deben ser de la misma zona')
 
-        union.mesas.add(mesa)
+        union.mesas.add(mesa_model)
         comanda_union = Comanda.objects.filter(
             mesa__in=union.mesas.all(),
             estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
-        ).exclude(mesa=mesa).first()
+        ).exclude(mesa=mesa_model).first()
 
         if comanda_union:
             if not Caja.objects.filter(estado='ABIERTA').exists():
                 raise CajaNoAbierta('No hay un turno de caja abierto')
-            mesa.estado = 'OCUPADA'
-            mesa.save(update_fields=['estado'])
+            mesa_model.estado = 'OCUPADA'
+            mesa_model.save(update_fields=['estado'])
             from pedidos.services import ComandaService
-            comanda_nueva = ComandaService.abrir(mesa.id, usuario)
+            comanda_nueva = ComandaService.abrir(mesa_model.id, usuario)
             ComandaService.fusionar(comanda_union.id, comanda_nueva.id)
 
         _notificar_plano()
         return union
 
-    @staticmethod
     @transaction.atomic
-    def deshacer(union_id: int, usuario) -> None:
+    def deshacer(self, union_id: int, usuario) -> None:
+        from mesas.models import Mesa, UnionMesa
+        from pedidos.models import Comanda
+
         union = UnionMesa.activos.filter(id=union_id).first()
         if not union:
             raise RecursoNoEncontrado('Unión no encontrada')

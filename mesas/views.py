@@ -6,6 +6,7 @@ from core.excepciones import (
     RecursoNoEncontrado, UnionInvalida, ReglaNegocioViolada, CajaNoAbierta, AppError,
     StockInsuficiente,
 )
+from infraestructura.container import get_container
 from .models import Mesa, UnionMesa
 from .forms import MesaForm
 from .services import MesaService, UnionMesaService
@@ -16,14 +17,18 @@ from pedidos.services import ComandaService
 @login_required
 @user_passes_test(es_mozo)
 def plano_mesas(request):
-    data = MesaService.obtener_plano()
+    container = get_container()
+    service = MesaService(mesa_repo=container.mesa_repo)
+    data = service.obtener_plano()
     return render(request, 'mesas/plano_mesas.html', data)
 
 
 @login_required
 @user_passes_test(es_mozo)
 def detalle_mesa(request, mesa_id):
-    data = MesaService.obtener_detalle(mesa_id, usuario=request.user)
+    container = get_container()
+    service = MesaService(mesa_repo=container.mesa_repo)
+    data = service.obtener_detalle(mesa_id, usuario=request.user)
     return render(request, 'mesas/detalle_mesa.html', data)
 
 
@@ -32,7 +37,9 @@ def detalle_mesa(request, mesa_id):
 def abrir_comanda(request, mesa_id):
     if request.method == 'POST':
         try:
-            MesaService.obtener_o_crear_comanda_activa(mesa_id, request.user)
+            container = get_container()
+            service = MesaService(mesa_repo=container.mesa_repo)
+            service.obtener_o_crear_comanda_activa(mesa_id, request.user)
             messages.success(request, 'Comanda abierta')
         except AppError as e:
             messages.error(request, str(e))
@@ -78,7 +85,9 @@ def anular_comanda(request, comanda_id):
 def marcar_mesa_libre(request, mesa_id):
     if request.method == 'POST':
         try:
-            MesaService.marcar_libre(mesa_id)
+            container = get_container()
+            service = MesaService(mesa_repo=container.mesa_repo)
+            service.marcar_libre(mesa_id)
             messages.success(request, 'Mesa marcada como libre')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
@@ -94,7 +103,9 @@ def unir_mesas(request):
         mesa_ids = request.POST.getlist('mesas')
         try:
             mesa_ids_int = [int(x) for x in mesa_ids]
-            union = UnionMesaService.crear(mesa_ids_int)
+            container = get_container()
+            service = UnionMesaService(mesa_repo=container.mesa_repo)
+            union = service.crear(mesa_ids_int)
             messages.success(request, 'Unión creada')
             primera = union.mesas.first()
             return redirect('detalle_mesa', mesa_id=primera.id)
@@ -124,7 +135,9 @@ def agregar_mesa_union(request, union_id):
         mesa_id = request.POST.get('mesa_id')
         if mesa_id:
             try:
-                UnionMesaService.agregar_mesa(union_id, int(mesa_id), request.user)
+                container = get_container()
+                service = UnionMesaService(mesa_repo=container.mesa_repo)
+                service.agregar_mesa(union_id, int(mesa_id), request.user)
                 messages.success(request, 'Mesa agregada a la unión')
             except (RecursoNoEncontrado, UnionInvalida, CajaNoAbierta) as e:
                 messages.error(request, str(e))
@@ -137,7 +150,9 @@ def agregar_mesa_union(request, union_id):
 def deshacer_union(request, union_id):
     if request.method == 'POST':
         try:
-            UnionMesaService.deshacer(union_id, request.user)
+            container = get_container()
+            service = UnionMesaService(mesa_repo=container.mesa_repo)
+            service.deshacer(union_id, request.user)
             messages.success(request, 'Unión deshecha, comandas anuladas, mesas liberadas')
         except (RecursoNoEncontrado, UnionInvalida) as e:
             messages.error(request, str(e))
@@ -203,7 +218,9 @@ def eliminar_mesa(request, mesa_id):
     mesa = get_object_or_404(Mesa.activos, id=mesa_id)
     if request.method == 'POST':
         try:
-            MesaService.eliminar(mesa.id, usuario=request.user)
+            container = get_container()
+            service = MesaService(mesa_repo=container.mesa_repo)
+            service.eliminar(mesa.id, usuario=request.user)
             messages.success(request, f'Mesa {mesa.numero} eliminada lógicamente.')
         except AppError as e:
             messages.error(request, str(e))
