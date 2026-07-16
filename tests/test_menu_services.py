@@ -11,6 +11,14 @@ def _categoria_service():
     return CategoriaService(categoria_repo=get_container().categoria_repo)
 
 
+def _plato_service():
+    container = get_container()
+    return PlatoService(
+        plato_repo=container.plato_repo,
+        categoria_repo=container.categoria_repo,
+    )
+
+
 class CategoriaServiceTest(TestCase):
     def setUp(self):
         self.svc = _categoria_service()
@@ -36,6 +44,7 @@ class CategoriaServiceTest(TestCase):
 class PlatoServiceTest(TestCase):
     def setUp(self):
         self.cat_svc = _categoria_service()
+        self.plato_svc = _plato_service()
         self.cat = self.cat_svc.crear('Platos')
         self.insumo = Insumo.objects.create(
             nombre='Aceite', unidad='ML', stock_actual=Decimal('500'),
@@ -45,7 +54,7 @@ class PlatoServiceTest(TestCase):
             receta=self.receta, insumo=self.insumo,
             cantidad_por_porcion=Decimal('50'), unidad='ML',
         )
-        self.plato = PlatoService.crear(
+        self.plato = self.plato_svc.crear(
             'Papa a la Huancaína', Decimal('25.00'),
             self.cat.id, self.receta.id,
         )
@@ -56,52 +65,52 @@ class PlatoServiceTest(TestCase):
 
     def test_crear_plato_categoria_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            PlatoService.crear('X', Decimal('10'), 999, self.receta.id)
+            self.plato_svc.crear('X', Decimal('10'), 999, self.receta.id)
 
     def test_crear_plato_receta_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            PlatoService.crear('X', Decimal('10'), self.cat.id, 999)
+            self.plato_svc.crear('X', Decimal('10'), self.cat.id, 999)
 
     def test_obtener_por_id(self):
-        p = PlatoService.obtener_por_id(self.plato.id)
+        p = self.plato_svc.obtener_por_id(self.plato.id)
         self.assertEqual(p.nombre, 'Papa a la Huancaína')
 
     def test_obtener_por_id_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            PlatoService.obtener_por_id(999)
+            self.plato_svc.obtener_por_id(999)
 
     def test_verificar_disponibilidad(self):
-        self.assertTrue(PlatoService.verificar_disponibilidad(self.plato.id))
+        self.assertTrue(self.plato_svc.verificar_disponibilidad(self.plato.id))
 
     def test_verificar_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            PlatoService.verificar_disponibilidad(999)
+            self.plato_svc.verificar_disponibilidad(999)
 
     def test_actualizar(self):
-        PlatoService.actualizar(self.plato.id, precio=Decimal('30.00'))
-        self.plato.refresh_from_db()
-        self.assertEqual(self.plato.precio, Decimal('30.00'))
+        self.plato_svc.actualizar(self.plato.id, precio=Decimal('30.00'))
+        plato_db = Plato.objects.get(id=self.plato.id)
+        self.assertEqual(plato_db.precio, Decimal('30.00'))
 
     def test_eliminar_soft_delete(self):
         pid = self.plato.id
-        PlatoService.eliminar(pid)
-        self.plato.refresh_from_db()
-        self.assertFalse(self.plato.activo)
+        self.plato_svc.eliminar(pid)
+        plato_db = Plato.objects.get(id=pid)
+        self.assertFalse(plato_db.activo)
         self.assertTrue(Plato.objects.filter(id=pid).exists())
 
     def test_eliminar_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            PlatoService.eliminar(999)
+            self.plato_svc.eliminar(999)
 
     def test_toggle_disponible(self):
         self.assertTrue(self.plato.disponible)
-        PlatoService.toggle_disponible(self.plato.id)
-        self.plato.refresh_from_db()
-        self.assertFalse(self.plato.disponible)
-        PlatoService.toggle_disponible(self.plato.id)
-        self.plato.refresh_from_db()
-        self.assertTrue(self.plato.disponible)
+        self.plato_svc.toggle_disponible(self.plato.id)
+        plato_db = Plato.objects.get(id=self.plato.id)
+        self.assertFalse(plato_db.disponible)
+        self.plato_svc.toggle_disponible(self.plato.id)
+        plato_db = Plato.objects.get(id=self.plato.id)
+        self.assertTrue(plato_db.disponible)
 
     def test_toggle_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            PlatoService.toggle_disponible(999)
+            self.plato_svc.toggle_disponible(999)

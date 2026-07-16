@@ -1,7 +1,7 @@
 
 from django.db import transaction
 from core.excepciones import RecursoNoEncontrado
-from dominio.puertos.repositorios import ICategoriaRepository
+from dominio.puertos.repositorios import ICategoriaRepository, IPlatoRepository
 from menu.models import Categoria, Plato
 from inventario.models import Receta
 
@@ -30,72 +30,69 @@ class CategoriaService:
 
 
 class PlatoService:
-    @staticmethod
-    def obtener_por_id(plato_id: int) -> Plato:
-        plato = Plato.objects.filter(id=plato_id).first()
+    def __init__(self, plato_repo: IPlatoRepository,
+                 categoria_repo: ICategoriaRepository):
+        self.plato_repo = plato_repo
+        self.categoria_repo = categoria_repo
+
+    def obtener_por_id(self, plato_id: int):
+        plato = self.plato_repo.obtener_por_id(plato_id)
         if not plato:
             raise RecursoNoEncontrado('Plato no encontrado')
         return plato
-    @staticmethod
+
     @transaction.atomic
-    def crear(nombre: str, precio, categoria_id: int,
+    def crear(self, nombre: str, precio, categoria_id: int,
               receta_id: int, descripcion: str = '',
               tiempo_preparacion: int = 15,
-              disponible: bool = True, imagen=None) -> Plato:
-        categoria = Categoria.objects.filter(id=categoria_id).first()
+              disponible: bool = True, imagen=None):
+        categoria = self.categoria_repo.obtener_por_id(categoria_id)
         if not categoria:
             raise RecursoNoEncontrado('Categoría no encontrada')
         receta = Receta.objects.filter(id=receta_id).first()
         if not receta:
             raise RecursoNoEncontrado('Receta no encontrada')
-
-        return Plato.objects.create(
-            nombre=nombre, precio=precio,
-            categoria=categoria, receta=receta,
+        from dominio.entidades.plato import Plato as PlatoDominio
+        plato = PlatoDominio(
+            id=None, nombre=nombre, precio=precio,
+            categoria_id=categoria_id, receta_id=receta_id,
             descripcion=descripcion,
             tiempo_preparacion_min=tiempo_preparacion,
-            disponible=disponible, imagen=imagen,
+            disponible=disponible,
         )
+        return self.plato_repo.guardar(plato)
 
-    @staticmethod
-    def verificar_disponibilidad(plato_id: int) -> bool:
-        plato = Plato.objects.filter(id=plato_id).first()
+    def verificar_disponibilidad(self, plato_id: int) -> bool:
+        plato = self.plato_repo.obtener_por_id(plato_id)
         if not plato:
             raise RecursoNoEncontrado('Plato no encontrado')
         return plato.disponible
 
-    @staticmethod
     @transaction.atomic
-    def actualizar(plato_id: int, **kwargs) -> Plato:
-        plato = PlatoService.obtener_por_id(plato_id)
-        categoria_id = kwargs.pop('categoria_id', None)
-        if categoria_id:
-            cat = Categoria.objects.filter(id=int(categoria_id)).first()
-            if not cat:
-                raise RecursoNoEncontrado('Categoría no encontrada')
-            kwargs['categoria'] = cat
-        for attr, value in kwargs.items():
-            if attr == 'imagen' and not value:
-                continue
-            setattr(plato, attr, value)
-        plato.save(update_fields=[
-            'nombre', 'descripcion', 'precio', 'categoria',
-            'receta', 'tiempo_preparacion_min', 'disponible', 'actualizado_en',
-        ])
-        return plato
-
-    @staticmethod
-    def eliminar(plato_id: int):
-        plato = Plato.objects.filter(id=plato_id).first()
+    def actualizar(self, plato_id: int, **kwargs):
+        plato = self.plato_repo.obtener_por_id(plato_id)
         if not plato:
             raise RecursoNoEncontrado('Plato no encontrado')
-        plato.eliminar()
+        categoria_id = kwargs.pop('categoria_id', None)
+        if categoria_id:
+            cat = self.categoria_repo.obtener_por_id(int(categoria_id))
+            if not cat:
+                raise RecursoNoEncontrado('Categoría no encontrada')
+        kwargs.pop('imagen', None)
+        for key, value in kwargs.items():
+            if hasattr(plato, key):
+                setattr(plato, key, value)
+        return self.plato_repo.guardar(plato)
 
-    @staticmethod
-    def toggle_disponible(plato_id: int) -> Plato:
-        plato = Plato.objects.filter(id=plato_id).first()
+    def eliminar(self, plato_id: int):
+        plato = self.plato_repo.obtener_por_id(plato_id)
+        if not plato:
+            raise RecursoNoEncontrado('Plato no encontrado')
+        self.plato_repo.eliminar(plato_id)
+
+    def toggle_disponible(self, plato_id: int):
+        plato = self.plato_repo.obtener_por_id(plato_id)
         if not plato:
             raise RecursoNoEncontrado('Plato no encontrado')
         plato.disponible = not plato.disponible
-        plato.save(update_fields=['disponible'])
-        return plato
+        return self.plato_repo.guardar(plato)

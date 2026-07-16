@@ -13,3 +13,4 @@ class Plato:
     receta_id: Optional[int]
     disponible: bool = True
     tiempo_preparacion_min: int = 15
+    descripcion: str = ''

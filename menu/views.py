@@ -46,6 +46,11 @@ def crear_categoria(request):
 @user_passes_test(es_admin)
 def crear_plato(request):
     if request.method == 'POST':
+        container = get_container()
+        plato_service = PlatoService(
+            plato_repo=container.plato_repo,
+            categoria_repo=container.categoria_repo,
+        )
         categoria_id = request.POST.get('categoria')
         receta_id = request.POST.get('receta')
         if not categoria_id:
@@ -55,7 +60,7 @@ def crear_plato(request):
             messages.error(request, 'Debe seleccionar una receta para el plato')
             return redirect('gestion_menu')
         try:
-            PlatoService.crear(
+            plato_service.crear(
                 nombre=request.POST.get('nombre'),
                 precio=request.POST.get('precio'),
                 categoria_id=categoria_id,
@@ -72,15 +77,20 @@ def crear_plato(request):
 @login_required
 @user_passes_test(es_admin)
 def editar_plato(request, plato_id):
+    container = get_container()
+    plato_service = PlatoService(
+        plato_repo=container.plato_repo,
+        categoria_repo=container.categoria_repo,
+    )
     try:
-        plato = PlatoService.obtener_por_id(plato_id)
+        plato = plato_service.obtener_por_id(plato_id)
     except RecursoNoEncontrado:
         messages.error(request, 'Plato no encontrado')
         return redirect('gestion_menu')
 
     if request.method == 'POST':
         try:
-            PlatoService.actualizar(
+            plato_service.actualizar(
                 plato_id,
                 nombre=request.POST.get('nombre', plato.nombre),
                 precio=request.POST.get('precio', plato.precio),
@@ -93,7 +103,6 @@ def editar_plato(request, plato_id):
             return redirect('gestion_menu')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
-    container = get_container()
     categoria_service = CategoriaService(categoria_repo=container.categoria_repo)
     categorias = categoria_service.listar_categorias()
     return render(request, 'menu/gestion_menu.html', {
@@ -104,8 +113,13 @@ def editar_plato(request, plato_id):
 @user_passes_test(es_admin)
 def eliminar_plato(request, plato_id):
     if request.method == 'POST':
+        container = get_container()
+        plato_service = PlatoService(
+            plato_repo=container.plato_repo,
+            categoria_repo=container.categoria_repo,
+        )
         try:
-            PlatoService.eliminar(plato_id)
+            plato_service.eliminar(plato_id)
             messages.success(request, 'Plato eliminado')
         except RecursoNoEncontrado:
             messages.error(request, 'Plato no encontrado')
