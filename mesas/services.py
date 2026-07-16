@@ -3,6 +3,7 @@ from django.utils import timezone
 from core.excepciones import (
     RecursoNoEncontrado, MesaConComandaActiva,
     CapacidadExcedida, UnionInvalida, CajaNoAbierta, ReglaNegocioViolada,
+    AppError,
 )
 from mesas.models import Mesa, UnionMesa
 from pedidos.models import Comanda
@@ -41,6 +42,114 @@ class MesaService:
         mesa.save(update_fields=['estado'])
         _notificar_plano()
         return mesa
+
+    @staticmethod
+    def obtener_plano():
+        """
+        Construye el plano de mesas con estados, uniones y labels.
+        Retorna un dict con 'items', 'union_mesas_ids', 'union_labels', 'union_ids'.
+        """
+        mesas = Mesa.activos.all()
+        uniones = UnionMesa.activos.prefetch_related('mesas')
+
+        union_mesas_ids = set()
+        union_labels = {}
+        union_ids = {}
+        processed_mesa_ids = set()
+        items = []
+
+        for union in uniones:
+            miembros = list(union.mesas.all())
+            nums = sorted([m.numero for m in miembros])
+            label = ' + '.join([f'Mesa {x}' for x in nums])
+            estados = set(m.estado for m in miembros)
+            if 'OCUPADA' in estados:
+                estado_resumen = 'OCUPADA'
+            elif 'RESERVADA' in estados:
+                estado_resumen = 'RESERVADA'
+            elif 'LIMPIEZA' in estados:
+                estado_resumen = 'LIMPIEZA'
+            else:
+                estado_resumen = 'LIBRE'
+            capacidad = sum(m.capacidad for m in miembros)
+            for m in miembros:
+                union_mesas_ids.add(m.id)
+                union_labels[m.id] = label
+                union_ids[m.id] = union.id
+                processed_mesa_ids.add(m.id)
+            items.append({
+                'type': 'union',
+                'union_id': union.id,
+                'mesas': miembros,
+                'nums': nums,
+                'label': label,
+                'capacidad': capacidad,
+                'estado': estado_resumen,
+                'zona': miembros[0].zona,
+            })
+
+        for mesa in mesas:
+            if mesa.id in processed_mesa_ids:
+                continue
+            items.append({
+                'type': 'mesa',
+                'mesa': mesa,
+            })
+
+        return {
+            'items': items,
+            'union_mesas_ids': union_mesas_ids,
+            'union_labels': union_labels,
+            'union_ids': union_ids,
+        }
+
+    @staticmethod
+    def obtener_detalle(mesa_id: int, usuario=None):
+        """
+        Retorna el detalle de una mesa incluyendo su comanda activa.
+        Si una comanda está huérfana (mesa no en uso), la anula automáticamente.
+        """
+        mesa = Mesa.objects.get(id=mesa_id)
+
+        comanda = Comanda.objects.filter(
+            mesa=mesa, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
+        ).prefetch_related('lineas__plato').first()
+
+        # Auto-anular comandas huérfanas (mesa libre pero tiene comanda)
+        if comanda and mesa.estado == 'LIBRE':
+            try:
+                ComandaService.anular(comanda.id, usuario=usuario)
+            except AppError:
+                pass
+            comanda = None
+
+        # Buscar por unión (si esta mesa es secundaria)
+        union_activa = UnionMesa.activos.filter(mesas=mesa).prefetch_related('mesas').first()
+        if not comanda and union_activa:
+            comanda = Comanda.objects.filter(
+                mesa__in=union_activa.mesas.all(),
+                estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
+            ).prefetch_related('lineas__plato').first()
+
+        from menu.models import Categoria
+        categorias = Categoria.objects.prefetch_related('platos').all()
+
+        return {
+            'mesa': mesa,
+            'comanda_activa': comanda,
+            'categorias': categorias,
+            'union_activa': union_activa,
+        }
+
+    @staticmethod
+    def eliminar(mesa_id: int, usuario=None) -> None:
+        """Soft delete de una mesa."""
+        mesa = Mesa.activos.filter(id=mesa_id).first()
+        if not mesa:
+            raise RecursoNoEncontrado('Mesa no encontrada')
+        if mesa.estado != 'LIBRE':
+            raise ReglaNegocioViolada('No se puede eliminar una mesa que no está libre')
+        mesa.eliminar(usuario=usuario)
 
 
 class UnionMesaService:
@@ -145,7 +254,7 @@ class UnionMesaService:
         for comanda in comandas_activas:
             try:
                 ComandaService.anular(comanda.id, usuario=usuario)
-            except Exception as e:
+            except AppError as e:
                 errores.append(str(e))
 
         if errores:

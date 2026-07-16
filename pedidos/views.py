@@ -2,9 +2,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
-from django.db.models import Q
 from core.rol_utils import es_mozo, es_cocinero, es_mozo_o_cocinero
-from pedidos.models import Comanda, LineaComanda
+from pedidos.models import Comanda
 from pedidos.services import ComandaService, LineaComandaService
 from core.excepciones import AppError, StockInsuficiente
 from mesas.models import Mesa
@@ -54,16 +53,7 @@ def agregar_platos_pedido(request, comanda_id):
 @login_required
 @user_passes_test(es_cocinero)
 def kds_panel(request):
-    comanda_ids = LineaComanda.objects.filter(
-        estado__in=['PENDIENTE', 'EN_PREP']
-    ).values_list('comanda_id', flat=True).distinct()
-
-    comandas = Comanda.objects.filter(
-        Q(estado='EN_PREPARACION') | Q(id__in=comanda_ids)
-    ).prefetch_related(
-        'lineas__plato', 'mozo', 'mesa'
-    ).order_by('fecha_apertura')
-
+    comandas = LineaComandaService.obtener_panel_kds()
     return render(request, 'cocina/kds_panel.html', {'comandas': comandas})
 @login_required
 @user_passes_test(es_mozo_o_cocinero)

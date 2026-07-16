@@ -4,97 +4,27 @@ from django.contrib import messages
 from core.rol_utils import es_mozo, es_admin
 from core.excepciones import (
     RecursoNoEncontrado, UnionInvalida, ReglaNegocioViolada, CajaNoAbierta, AppError,
+    StockInsuficiente,
 )
 from .models import Mesa, UnionMesa
 from .forms import MesaForm
 from .services import MesaService, UnionMesaService
 from pedidos.models import Comanda
-from pedidos.views import _procesar_agregar_plato
 from pedidos.services import ComandaService
-from menu.models import Categoria
 
 
 @login_required
 @user_passes_test(es_mozo)
 def plano_mesas(request):
-    mesas = Mesa.activos.all()
-    uniones = UnionMesa.activos.prefetch_related('mesas')
-    union_mesas_ids = set()
-    union_labels = {}
-    union_ids = {}
-    processed_mesa_ids = set()
-    items = []
-    for union in uniones:
-        miembros = list(union.mesas.all())
-        nums = sorted([m.numero for m in miembros])
-        label = ' + '.join([f'Mesa {x}' for x in nums])
-        estados = set(m.estado for m in miembros)
-        if 'OCUPADA' in estados:
-            estado_resumen = 'OCUPADA'
-        elif 'RESERVADA' in estados:
-            estado_resumen = 'RESERVADA'
-        elif 'LIMPIEZA' in estados:
-            estado_resumen = 'LIMPIEZA'
-        else:
-            estado_resumen = 'LIBRE'
-        capacidad = sum(m.capacidad for m in miembros)
-        for m in miembros:
-            union_mesas_ids.add(m.id)
-            union_labels[m.id] = label
-            union_ids[m.id] = union.id
-            processed_mesa_ids.add(m.id)
-        items.append({
-            'type': 'union',
-            'union_id': union.id,
-            'mesas': miembros,
-            'nums': nums,
-            'label': label,
-            'capacidad': capacidad,
-            'estado': estado_resumen,
-            'zona': miembros[0].zona,
-        })
-    for mesa in mesas:
-        if mesa.id in processed_mesa_ids:
-            continue
-        items.append({
-            'type': 'mesa',
-            'mesa': mesa,
-        })
-    return render(request, 'mesas/plano_mesas.html', {
-        'items': items,
-        'union_mesas_ids': union_mesas_ids,
-        'union_labels': union_labels,
-        'union_ids': union_ids,
-    })
+    data = MesaService.obtener_plano()
+    return render(request, 'mesas/plano_mesas.html', data)
 
 
 @login_required
 @user_passes_test(es_mozo)
 def detalle_mesa(request, mesa_id):
-    mesa = get_object_or_404(Mesa.activos, id=mesa_id)
-    comanda_activa = Comanda.objects.filter(
-        mesa=mesa, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
-    ).prefetch_related('lineas__plato').first()
-    if comanda_activa and mesa.estado == 'LIBRE':
-        try:
-            comanda_activa.anular(usuario=request.user)
-            messages.info(request, 'Se anuló una comanda huérfana de la mesa')
-        except ReglaNegocioViolada:
-            messages.error(request, 'No se pudo anular la comanda huérfana')
-        comanda_activa = None
-    union_activa = UnionMesa.activos.filter(mesas=mesa).prefetch_related('mesas').first()
-    if not comanda_activa and union_activa:
-        comanda_activa = Comanda.objects.filter(
-            mesa__in=union_activa.mesas.all(),
-            estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
-        ).prefetch_related('lineas__plato').first()
-    categorias = Categoria.objects.prefetch_related('platos').all()
-    return render(request, 'mesas/detalle_mesa.html', {
-        'mesa': mesa,
-        'comanda_activa': comanda_activa,
-        'categorias': categorias,
-        'union_activa': union_activa,
-    })
+    data = MesaService.obtener_detalle(mesa_id, usuario=request.user)
+    return render(request, 'mesas/detalle_mesa.html', data)
 
 
 @login_required
@@ -114,7 +44,19 @@ def abrir_comanda(request, mesa_id):
 def agregar_plato_comanda(request, comanda_id):
     comanda = get_object_or_404(Comanda, id=comanda_id)
     if request.method == 'POST':
-        _procesar_agregar_plato(request, comanda)
+        try:
+            ComandaService.agregar_platos(comanda.id, [{
+                'plato_id': int(request.POST.get('plato_id')),
+                'cantidad': int(request.POST.get('cantidad', 1)),
+                'observacion': request.POST.get('observacion', ''),
+            }], usuario=request.user)
+            messages.success(request, 'Plato agregado')
+        except StockInsuficiente as e:
+            errores = e.args[0].get('errores', []) if e.args else []
+            for error in errores:
+                messages.error(request, error.get('error', str(error)))
+        except AppError as e:
+            messages.error(request, str(e))
     return redirect('detalle_mesa', mesa_id=comanda.mesa.id)
 
 
@@ -260,11 +202,11 @@ def editar_mesa(request, mesa_id):
 def eliminar_mesa(request, mesa_id):
     mesa = get_object_or_404(Mesa.activos, id=mesa_id)
     if request.method == 'POST':
-        if mesa.estado != 'LIBRE':
-            messages.error(request, 'No puedes eliminar una mesa que no está LIBRE.')
-            return redirect('lista_mesas_admin')
-        mesa.eliminar(usuario=request.user)
-        messages.success(request, f'Mesa {mesa.numero} eliminada lógicamente.')
+        try:
+            MesaService.eliminar(mesa.id, usuario=request.user)
+            messages.success(request, f'Mesa {mesa.numero} eliminada lógicamente.')
+        except AppError as e:
+            messages.error(request, str(e))
         return redirect('lista_mesas_admin')
 
     return render(request, 'mesas/eliminar_mesa_confirmar.html', {'mesa': mesa})

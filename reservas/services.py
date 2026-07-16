@@ -51,7 +51,30 @@ class ReservaService:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if not reserva.activo:
             raise ReglaNegocioViolada('Esta reserva ya estaba cancelada')
-        reserva.cancelar()
+
+        # 1. Soft delete de la reserva
+        reserva.activo = False
+        reserva.save(update_fields=['activo'])
+
+        # 2. Liberar mesa(s) si no tienen otra reserva activa
+        if reserva.mesa:
+            tiene_otra = Reserva.objects.filter(
+                mesa=reserva.mesa, activo=True
+            ).exclude(id=reserva.id).exists()
+            if not tiene_otra:
+                reserva.mesa.estado = 'LIBRE'
+                reserva.mesa.save(update_fields=['estado'])
+        elif reserva.union_mesa:
+            tiene_otra = Reserva.objects.filter(
+                union_mesa=reserva.union_mesa, activo=True
+            ).exclude(id=reserva.id).exists()
+            if not tiene_otra:
+                for m in reserva.union_mesa.mesas.all():
+                    m.estado = 'LIBRE'
+                    m.save(update_fields=['estado'])
+                reserva.union_mesa.activo = False
+                reserva.union_mesa.save(update_fields=['activo'])
+
         _notificar_plano()
         return reserva
 
@@ -63,7 +86,31 @@ class ReservaService:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if not reserva.activo:
             raise ReglaNegocioViolada('Esta reserva ya no está activa')
-        reserva.finalizar()
+
+        # 1. Soft delete + marcar como finalizada
+        reserva.activo = False
+        reserva.finalizada = True
+        reserva.save(update_fields=['activo', 'finalizada'])
+
+        # 2. Marcar mesa(s) en limpieza si no tienen otra reserva activa
+        if reserva.mesa:
+            tiene_otra = Reserva.objects.filter(
+                mesa=reserva.mesa, activo=True
+            ).exclude(id=reserva.id).exists()
+            if not tiene_otra:
+                reserva.mesa.estado = 'LIMPIEZA'
+                reserva.mesa.save(update_fields=['estado'])
+        elif reserva.union_mesa:
+            tiene_otra = Reserva.objects.filter(
+                union_mesa=reserva.union_mesa, activo=True
+            ).exclude(id=reserva.id).exists()
+            if not tiene_otra:
+                for m in reserva.union_mesa.mesas.all():
+                    m.estado = 'LIMPIEZA'
+                    m.save(update_fields=['estado'])
+                reserva.union_mesa.activo = False
+                reserva.union_mesa.save(update_fields=['activo'])
+
         _notificar_plano()
         return reserva
 
