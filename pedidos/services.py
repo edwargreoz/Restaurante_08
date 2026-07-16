@@ -10,6 +10,9 @@ from core.excepciones import (
     StockInsuficiente, TransicionEstadoInvalida,
     ComandaNoDisponible, MontoInvalido, ReferenciaInvalida,
 )
+from dominio.puertos.repositorios import (
+    IComandaRepository, IMesaRepository, ILineaComandaRepository,
+)
 from pedidos.models import Comanda, LineaComanda
 from mesas.models import Mesa, UnionMesa
 from caja.models import Caja, Pago
@@ -21,9 +24,13 @@ from menu.models import Plato
 class ComandaService:
     """Toda la lógica de negocio relacionada a comandas."""
 
-    @staticmethod
+    def __init__(self, comanda_repo: IComandaRepository,
+                 mesa_repo: IMesaRepository):
+        self.comanda_repo = comanda_repo
+        self.mesa_repo = mesa_repo
+
     @transaction.atomic
-    def abrir(mesa_id: int, usuario) -> Comanda:
+    def abrir(self, mesa_id: int, usuario) -> Comanda:
         caja_abierta = Caja.objects.filter(estado='ABIERTA').exists()
         if not caja_abierta:
             raise CajaNoAbierta('No hay un turno de caja abierto. Abre caja primero.')
@@ -67,9 +74,8 @@ class ComandaService:
         _notificar_plano()
         return comanda
 
-    @staticmethod
     @transaction.atomic
-    def agregar_platos(comanda_id: int, platos_data: list, usuario=None) -> list:
+    def agregar_platos(self, comanda_id: int, platos_data: list, usuario=None) -> list:
         comanda = Comanda.objects.select_for_update().get(id=comanda_id)
         if comanda.estado not in ('ABIERTA', 'LISTA'):
             raise ComandaNoDisponible('La comanda no está abierta')
@@ -173,9 +179,8 @@ class ComandaService:
         _notificar_comanda(comanda.id)
         return platos_a_crear
 
-    @staticmethod
     @transaction.atomic
-    def fusionar(comanda_id: int, otra_comanda_id: int) -> Comanda:
+    def fusionar(self, comanda_id: int, otra_comanda_id: int) -> Comanda:
         comanda = Comanda.objects.select_for_update().get(id=comanda_id)
         otra = Comanda.objects.select_for_update().get(id=otra_comanda_id)
 
@@ -190,9 +195,8 @@ class ComandaService:
         otra.save(update_fields=['estado', 'fecha_cierre'])
         return comanda
 
-    @staticmethod
     @transaction.atomic
-    def anular(comanda_id: int, usuario=None) -> Comanda:
+    def anular(self, comanda_id: int, usuario=None) -> Comanda:
         comanda = Comanda.objects.select_for_update().get(id=comanda_id)
         if comanda.estado == 'COBRADA':
             raise ComandaNoDisponible('No se puede anular una comanda ya cobrada')
@@ -238,9 +242,8 @@ class ComandaService:
         _notificar_comanda(comanda.id)
         return comanda
 
-    @staticmethod
     @transaction.atomic
-    def pagar(comanda_id: int, metodo: str, monto, vuelto=0,
+    def pagar(self, comanda_id: int, metodo: str, monto, vuelto=0,
               referencia='', caja=None) -> Comanda:
         comanda = Comanda.objects.select_for_update().get(id=comanda_id)
         if comanda.estado != 'LISTA':
@@ -269,9 +272,8 @@ class ComandaService:
         _notificar_comanda(comanda.id)
         return comanda
 
-    @staticmethod
     @transaction.atomic
-    def pagar_split(comanda_id: int, pagos_lista: list, caja=None) -> Comanda:
+    def pagar_split(self, comanda_id: int, pagos_lista: list, caja=None) -> Comanda:
         comanda = Comanda.objects.select_for_update().get(id=comanda_id)
         if comanda.estado != 'LISTA':
             raise ComandaNoDisponible('La comanda no está lista para pagar')
@@ -309,9 +311,11 @@ class ComandaService:
 class LineaComandaService:
     """Lógica de líneas de comanda (KDS)."""
 
-    @staticmethod
+    def __init__(self, linea_comanda_repo: ILineaComandaRepository):
+        self.linea_comanda_repo = linea_comanda_repo
+
     @transaction.atomic
-    def enviar_cocina(linea_id: int)->LineaComanda:
+    def enviar_cocina(self, linea_id: int) -> LineaComanda:
         linea = LineaComanda.objects.select_for_update().get(id = linea_id)
         if linea.estado != 'PENDIENTE':
             raise TransicionEstadoInvalida(
@@ -330,9 +334,8 @@ class LineaComandaService:
         return linea
        
 
-    @staticmethod
     @transaction.atomic
-    def marcar_listo(linea_id: int) -> LineaComanda:
+    def marcar_listo(self, linea_id: int) -> LineaComanda:
         linea = LineaComanda.objects.select_for_update().get(id=linea_id)
         if linea.estado != 'EN_PREP':
             raise TransicionEstadoInvalida(

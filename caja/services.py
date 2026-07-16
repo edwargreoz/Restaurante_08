@@ -61,7 +61,8 @@ class CajaService:
         }
 
 class PagoService:
-    def obtener_comanda_para_cobro(self, comanda_id: int):
+    @staticmethod
+    def obtener_comanda_para_cobro(comanda_id: int):
         comanda = Comanda.objects.prefetch_related(
             'lineas__plato', 'pagos'
         ).filter(id=comanda_id, estado='LISTA').first()
@@ -71,13 +72,15 @@ class PagoService:
             )
         return comanda
 
-    def listar_comandas_para_cobro(self):
+    @staticmethod
+    def listar_comandas_para_cobro():
         return Comanda.objects.filter(
             estado__in=['ABIERTA', 'LISTA']
         ).select_related('mesa', 'mozo').order_by('-fecha_apertura')
 
-    def listar_pagos_con_filtros(self, caja_id=None,
-                                 fecha_desde=None, fecha_hasta=None):
+    @staticmethod
+    def listar_pagos_con_filtros(caja_id=None,
+                                  fecha_desde=None, fecha_hasta=None):
         pagos = Pago.objects.select_related(
             'comanda__mesa', 'comanda__mozo', 'caja'
         ).all()
@@ -93,7 +96,13 @@ class PagoService:
     def procesar_pago(comanda, metodo: str, monto, vuelto,
                       referencia: str, caja) -> None:
         from pedidos.services import ComandaService
-        ComandaService.pagar(
+        from infraestructura.container import get_container
+        container = get_container()
+        svc = ComandaService(
+            comanda_repo=container.comanda_repo,
+            mesa_repo=container.mesa_repo,
+        )
+        svc.pagar(
             comanda.id,
             metodo=metodo, monto=monto, vuelto=vuelto,
             referencia=referencia, caja=caja,
@@ -102,7 +111,13 @@ class PagoService:
     @staticmethod
     def procesar_pago_split(comanda, pagos_lista: list, caja) -> None:
         from pedidos.services import ComandaService
-        ComandaService.pagar_split(comanda.id, pagos_lista, caja=caja)
+        from infraestructura.container import get_container
+        container = get_container()
+        svc = ComandaService(
+            comanda_repo=container.comanda_repo,
+            mesa_repo=container.mesa_repo,
+        )
+        svc.pagar_split(comanda.id, pagos_lista, caja=caja)
 
     @staticmethod
     def reporte_ventas(caja_id=None, fecha_desde=None,

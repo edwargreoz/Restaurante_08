@@ -12,15 +12,23 @@ from menu.models import Categoria, Plato
 from inventario.models import Insumo, Receta, RecetaInsumo
 from caja.models import Caja
 from caja.services import CajaService
+from infraestructura.container import get_container
 
 
 class ComandaServiceTest(TestCase):
     def setUp(self):
         self.usuario = User.objects.create_user(username='mozo', password='test')
         self.mesa = Mesa.objects.create(numero=1, capacidad=4)
+        container = get_container()
+        self.comanda_service = ComandaService(
+            comanda_repo=container.comanda_repo,
+            mesa_repo=container.mesa_repo,
+        )
 
     def _abrir_caja(self):
-        return CajaService.abrir_turno(
+        container = get_container()
+        caja_svc = CajaService(caja_repo=container.caja_repo)
+        return caja_svc.abrir_turno(
             turno_nombre='TEST', usuario=self.usuario, saldo_inicial=Decimal('100.00')
         )
 
@@ -45,7 +53,7 @@ class ComandaServiceTest(TestCase):
     def test_abrir_sin_caja_lanza_excepcion(self):
         """Verifica que abrir una comanda sin caja activa lance CajaNoAbierta."""
         with self.assertRaises(CajaNoAbierta):
-            ComandaService.abrir(self.mesa.id, self.usuario)
+            self.comanda_service.abrir(self.mesa.id, self.usuario)
 
     # ── Test: abrir mesa ya ocupada ──
     def test_abrir_mesa_ocupada_lanza_excepcion(self):
@@ -54,12 +62,12 @@ class ComandaServiceTest(TestCase):
         self.mesa.estado = 'OCUPADA'
         self.mesa.save()
         with self.assertRaises(MesaConComandaActiva):
-            ComandaService.abrir(self.mesa.id, self.usuario)
+            self.comanda_service.abrir(self.mesa.id, self.usuario)
 
     # ── Test: abrir comanda correctamente ──
     def test_abrir_comanda_ok(self):
         self._abrir_caja()
-        comanda = ComandaService.abrir(self.mesa.id, self.usuario)
+        comanda = self.comanda_service.abrir(self.mesa.id, self.usuario)
         self.assertEqual(comanda.estado, 'ABIERTA')
         self.assertEqual(comanda.mozo, self.usuario)
         self.mesa.refresh_from_db()
@@ -68,9 +76,9 @@ class ComandaServiceTest(TestCase):
     # ── Test: agregar platos con stock ──
     def test_agregar_platos_descuenta_stock(self):
         self._abrir_caja()
-        comanda = ComandaService.abrir(self.mesa.id, self.usuario)
+        comanda = self.comanda_service.abrir(self.mesa.id, self.usuario)
         plato, insumo = self._crear_plato_con_receta(stock=Decimal('10'))
-        ComandaService.agregar_platos(
+        self.comanda_service.agregar_platos(
             comanda.id,
             [{'plato_id': plato.id, 'cantidad': 2, 'observacion': ''}],
             usuario=self.usuario,
@@ -83,12 +91,12 @@ class ComandaServiceTest(TestCase):
     # ── Test: agregar platos sin stock lanza excepción ──
     def test_agregar_platos_sin_stock_lanza_excepcion(self):
         self._abrir_caja()
-        comanda = ComandaService.abrir(self.mesa.id, self.usuario)
+        comanda = self.comanda_service.abrir(self.mesa.id, self.usuario)
         plato, insumo = self._crear_plato_con_receta(
             nombre='Ceviche', stock=Decimal('0.1')
         )
         with self.assertRaises(StockInsuficiente):
-            ComandaService.agregar_platos(
+            self.comanda_service.agregar_platos(
                 comanda.id,
                 [{'plato_id': plato.id, 'cantidad': 5, 'observacion': ''}],
                 usuario=self.usuario,
@@ -97,12 +105,12 @@ class ComandaServiceTest(TestCase):
     # ── Test: insumo agotado marca plato como no disponible ──
     def test_insumo_agotado_marca_plato_no_disponible(self):
         self._abrir_caja()
-        comanda = ComandaService.abrir(self.mesa.id, self.usuario)
+        comanda = self.comanda_service.abrir(self.mesa.id, self.usuario)
         plato, insumo = self._crear_plato_con_receta(
             nombre='Aji de Gallina', stock=Decimal('0.5')
         )
         self.assertTrue(plato.disponible)
-        ComandaService.agregar_platos(
+        self.comanda_service.agregar_platos(
             comanda.id,
             [{'plato_id': plato.id, 'cantidad': 1, 'observacion': ''}],
             usuario=self.usuario,
@@ -115,11 +123,11 @@ class ComandaServiceTest(TestCase):
     # ── Test: anular comanda restaura stock ──
     def test_anular_comanda_restaura_stock(self):
         self._abrir_caja()
-        comanda = ComandaService.abrir(self.mesa.id, self.usuario)
+        comanda = self.comanda_service.abrir(self.mesa.id, self.usuario)
         plato, insumo = self._crear_plato_con_receta(
             nombre='Arroz con Pollo', stock=Decimal('5')
         )
-        ComandaService.agregar_platos(
+        self.comanda_service.agregar_platos(
             comanda.id,
             [{'plato_id': plato.id, 'cantidad': 2, 'observacion': ''}],
             usuario=self.usuario,
@@ -127,7 +135,7 @@ class ComandaServiceTest(TestCase):
         insumo.refresh_from_db()
         self.assertEqual(insumo.stock_actual, Decimal('4.00'))
 
-        ComandaService.anular(comanda.id, usuario=self.usuario)
+        self.comanda_service.anular(comanda.id, usuario=self.usuario)
         comanda.refresh_from_db()
         insumo.refresh_from_db()
         self.assertEqual(comanda.estado, 'ANULADA')
@@ -136,27 +144,27 @@ class ComandaServiceTest(TestCase):
     # ── Test: anular comanda ya cobrada falla ──
     def test_anular_comanda_cobrada_falla(self):
         self._abrir_caja()
-        comanda = ComandaService.abrir(self.mesa.id, self.usuario)
+        comanda = self.comanda_service.abrir(self.mesa.id, self.usuario)
         comanda.estado = 'COBRADA'
         comanda.save(update_fields=['estado'])
         with self.assertRaises(ComandaNoDisponible):
-            ComandaService.anular(comanda.id, usuario=self.usuario)
+            self.comanda_service.anular(comanda.id, usuario=self.usuario)
 
     # ── Test: pagar comanda ──
     def test_pagar_comanda_ok(self):
         self._abrir_caja()
-        comanda = ComandaService.abrir(self.mesa.id, self.usuario)
+        comanda = self.comanda_service.abrir(self.mesa.id, self.usuario)
         plato, _ = self._crear_plato_con_receta(
             nombre='Causa', stock=Decimal('10')
         )
-        ComandaService.agregar_platos(
+        self.comanda_service.agregar_platos(
             comanda.id,
             [{'plato_id': plato.id, 'cantidad': 1, 'observacion': ''}],
             usuario=self.usuario,
         )
         comanda.estado = 'LISTA'
         comanda.save(update_fields=['estado'])
-        ComandaService.pagar(
+        self.comanda_service.pagar(
             comanda.id, metodo='EFECTIVO',
             monto=Decimal('50.00'), vuelto=Decimal('25.00'),
         )
@@ -169,17 +177,17 @@ class ComandaServiceTest(TestCase):
     def test_fusionar_comandas(self):
         self._abrir_caja()
         mesa2 = Mesa.objects.create(numero=2, capacidad=4)
-        c1 = ComandaService.abrir(self.mesa.id, self.usuario)
-        c2 = ComandaService.abrir(mesa2.id, self.usuario)
+        c1 = self.comanda_service.abrir(self.mesa.id, self.usuario)
+        c2 = self.comanda_service.abrir(mesa2.id, self.usuario)
         plato, _ = self._crear_plato_con_receta(
             nombre='Tacu Tacu', stock=Decimal('20')
         )
-        ComandaService.agregar_platos(
+        self.comanda_service.agregar_platos(
             c2.id,
             [{'plato_id': plato.id, 'cantidad': 1, 'observacion': ''}],
             usuario=self.usuario,
         )
-        resultado = ComandaService.fusionar(c1.id, c2.id)
+        resultado = self.comanda_service.fusionar(c1.id, c2.id)
         c2.refresh_from_db()
         self.assertEqual(c2.estado, 'ANULADA')
         self.assertEqual(resultado.lineas.count(), 1)
@@ -189,10 +197,18 @@ class LineaComandaServiceTest(TestCase):
     def setUp(self):
         self.usuario = User.objects.create_user(username='cocinero', password='test')
         self.mesa = Mesa.objects.create(numero=10, capacidad=4)
-        CajaService.abrir_turno(
+        container = get_container()
+        CajaService(caja_repo=container.caja_repo).abrir_turno(
             turno_nombre='TEST', usuario=self.usuario, saldo_inicial=Decimal('100.00')
         )
-        self.comanda = ComandaService.abrir(self.mesa.id, self.usuario)
+        self.comanda_service = ComandaService(
+            comanda_repo=container.comanda_repo,
+            mesa_repo=container.mesa_repo,
+        )
+        self.linea_service = LineaComandaService(
+            linea_comanda_repo=container.linea_comanda_repo,
+        )
+        self.comanda = self.comanda_service.abrir(self.mesa.id, self.usuario)
         cat = Categoria.objects.create(nombre='Entradas')
         self.plato = Plato.objects.create(
             nombre='Papa a la Huancaina', precio=Decimal('12'),
@@ -203,16 +219,16 @@ class LineaComandaServiceTest(TestCase):
         )
 
     def test_enviar_cocina(self):
-        LineaComandaService.enviar_cocina(self.linea.id)
+        self.linea_service.enviar_cocina(self.linea.id)
         self.linea.refresh_from_db()
         self.assertEqual(self.linea.estado, 'EN_PREP')
 
     def test_marcar_listo(self):
-        LineaComandaService.enviar_cocina(self.linea.id)
-        LineaComandaService.marcar_listo(self.linea.id)
+        self.linea_service.enviar_cocina(self.linea.id)
+        self.linea_service.marcar_listo(self.linea.id)
         self.linea.refresh_from_db()
         self.assertEqual(self.linea.estado, 'LISTO')
 
     def test_marcar_listo_sin_enviar_falla(self):
         with self.assertRaises(AppError):
-            LineaComandaService.marcar_listo(self.linea.id)
+            self.linea_service.marcar_listo(self.linea.id)

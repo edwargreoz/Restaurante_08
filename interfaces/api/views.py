@@ -12,6 +12,7 @@ from pedidos.services import ComandaService, LineaComandaService
 
 from core.excepciones import AppError
 from caja.services import PagoService
+from infraestructura.container import get_container
 
     
 from .filters import ComandaFilter, PlatoFilter
@@ -113,7 +114,12 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error' : 'mesa_id es obligatorio'},
                 status= status.HTTP_400_BAD_REQUEST)
         try:
-            comanda = ComandaService.abrir(mesa_id, request.user)
+            container = get_container()
+            comanda_service = ComandaService(
+                comanda_repo=container.comanda_repo,
+                mesa_repo=container.mesa_repo,
+            )
+            comanda = comanda_service.abrir(mesa_id, request.user)
         except AppError as e:
             return Response(
                 {'error': str(e)},
@@ -136,7 +142,12 @@ class ComandaViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
-            ComandaService.agregar_platos(comanda.id, serializer.validated_data['platos'], usuario=request.user)
+            container = get_container()
+            comanda_service = ComandaService(
+                comanda_repo=container.comanda_repo,
+                mesa_repo=container.mesa_repo,
+            )
+            comanda_service.agregar_platos(comanda.id, serializer.validated_data['platos'], usuario=request.user)
         except AppError as e:
             if hasattr(e, 'args') and e.args and isinstance(e.args[0], dict):
                 error_data = e.args[0]
@@ -158,7 +169,12 @@ class ComandaViewSet(viewsets.ModelViewSet):
         """
         comanda = self.get_object()
         try:
-            ComandaService.anular(comanda.id, usuario=request.user)
+            container = get_container()
+            comanda_service = ComandaService(
+                comanda_repo=container.comanda_repo,
+                mesa_repo=container.mesa_repo,
+            )
+            comanda_service.anular(comanda.id, usuario=request.user)
         except AppError as e:
             return Response(
                 {'error': str(e)},
@@ -183,7 +199,12 @@ class ComandaViewSet(viewsets.ModelViewSet):
         data = serializer.validated_data
 
         try:
-            ComandaService.pagar(
+            container = get_container()
+            comanda_service = ComandaService(
+                comanda_repo=container.comanda_repo,
+                mesa_repo=container.mesa_repo,
+            )
+            comanda_service.pagar(
                 comanda.id,
                 metodo=data['metodo'], monto=data['monto'],
                 vuelto=data.get('vuelto', 0),
@@ -213,7 +234,12 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         try:
-            ComandaService.pagar_split(comanda.id, pagos_data)
+            container = get_container()
+            comanda_service = ComandaService(
+                comanda_repo=container.comanda_repo,
+                mesa_repo=container.mesa_repo,
+            )
+            comanda_service.pagar_split(comanda.id, pagos_data)
         except AppError as e:
             return Response(
                 {'error': str(e)},
@@ -239,7 +265,11 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
         """
         linea = self.get_object()
         try:
-            LineaComandaService.enviar_cocina(linea.id)
+            container = get_container()
+            linea_service = LineaComandaService(
+                linea_comanda_repo=container.linea_comanda_repo,
+            )
+            linea_service.enviar_cocina(linea.id)
         except AppError as e:
             return Response(
                 {'error': str(e)},
@@ -257,7 +287,11 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
         """
         linea = self.get_object()
         try:
-            LineaComandaService.marcar_listo(linea.id)
+            container = get_container()
+            linea_service = LineaComandaService(
+                linea_comanda_repo=container.linea_comanda_repo,
+            )
+            linea_service.marcar_listo(linea.id)
         except AppError as e:
             return Response(
                 {'error': str(e)},

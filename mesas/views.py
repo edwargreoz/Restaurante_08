@@ -52,7 +52,12 @@ def agregar_plato_comanda(request, comanda_id):
     comanda = get_object_or_404(Comanda, id=comanda_id)
     if request.method == 'POST':
         try:
-            ComandaService.agregar_platos(comanda.id, [{
+            container = get_container()
+            comanda_service = ComandaService(
+                comanda_repo=container.comanda_repo,
+                mesa_repo=container.mesa_repo,
+            )
+            comanda_service.agregar_platos(comanda.id, [{
                 'plato_id': int(request.POST.get('plato_id')),
                 'cantidad': int(request.POST.get('cantidad', 1)),
                 'observacion': request.POST.get('observacion', ''),
@@ -73,7 +78,12 @@ def anular_comanda(request, comanda_id):
     comanda = get_object_or_404(Comanda, id=comanda_id)
     if request.method == 'POST':
         try:
-            ComandaService.anular(comanda.id, usuario=request.user)
+            container = get_container()
+            comanda_service = ComandaService(
+                comanda_repo=container.comanda_repo,
+                mesa_repo=container.mesa_repo,
+            )
+            comanda_service.anular(comanda.id, usuario=request.user)
             messages.success(request, 'Comanda anulada, mesa liberada')
         except AppError as e:
             messages.error(request, str(e))
@@ -97,8 +107,18 @@ def marcar_mesa_libre(request, mesa_id):
 @login_required
 @user_passes_test(es_mozo)
 def unir_mesas(request):
+    from mesas.models import Mesa, UnionMesa
     mesas = Mesa.activos.all()
     uniones = UnionMesa.activos.prefetch_related('mesas')
+    uniones_to_deactivate = []
+    for u in uniones:
+        activos = [m for m in u.mesas.all() if m.activo]
+        if len(activos) < 2:
+            uniones_to_deactivate.append(u)
+    for u in uniones_to_deactivate:
+        u.activo = False
+        u.save(update_fields=['activo', 'actualizado_en'])
+    uniones = uniones.exclude(id__in=[u.id for u in uniones_to_deactivate])
     if request.method == 'POST':
         mesa_ids = request.POST.getlist('mesas')
         try:

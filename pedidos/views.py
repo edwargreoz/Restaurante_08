@@ -6,6 +6,7 @@ from core.rol_utils import es_mozo, es_cocinero, es_mozo_o_cocinero
 from pedidos.models import Comanda
 from pedidos.services import ComandaService, LineaComandaService
 from core.excepciones import AppError, StockInsuficiente
+from infraestructura.container import get_container
 from mesas.models import Mesa
 from menu.models import Categoria
 
@@ -24,7 +25,12 @@ def tomar_pedido(request, mesa_id):
     })
 def _procesar_agregar_plato(request, comanda):
     try:
-        ComandaService.agregar_platos(comanda.id, [{
+        container = get_container()
+        comanda_service = ComandaService(
+            comanda_repo=container.comanda_repo,
+            mesa_repo=container.mesa_repo,
+        )
+        comanda_service.agregar_platos(comanda.id, [{
             'plato_id': int(request.POST.get('plato_id')),
             'cantidad': int(request.POST.get('cantidad', 1)),
             'observacion': request.POST.get('observacion', ''),
@@ -60,7 +66,11 @@ def kds_panel(request):
 def enviar_cocina(request, linea_id):
     if request.method == 'POST':
         try:
-            LineaComandaService.enviar_cocina(linea_id)
+            container = get_container()
+            linea_service = LineaComandaService(
+                linea_comanda_repo=container.linea_comanda_repo,
+            )
+            linea_service.enviar_cocina(linea_id)
             messages.success(request, 'Línea enviada a cocina')
         except AppError as e:
             messages.error(request, str(e))
@@ -71,7 +81,11 @@ def enviar_cocina(request, linea_id):
 def marcar_listo(request, linea_id):
     if request.method == 'POST':
         try:
-            LineaComandaService.marcar_listo(linea_id)
+            container = get_container()
+            linea_service = LineaComandaService(
+                linea_comanda_repo=container.linea_comanda_repo,
+            )
+            linea_service.marcar_listo(linea_id)
             messages.success(request, 'Linea marcada como lista')
         except AppError as e:
             messages.error(request, str(e))
