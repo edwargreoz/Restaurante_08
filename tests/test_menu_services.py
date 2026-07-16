@@ -4,32 +4,39 @@ from core.excepciones import RecursoNoEncontrado
 from menu.models import Categoria, Plato
 from menu.services import CategoriaService, PlatoService
 from inventario.models import Receta, RecetaInsumo, Insumo
+from infraestructura.container import get_container
+
+
+def _categoria_service():
+    return CategoriaService(categoria_repo=get_container().categoria_repo)
 
 
 class CategoriaServiceTest(TestCase):
     def setUp(self):
-        self.cat = CategoriaService.crear('Entradas', es_bebida=False, orden_display=1)
+        self.svc = _categoria_service()
+        self.cat = self.svc.crear('Entradas', es_bebida=False, orden_display=1)
 
     def test_crear_categoria(self):
-        cat = CategoriaService.crear('Bebidas', es_bebida=True, orden_display=2)
+        cat = self.svc.crear('Bebidas', es_bebida=True, orden_display=2)
         self.assertTrue(cat.es_bebida)
 
     def test_listar_categorias(self):
-        cats = CategoriaService.listar_categorias()
+        cats = self.svc.listar_categorias()
         self.assertEqual(cats.count(), 1)
 
     def test_obtener_por_id(self):
-        cat = CategoriaService.obtener_por_id(self.cat.id)
+        cat = self.svc.obtener_por_id(self.cat.id)
         self.assertEqual(cat.nombre, 'Entradas')
 
     def test_obtener_por_id_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            CategoriaService.obtener_por_id(999)
+            self.svc.obtener_por_id(999)
 
 
 class PlatoServiceTest(TestCase):
     def setUp(self):
-        self.cat = CategoriaService.crear('Platos')
+        self.cat_svc = _categoria_service()
+        self.cat = self.cat_svc.crear('Platos')
         self.insumo = Insumo.objects.create(
             nombre='Aceite', unidad='ML', stock_actual=Decimal('500'),
         )

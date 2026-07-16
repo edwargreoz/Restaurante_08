@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from pedidos.models import Comanda as ComandaModel, LineaComanda as LineaComandaModel
 from dominio.entidades.comanda import Comanda
 

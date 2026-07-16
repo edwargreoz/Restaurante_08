@@ -106,11 +106,17 @@ class ComandaService:
             for receta in recetas:
                 insumo = receta.insumo
                 necesario_en_unidad_receta = receta.cantidad_por_porcion * Decimal(str(cantidad))
-                necesario = convertir_unidad(
-                    necesario_en_unidad_receta,
-                    receta.unidad,
-                    insumo.unidad
-                )
+                try:
+                    necesario = convertir_unidad(
+                        necesario_en_unidad_receta,
+                        receta.unidad,
+                        insumo.unidad
+                    )
+                except (ValueError, KeyError) as e:
+                    faltantes.append(
+                        f"{insumo.nombre}: error de conversión - {e}"
+                    )
+                    continue
                 if insumo.stock_actual < necesario:
                     faltantes.append(
                         f"{insumo.nombre}: disponible {insumo.stock_actual} {insumo.unidad}, "
@@ -204,9 +210,12 @@ class ComandaService:
             for receta in recetas:
                 insumo = receta.insumo
                 cantidad = receta.cantidad_por_porcion * Decimal(str(linea.cantidad))
-                cantidad_a_restaurar = convertir_unidad(
-                    cantidad, receta.unidad, insumo.unidad
-                )
+                try:
+                    cantidad_a_restaurar = convertir_unidad(
+                        cantidad, receta.unidad, insumo.unidad
+                    )
+                except (ValueError, KeyError):
+                    continue
                 stock_anterior = insumo.stock_actual
                 insumo.stock_actual += cantidad_a_restaurar
                 insumo.save(update_fields=['stock_actual'])

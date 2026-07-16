@@ -4,19 +4,24 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from core.rol_utils import es_admin
 from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
+from infraestructura.container import get_container
 from inventario.services import RecetaService
 from .services import CategoriaService, PlatoService
 
 @login_required
 def catalogo_platos(request):
-    categorias = CategoriaService.listar_categorias()
+    container = get_container()
+    categoria_service = CategoriaService(categoria_repo=container.categoria_repo)
+    categorias = categoria_service.listar_categorias()
     return render(request, 'menu/catalogo_platos.html',
                 {'categorias': categorias})
 
 @login_required
 @user_passes_test(es_admin)
 def gestion_menu(request):
-    categorias = CategoriaService.listar_categorias()
+    container = get_container()
+    categoria_service = CategoriaService(categoria_repo=container.categoria_repo)
+    categorias = categoria_service.listar_categorias()
     recetas = RecetaService.listar_recetas()
     return render(request, 'menu/gestion_menu.html', {
         'categorias': categorias,
@@ -29,7 +34,9 @@ def crear_categoria(request):
     if request.method == 'POST':
         nombre = request.POST.get('nombre')
         if nombre:
-            CategoriaService.crear(nombre=nombre)
+            container = get_container()
+            categoria_service = CategoriaService(categoria_repo=container.categoria_repo)
+            categoria_service.crear(nombre=nombre)
             messages.success(request, 'Categoria creada')
         else:
             messages.error(request, 'El nombre es obligatorio')
@@ -86,7 +93,9 @@ def editar_plato(request, plato_id):
             return redirect('gestion_menu')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
-    categorias = CategoriaService.listar_categorias()
+    container = get_container()
+    categoria_service = CategoriaService(categoria_repo=container.categoria_repo)
+    categorias = categoria_service.listar_categorias()
     return render(request, 'menu/gestion_menu.html', {
         'editar': plato, 'categorias': categorias
     })

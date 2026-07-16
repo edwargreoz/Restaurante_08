@@ -98,7 +98,7 @@ class InsumoService:
 class RecetaService:
     @staticmethod
     def listar_recetas():
-        return Receta.objects.prefetch_related('insumos__insumo').all()
+        return Receta.activos.prefetch_related('insumos__insumo').all()
 
     @staticmethod
     def obtener_por_id(receta_id: int) -> Receta:

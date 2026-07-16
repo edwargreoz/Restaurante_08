@@ -1,29 +1,32 @@
 
 from django.db import transaction
 from core.excepciones import RecursoNoEncontrado
+from dominio.puertos.repositorios import ICategoriaRepository
 from menu.models import Categoria, Plato
 from inventario.models import Receta
 
 
 class CategoriaService:
-    @staticmethod
-    def listar_categorias():
-        return Categoria.objects.prefetch_related('platos__receta').all()
+    def __init__(self, categoria_repo: ICategoriaRepository):
+        self.repo = categoria_repo
 
-    @staticmethod
-    def obtener_por_id(categoria_id: int) -> Categoria:
-        cat = Categoria.objects.filter(id=categoria_id).first()
+    def listar_categorias(self):
+        return self.repo.listar_con_platos()
+
+    def obtener_por_id(self, categoria_id: int):
+        cat = self.repo.obtener_por_id(categoria_id)
         if not cat:
             raise RecursoNoEncontrado('Categoría no encontrada')
         return cat
 
-    @staticmethod
-    def crear(nombre: str, es_bebida: bool = False,
-              orden_display: int = 0) -> Categoria:
-        return Categoria.objects.create(
-            nombre=nombre, es_bebida=es_bebida,
+    def crear(self, nombre: str, es_bebida: bool = False,
+              orden_display: int = 0):
+        from dominio.entidades.categoria import Categoria as CatDominio
+        cat = CatDominio(
+            id=None, nombre=nombre, es_bebida=es_bebida,
             orden_display=orden_display
         )
+        return self.repo.guardar(cat)
 
 
 class PlatoService:
@@ -67,7 +70,10 @@ class PlatoService:
         plato = PlatoService.obtener_por_id(plato_id)
         categoria_id = kwargs.pop('categoria_id', None)
         if categoria_id:
-            kwargs['categoria'] = CategoriaService.obtener_por_id(int(categoria_id))
+            cat = Categoria.objects.filter(id=int(categoria_id)).first()
+            if not cat:
+                raise RecursoNoEncontrado('Categoría no encontrada')
+            kwargs['categoria'] = cat
         for attr, value in kwargs.items():
             if attr == 'imagen' and not value:
                 continue

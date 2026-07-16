@@ -7,7 +7,6 @@ from core.excepciones import (
 )
 from mesas.models import Mesa, UnionMesa
 from pedidos.models import Comanda
-from pedidos.services import ComandaService
 from caja.models import Caja
 
 
@@ -15,6 +14,7 @@ class MesaService:
     @staticmethod
     @transaction.atomic
     def obtener_o_crear_comanda_activa(mesa_id: int, usuario) -> Comanda:
+        from pedidos.services import ComandaService
         return ComandaService.abrir(mesa_id, usuario)
 
     @staticmethod
@@ -118,6 +118,7 @@ class MesaService:
         # Auto-anular comandas huérfanas (mesa libre pero tiene comanda)
         if comanda and mesa.estado == 'LIBRE':
             try:
+                from pedidos.services import ComandaService
                 ComandaService.anular(comanda.id, usuario=usuario)
             except AppError:
                 pass
@@ -191,6 +192,7 @@ class UnionMesaService:
                     m.estado = 'OCUPADA'
                     m.save(update_fields=['estado'])
         if comandas_activas.count() >= 2:
+            from pedidos.services import ComandaService
             principal = comandas_activas.first()
             for otras in comandas_activas[1:]:
                ComandaService.fusionar(principal.id,otras.id)
@@ -230,6 +232,7 @@ class UnionMesaService:
                 raise CajaNoAbierta('No hay un turno de caja abierto')
             mesa.estado = 'OCUPADA'
             mesa.save(update_fields=['estado'])
+            from pedidos.services import ComandaService
             comanda_nueva = ComandaService.abrir(mesa.id, usuario)
             ComandaService.fusionar(comanda_union.id, comanda_nueva.id)
 
@@ -251,6 +254,7 @@ class UnionMesaService:
             estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
         )
         errores = []
+        from pedidos.services import ComandaService
         for comanda in comandas_activas:
             try:
                 ComandaService.anular(comanda.id, usuario=usuario)
