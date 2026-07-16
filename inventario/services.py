@@ -81,6 +81,7 @@ class InsumoService:
             stock_posterior=insumo.stock_actual,
             usuario=usuario,
             observacion=f'Compra: {cantidad_unidades} {uc.nombre}',
+            origen='COMPRA',
         )
 
     @staticmethod
@@ -100,6 +101,7 @@ class InsumoService:
             stock_anterior=stock_anterior,
             stock_posterior=insumo.stock_actual,
             usuario=usuario, observacion=motivo,
+            origen='AJUSTE',
         )
     
 class RecetaService:

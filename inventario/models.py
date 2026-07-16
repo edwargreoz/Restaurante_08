@@ -152,6 +152,13 @@ class MovimientoInsumo(ModeloBase):
         ('COMPRA', 'Compra / Ingreso'),
     )
 
+    ORIGENES = (
+        ('COMANDA', 'Comanda'),
+        ('COMPRA', 'Compra'),
+        ('AJUSTE', 'Ajuste'),
+        ('SISTEMA', 'Sistema'),
+    )
+
     insumo = models.ForeignKey(
         Insumo, on_delete=models.CASCADE,
         related_name='movimientos',
@@ -188,6 +195,11 @@ class MovimientoInsumo(ModeloBase):
     )
     fecha = models.DateTimeField(
         auto_now_add=True, verbose_name='Fecha del movimiento'
+    )
+    origen = models.CharField(
+        max_length=20, choices=ORIGENES,
+        default='SISTEMA',
+        verbose_name='Origen del movimiento'
     )
 
     class Meta:

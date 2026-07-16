@@ -140,7 +140,8 @@ class ComandaService:
                     stock_anterior=stock_anterior,
                     stock_posterior=insumo.stock_actual,
                     usuario=usuario,
-                    observacion=f"Plato: {plato.nombre} x{cantidad}"
+                    observacion=f"Plato: {plato.nombre} x{cantidad}",
+                    origen='COMANDA',
                 ))
 
             if faltantes:
@@ -229,7 +230,8 @@ class ComandaService:
                     stock_anterior=stock_anterior,
                     stock_posterior=insumo.stock_actual,
                     usuario=usuario,
-                    observacion=f"Anulación comanda #{comanda.id}"
+                    observacion=f"Anulación comanda #{comanda.id}",
+                    origen='COMANDA',
                 ))
 
         MovimientoInsumo.objects.bulk_create(movimientos)
