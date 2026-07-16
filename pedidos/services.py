@@ -15,7 +15,6 @@ from mesas.models import Mesa, UnionMesa
 from caja.models import Caja, Pago
 from inventario.models import RecetaInsumo, MovimientoInsumo, convertir_unidad
 from menu.models import Plato
-from mesas.services import _notificar_plano
 
 
 
@@ -439,3 +438,7 @@ def _notificar_comanda(comanda_id: int):
         )
     except (ConnectionError, OSError, TimeoutError):
         pass
+
+def _notificar_plano():
+    from mesas.services import _notificar_plano as notificar
+    notificar()

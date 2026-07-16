@@ -205,7 +205,7 @@ class ReservaService:
             if reserva.union_mesa.activo:
                 reserva.union_mesa.activo = False
                 reserva.union_mesa.save(update_fields=['activo'])
-        reserva.eliminar()
+        reserva.delete()
         _notificar_plano()
 
     @staticmethod
