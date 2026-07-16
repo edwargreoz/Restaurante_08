@@ -14,12 +14,13 @@ class ReservaService:
     HORA_APERTURA = time_obj(7, 0)
     HORA_CIERRE = time_obj(22, 0)
 
+    @staticmethod
     @transaction.atomic
-    def crear(self, mesas_ids: list, fecha, hora_inicio, hora_fin,
+    def crear(mesas_ids: list, fecha, hora_inicio, hora_fin,
               num_personas: int, cliente_nombre: str,
               cliente_contacto: str = '', observacion: str = '',
               usuario=None) -> Reserva:
-        datos = self._validar_datos(
+        datos = ReservaService._validar_datos(
             mesas_ids, fecha, hora_inicio, hora_fin,
             num_personas, cliente_nombre, cliente_contacto, observacion
         )
@@ -44,8 +45,9 @@ class ReservaService:
         )
         return reserva
 
+    @staticmethod
     @transaction.atomic
-    def cancelar(self, reserva_id: int) -> Reserva:
+    def cancelar(reserva_id: int) -> Reserva:
         reserva = Reserva.objects.filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
@@ -76,8 +78,9 @@ class ReservaService:
         _notificar_plano()
         return reserva
 
+    @staticmethod
     @transaction.atomic
-    def finalizar(self, reserva_id: int) -> Reserva:
+    def finalizar(reserva_id: int) -> Reserva:
         reserva = Reserva.objects.filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
@@ -109,8 +112,9 @@ class ReservaService:
         _notificar_plano()
         return reserva
 
+    @staticmethod
     @transaction.atomic
-    def editar(self, reserva_id: int, mesas_ids: list, fecha,
+    def editar(reserva_id: int, mesas_ids: list, fecha,
                hora_inicio, hora_fin, num_personas: int,
                cliente_nombre: str, cliente_contacto: str = '',
                observacion: str = '', usuario=None) -> Reserva:
@@ -133,7 +137,7 @@ class ReservaService:
                 m.id for m in vieja_union.mesas.all()
             ]
 
-        datos = self._validar_datos(
+        datos = ReservaService._validar_datos(
             mesas_ids, fecha, hora_inicio, hora_fin,
             num_personas, cliente_nombre, cliente_contacto,
             observacion, mesas_actuales_ids=mesas_actuales_ids,
@@ -182,8 +186,9 @@ class ReservaService:
         _notificar_plano()
         return reserva
 
+    @staticmethod
     @transaction.atomic
-    def eliminar_definitivamente(self, reserva_id: int) -> None:
+    def eliminar_definitivamente(reserva_id: int) -> None:
         reserva = Reserva.objects.filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
