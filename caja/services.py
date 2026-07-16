@@ -44,7 +44,8 @@ class CajaService:
         if not caja:
             raise RecursoNoEncontrado('No hay turno abierto o no existe')
         comandas_pendientes = Comanda.objects.filter(
-            estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
+            estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA'],
+            mesa__activo=True,
         ).exists()
         if comandas_pendientes:
             raise ReglaNegocioViolada(
