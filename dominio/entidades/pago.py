@@ -12,3 +12,4 @@ class Pago:
     monto: Decimal
     vuelto: Decimal = Decimal('0')
     referencia: str = ''
+    caja_id: Optional[int] = None

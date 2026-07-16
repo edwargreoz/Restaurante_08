@@ -1,71 +1,79 @@
-
 from decimal import Decimal
 from django.db import transaction
-from django.db.models import F
+from dominio.puertos.repositorios import IInsumoRepository
 from core.excepciones import (
     RecursoNoEncontrado, ReglaNegocioViolada,
 )
-from inventario.models import Insumo, Receta, RecetaInsumo, MovimientoInsumo, UnidadConversion, convertir_unidad
-from menu.models import Plato
+from inventario.models import (
+    Insumo, Receta, RecetaInsumo, MovimientoInsumo, UnidadConversion, convertir_unidad
+)
+
+
 
 
 class InsumoService:
-    @staticmethod
-    def listar_insumos():
+    def __init__(self, insumo_repo: IInsumoRepository):
+        self.repo = insumo_repo
+
+    def listar_insumos(self):
         return Insumo.objects.all()
 
-    @staticmethod
-    def obtener_por_id(insumo_id: int) -> Insumo:
-        insumo = Insumo.objects.filter(id=insumo_id).first()
-        if not insumo:
+    def obtener_por_id(self, insumo_id: int):
+        insumo_domain = self.repo.obtener_por_id(insumo_id)
+        if not insumo_domain:
             raise RecursoNoEncontrado('Insumo no encontrado')
-        return insumo
+        return Insumo.objects.get(id=insumo_id)
 
-    @staticmethod
-    def crear(nombre: str, unidad: str, stock_actual=Decimal('0'),
-              stock_minimo=Decimal('0'), costo_unitario=Decimal('0')) -> Insumo:
-        return Insumo.objects.create(
-            nombre=nombre, unidad=unidad,
+    def crear(self, nombre: str, unidad: str,
+              stock_actual=Decimal('0'), stock_minimo=Decimal('0'),
+              costo_unitario=Decimal('0')):
+        from dominio.entidades.insumo import Insumo as InsumoDomain
+        insumo_domain = InsumoDomain(
+            id=None, nombre=nombre, unidad=unidad,
             stock_actual=stock_actual, stock_minimo=stock_minimo,
             costo_unitario=costo_unitario,
         )
+        self.repo.guardar(insumo_domain)
+        return Insumo.objects.get(nombre=nombre)
 
-    @staticmethod
-    def actualizar(insumo_id: int, **kwargs) -> Insumo:
-        insumo = InsumoService.obtener_por_id(insumo_id)
+    def actualizar(self, insumo_id: int, **kwargs):
+        insumo_domain = self.repo.obtener_por_id(insumo_id)
+        if not insumo_domain:
+            raise RecursoNoEncontrado('Insumo no encontrado')
+        insumo_model = Insumo.objects.get(id=insumo_id)
         for attr, value in kwargs.items():
-            setattr(insumo, attr, value)
-        insumo.full_clean()
-        insumo.save(update_fields=[
+            setattr(insumo_model, attr, value)
+        insumo_model.full_clean()
+        insumo_model.save(update_fields=[
             'nombre', 'unidad', 'stock_actual',
             'stock_minimo', 'costo_unitario', 'actualizado_en',
         ])
-        return insumo
+        return insumo_model
 
-    @staticmethod
-    def eliminar(insumo_id: int):
-        insumo = InsumoService.obtener_por_id(insumo_id)
-        insumo.eliminar()
+    def eliminar(self, insumo_id: int):
+        insumo_domain = self.repo.obtener_por_id(insumo_id)
+        if not insumo_domain:
+            raise RecursoNoEncontrado('Insumo no encontrado')
+        insumo_model = Insumo.objects.get(id=insumo_id)
+        insumo_model.eliminar()
 
     @staticmethod
     @transaction.atomic
     def registrar_compra(insumo_id: int, unidad_conversion_id: int,
                          cantidad_unidades: int, costo_total: Decimal,
-                         usuario=None) -> MovimientoInsumo:
-        """Registra una compra de insumo usando la unidad de compra."""
+                         usuario=None):
         insumo = Insumo.objects.select_for_update().filter(id=insumo_id).first()
         if not insumo:
             raise RecursoNoEncontrado('Insumo no encontrado')
-
         uc = UnidadConversion.objects.get(id=unidad_conversion_id)
         cantidad_base = uc.convertir_a_base(cantidad_unidades)
-
         stock_anterior = insumo.stock_actual
         insumo.stock_actual += cantidad_base
-        costo_unitario = costo_total / cantidad_base if cantidad_base > 0 else Decimal('0')
+        costo_unitario = (
+            costo_total / cantidad_base if cantidad_base > 0 else Decimal('0')
+        )
         insumo.costo_unitario = costo_unitario
         insumo.save(update_fields=['stock_actual', 'costo_unitario'])
-
         return MovimientoInsumo.objects.create(
             insumo=insumo, tipo='COMPRA',
             cantidad=cantidad_base,
@@ -78,7 +86,7 @@ class InsumoService:
     @staticmethod
     @transaction.atomic
     def ajustar_stock(insumo_id: int, nueva_cantidad: Decimal,
-                      motivo: str, usuario=None) -> MovimientoInsumo:
+                      motivo: str, usuario=None):
         insumo = Insumo.objects.select_for_update().filter(id=insumo_id).first()
         if not insumo:
             raise RecursoNoEncontrado('Insumo no encontrado')
@@ -93,23 +101,24 @@ class InsumoService:
             stock_posterior=insumo.stock_actual,
             usuario=usuario, observacion=motivo,
         )
-
-
+    
 class RecetaService:
-    @staticmethod
-    def listar_recetas():
+    def __init__(self, insumo_repo: IInsumoRepository):
+        self.insumo_repo = insumo_repo
+
+    def listar_recetas(self):
         return Receta.activos.prefetch_related('insumos__insumo').all()
 
-    @staticmethod
-    def obtener_por_id(receta_id: int) -> Receta:
-        receta = Receta.objects.prefetch_related('insumos__insumo').filter(id=receta_id).first()
+    def obtener_por_id(self, receta_id: int):
+        receta = Receta.objects.prefetch_related('insumos__insumo').filter(
+            id=receta_id
+        ).first()
         if not receta:
             raise RecursoNoEncontrado('Receta no encontrada')
         return receta
 
-    @staticmethod
     @transaction.atomic
-    def crear(nombre: str, insumos_data: list = None) -> Receta:
+    def crear(self, nombre: str, insumos_data: list = None):
         receta, created = Receta.objects.get_or_create(nombre=nombre)
         if insumos_data and created:
             for item in insumos_data:
@@ -123,10 +132,10 @@ class RecetaService:
                 )
         return receta
 
-    @staticmethod
     @transaction.atomic
-    def actualizar(receta_id: int, nombre: str = None, insumos_data: list = None) -> Receta:
-        receta = RecetaService.obtener_por_id(receta_id)
+    def actualizar(self, receta_id: int, nombre: str = None,
+                   insumos_data: list = None):
+        receta = self.obtener_por_id(receta_id)
         if nombre:
             receta.nombre = nombre
             receta.full_clean()
@@ -147,34 +156,35 @@ class RecetaService:
                     ri.unidad = item.get('unidad', 'UNIDAD')
                     ri.activo = True
                     ri.save(update_fields=[
-                        'cantidad_por_porcion', 'unidad', 'activo', 'actualizado_en',
+                        'cantidad_por_porcion', 'unidad', 'activo',
+                        'actualizado_en',
                     ])
         return receta
 
-    @staticmethod
-    def eliminar_insumo(receta_insumo_id: int):
+    def eliminar_insumo(self, receta_insumo_id: int):
         try:
             ri = RecetaInsumo.objects.get(id=receta_insumo_id)
             ri.eliminar()
         except RecetaInsumo.DoesNotExist:
             raise RecursoNoEncontrado('Insumo de receta no encontrado')
 
-    @staticmethod
-    def eliminar(receta_id: int):
-        receta = RecetaService.obtener_por_id(receta_id)
+    def eliminar(self, receta_id: int):
+        receta = self.obtener_por_id(receta_id)
         receta.eliminar()
 
-    @staticmethod
-    def calcular_insumos_para_platos(receta_id: int, cantidad_platos: int) -> dict:
-        """Calcula los insumos necesarios para preparar N platos."""
+    def calcular_insumos_para_platos(self, receta_id: int,
+                                     cantidad_platos: int) -> dict:
         receta = Receta.objects.filter(id=receta_id).first()
         if not receta:
             raise RecursoNoEncontrado('Receta no encontrada')
-
         resultado = {'insumos': [], 'disponible': True, 'faltantes': []}
         for ri in receta.insumos.select_related('insumo').all():
-            necesario = ri.cantidad_por_porcion * Decimal(str(cantidad_platos))
-            necesario_base = convertir_unidad(necesario, ri.unidad, ri.insumo.unidad)
+            necesario = (
+                ri.cantidad_por_porcion * Decimal(str(cantidad_platos))
+            )
+            necesario_base = convertir_unidad(
+                necesario, ri.unidad, ri.insumo.unidad
+            )
             insumo_data = {
                 'id': ri.insumo_id,
                 'nombre': ri.insumo.nombre,
@@ -189,11 +199,10 @@ class RecetaService:
                 resultado['faltantes'].append(insumo_data)
         return resultado
 
-    @staticmethod
-    def verificar_stock_para_plato(plato: Plato, cantidad: int = 1) -> bool:
+    def verificar_stock_para_plato(self, plato, cantidad: int = 1) -> bool:
         if not plato.receta_id:
             return True
-        return RecetaService.calcular_insumos_para_platos(
+        return self.calcular_insumos_para_platos(
             plato.receta_id, cantidad
         )['disponible']
 

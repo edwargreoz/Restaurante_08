@@ -22,7 +22,8 @@ def gestion_menu(request):
     container = get_container()
     categoria_service = CategoriaService(categoria_repo=container.categoria_repo)
     categorias = categoria_service.listar_categorias()
-    recetas = RecetaService.listar_recetas()
+    receta_service = RecetaService(insumo_repo=container.insumo_repo)
+    recetas = receta_service.listar_recetas()
     return render(request, 'menu/gestion_menu.html', {
         'categorias': categorias,
         'recetas': recetas,
