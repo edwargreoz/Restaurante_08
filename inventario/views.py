@@ -4,23 +4,15 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from core.rol_utils import es_admin, es_mozo
 from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
-from .services import InsumoService, RecetaService
 from .models import Insumo
 from infraestructura.container import get_container
-
-
-def _insumo_service():
-    return InsumoService(insumo_repo=get_container().insumo_repo)
-
-
-def _receta_service():
-    return RecetaService(insumo_repo=get_container().insumo_repo)
 
 
 @login_required
 @user_passes_test(es_mozo)
 def lista_insumos(request):
-    insumos = _insumo_service().listar_insumos()
+    container = get_container()
+    insumos = container.insumo_service.listar_insumos()
     return render(request, 'inventario/lista_insumos.html', {
         'insumos': insumos,
         'es_admin': es_admin(request.user)
@@ -29,7 +21,8 @@ def lista_insumos(request):
 @login_required
 @user_passes_test(es_admin)
 def gestion_insumos(request):
-    insumos = _insumo_service().listar_insumos()
+    container = get_container()
+    insumos = container.insumo_service.listar_insumos()
     return render(request, 'inventario/gestion_insumos.html', {'insumos': insumos})
 
 @login_required
@@ -37,7 +30,8 @@ def gestion_insumos(request):
 def crear_insumo(request):
     if request.method == 'POST':
         try:
-            _insumo_service().crear(
+            container = get_container()
+            container.insumo_service.crear(
                 nombre=request.POST.get('nombre'),
                 unidad=request.POST.get('unidad'),
                 stock_actual=request.POST.get('stock_actual', 0),
@@ -52,15 +46,16 @@ def crear_insumo(request):
 @login_required
 @user_passes_test(es_admin)
 def editar_insumo(request, insumo_id):
+    container = get_container()
     try:
-        insumo = _insumo_service().obtener_por_id(insumo_id)
+        insumo = container.insumo_service.obtener_por_id(insumo_id)
     except RecursoNoEncontrado:
         messages.error(request, 'Insumo no encontrado')
         return redirect('gestion_insumos')
 
     if request.method == 'POST':
         try:
-            _insumo_service().actualizar(
+            container.insumo_service.actualizar(
                 insumo_id,
                 nombre=request.POST.get('nombre', insumo.nombre),
                 unidad=request.POST.get('unidad', insumo.unidad),
@@ -74,7 +69,7 @@ def editar_insumo(request, insumo_id):
             messages.error(request, str(e))
     return render(request, 'inventario/gestion_insumos.html', {
         'editar': insumo,
-        'insumos': _insumo_service().listar_insumos(),
+        'insumos': container.insumo_service.listar_insumos(),
     })
 
 @login_required
@@ -82,7 +77,8 @@ def editar_insumo(request, insumo_id):
 def eliminar_insumo(request, insumo_id):
     if request.method == 'POST':
         try:
-            _insumo_service().eliminar(insumo_id)
+            container = get_container()
+            container.insumo_service.eliminar(insumo_id)
             messages.success(request, 'Insumo eliminado')
         except RecursoNoEncontrado:
             messages.error(request, 'Insumo no encontrado')
@@ -91,12 +87,14 @@ def eliminar_insumo(request, insumo_id):
 @login_required
 @user_passes_test(es_admin)
 def lista_recetas(request):
-    recetas = _receta_service().listar_recetas()
+    container = get_container()
+    recetas = container.receta_service.listar_recetas()
     return render(request, 'inventario/lista_recetas.html', {'recetas': recetas})
 
 @login_required
 @user_passes_test(es_admin)
 def crear_receta(request):
+    container = get_container()
     if request.method == 'POST':
         nombre_receta = request.POST.get('nombre_receta')
         if not nombre_receta:
@@ -118,12 +116,12 @@ def crear_receta(request):
                     'cantidad': cantidad,
                     'unidad': unidad,
                 })
-            _receta_service().crear(nombre_receta, insumos_data)
+            container.receta_service.crear(nombre_receta, insumos_data)
             messages.success(request, f'Receta "{nombre_receta}" creada')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
         return redirect('lista_recetas')
-    insumos = _insumo_service().listar_insumos()
+    insumos = container.insumo_service.listar_insumos()
     return render(request, 'inventario/crear_receta.html', {
         'insumos': insumos,
         'unidades': Insumo.UNIDADES,
@@ -132,8 +130,9 @@ def crear_receta(request):
 @login_required
 @user_passes_test(es_admin)
 def editar_receta(request, receta_id):
+    container = get_container()
     try:
-        receta = _receta_service().obtener_por_id(receta_id)
+        receta = container.receta_service.obtener_por_id(receta_id)
     except RecursoNoEncontrado:
         messages.error(request, 'Receta no encontrada')
         return redirect('lista_recetas')
@@ -154,7 +153,7 @@ def editar_receta(request, receta_id):
                         'cantidad': cantidad,
                         'unidad': unidad,
                     })
-            _receta_service().actualizar(
+            container.receta_service.actualizar(
                 receta_id,
                 nombre=request.POST.get('nombre_receta'),
                 insumos_data=insumos_data,
@@ -163,7 +162,7 @@ def editar_receta(request, receta_id):
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
         return redirect('lista_recetas')
-    insumos = _insumo_service().listar_insumos()
+    insumos = container.insumo_service.listar_insumos()
     return render(request, 'inventario/crear_receta.html', {
         'editar': receta,
         'insumos': insumos,
@@ -175,7 +174,8 @@ def editar_receta(request, receta_id):
 def eliminar_receta(request, receta_insumo_id):
     if request.method == 'POST':
         try:
-            _receta_service().eliminar_insumo(receta_insumo_id)
+            container = get_container()
+            container.receta_service.eliminar_insumo(receta_insumo_id)
             messages.success(request, 'Insumo eliminado de la receta')
         except RecursoNoEncontrado:
             messages.error(request, 'Insumo de receta no encontrado')
@@ -186,7 +186,8 @@ def eliminar_receta(request, receta_insumo_id):
 def eliminar_receta_completa(request, receta_id):
     if request.method == 'POST':
         try:
-            _receta_service().eliminar(receta_id)
+            container = get_container()
+            container.receta_service.eliminar(receta_id)
             messages.success(request, 'Receta eliminada')
         except RecursoNoEncontrado:
             messages.error(request, 'Receta no encontrada')

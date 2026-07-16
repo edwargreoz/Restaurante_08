@@ -96,14 +96,9 @@ class PagoService:
     @staticmethod
     def procesar_pago(comanda, metodo: str, monto, vuelto,
                       referencia: str, caja) -> None:
-        from pedidos.services import ComandaService
         from infraestructura.container import get_container
         container = get_container()
-        svc = ComandaService(
-            comanda_repo=container.comanda_repo,
-            mesa_repo=container.mesa_repo,
-        )
-        svc.pagar(
+        container.comanda_service.pagar(
             comanda.id,
             metodo=metodo, monto=monto, vuelto=vuelto,
             referencia=referencia, caja=caja,
@@ -111,14 +106,9 @@ class PagoService:
 
     @staticmethod
     def procesar_pago_split(comanda, pagos_lista: list, caja) -> None:
-        from pedidos.services import ComandaService
         from infraestructura.container import get_container
         container = get_container()
-        svc = ComandaService(
-            comanda_repo=container.comanda_repo,
-            mesa_repo=container.mesa_repo,
-        )
-        svc.pagar_split(comanda.id, pagos_lista, caja=caja)
+        container.comanda_service.pagar_split(comanda.id, pagos_lista, caja=caja)
 
     @staticmethod
     def reporte_ventas(caja_id=None, fecha_desde=None,

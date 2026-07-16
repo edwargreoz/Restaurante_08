@@ -8,6 +8,12 @@ from infraestructura.persistencia.repositorios.pago_repo import PagoRepository
 from infraestructura.persistencia.repositorios.linea_comanda_repo import LineaComandaRepository
 from infraestructura.persistencia.repositorios.categoria_repo import CategoriaRepository
 
+from menu.services import CategoriaService, PlatoService
+from mesas.services import MesaService, UnionMesaService
+from pedidos.services import ComandaService, LineaComandaService
+from inventario.services import InsumoService, RecetaService
+from caja.services import CajaService
+
 
 class Container:
     def __init__(self):
@@ -20,6 +26,26 @@ class Container:
         self.pago_repo = PagoRepository()
         self.linea_comanda_repo = LineaComandaRepository()
         self.categoria_repo = CategoriaRepository()
+
+        self.categoria_service = CategoriaService(
+            categoria_repo=self.categoria_repo
+        )
+        self.plato_service = PlatoService(
+            plato_repo=self.plato_repo,
+            categoria_repo=self.categoria_repo,
+        )
+        self.mesa_service = MesaService(mesa_repo=self.mesa_repo)
+        self.union_mesa_service = UnionMesaService(mesa_repo=self.mesa_repo)
+        self.comanda_service = ComandaService(
+            comanda_repo=self.comanda_repo,
+            mesa_repo=self.mesa_repo,
+        )
+        self.linea_comanda_service = LineaComandaService(
+            linea_comanda_repo=self.linea_comanda_repo,
+        )
+        self.insumo_service = InsumoService(insumo_repo=self.insumo_repo)
+        self.receta_service = RecetaService(insumo_repo=self.insumo_repo)
+        self.caja_service = CajaService(caja_repo=self.caja_repo)
 
 
 _container = None

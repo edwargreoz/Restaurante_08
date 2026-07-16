@@ -5,14 +5,12 @@ from django.contrib import messages
 from core.rol_utils import es_admin
 from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
 from infraestructura.container import get_container
-from inventario.services import RecetaService
-from .services import CategoriaService, PlatoService
+
 
 @login_required
 def catalogo_platos(request):
     container = get_container()
-    categoria_service = CategoriaService(categoria_repo=container.categoria_repo)
-    categorias = categoria_service.listar_categorias()
+    categorias = container.categoria_service.listar_categorias()
     return render(request, 'menu/catalogo_platos.html',
                 {'categorias': categorias})
 
@@ -20,10 +18,8 @@ def catalogo_platos(request):
 @user_passes_test(es_admin)
 def gestion_menu(request):
     container = get_container()
-    categoria_service = CategoriaService(categoria_repo=container.categoria_repo)
-    categorias = categoria_service.listar_categorias()
-    receta_service = RecetaService(insumo_repo=container.insumo_repo)
-    recetas = receta_service.listar_recetas()
+    categorias = container.categoria_service.listar_categorias()
+    recetas = container.receta_service.listar_recetas()
     return render(request, 'menu/gestion_menu.html', {
         'categorias': categorias,
         'recetas': recetas,
@@ -36,8 +32,7 @@ def crear_categoria(request):
         nombre = request.POST.get('nombre')
         if nombre:
             container = get_container()
-            categoria_service = CategoriaService(categoria_repo=container.categoria_repo)
-            categoria_service.crear(nombre=nombre)
+            container.categoria_service.crear(nombre=nombre)
             messages.success(request, 'Categoria creada')
         else:
             messages.error(request, 'El nombre es obligatorio')
@@ -48,10 +43,6 @@ def crear_categoria(request):
 def crear_plato(request):
     if request.method == 'POST':
         container = get_container()
-        plato_service = PlatoService(
-            plato_repo=container.plato_repo,
-            categoria_repo=container.categoria_repo,
-        )
         categoria_id = request.POST.get('categoria')
         receta_id = request.POST.get('receta')
         if not categoria_id:
@@ -61,7 +52,7 @@ def crear_plato(request):
             messages.error(request, 'Debe seleccionar una receta para el plato')
             return redirect('gestion_menu')
         try:
-            plato_service.crear(
+            container.plato_service.crear(
                 nombre=request.POST.get('nombre'),
                 precio=request.POST.get('precio'),
                 categoria_id=categoria_id,
@@ -79,19 +70,15 @@ def crear_plato(request):
 @user_passes_test(es_admin)
 def editar_plato(request, plato_id):
     container = get_container()
-    plato_service = PlatoService(
-        plato_repo=container.plato_repo,
-        categoria_repo=container.categoria_repo,
-    )
     try:
-        plato = plato_service.obtener_por_id(plato_id)
+        plato = container.plato_service.obtener_por_id(plato_id)
     except RecursoNoEncontrado:
         messages.error(request, 'Plato no encontrado')
         return redirect('gestion_menu')
 
     if request.method == 'POST':
         try:
-            plato_service.actualizar(
+            container.plato_service.actualizar(
                 plato_id,
                 nombre=request.POST.get('nombre', plato.nombre),
                 precio=request.POST.get('precio', plato.precio),
@@ -104,8 +91,7 @@ def editar_plato(request, plato_id):
             return redirect('gestion_menu')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
-    categoria_service = CategoriaService(categoria_repo=container.categoria_repo)
-    categorias = categoria_service.listar_categorias()
+    categorias = container.categoria_service.listar_categorias()
     return render(request, 'menu/gestion_menu.html', {
         'editar': plato, 'categorias': categorias
     })
@@ -115,12 +101,8 @@ def editar_plato(request, plato_id):
 def eliminar_plato(request, plato_id):
     if request.method == 'POST':
         container = get_container()
-        plato_service = PlatoService(
-            plato_repo=container.plato_repo,
-            categoria_repo=container.categoria_repo,
-        )
         try:
-            plato_service.eliminar(plato_id)
+            container.plato_service.eliminar(plato_id)
             messages.success(request, 'Plato eliminado')
         except RecursoNoEncontrado:
             messages.error(request, 'Plato no encontrado')

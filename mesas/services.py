@@ -12,14 +12,9 @@ class MesaService:
 
     @transaction.atomic
     def obtener_o_crear_comanda_activa(self, mesa_id: int, usuario):
-        from pedidos.services import ComandaService
         from infraestructura.container import get_container
         container = get_container()
-        svc = ComandaService(
-            comanda_repo=container.comanda_repo,
-            mesa_repo=container.mesa_repo,
-        )
-        return svc.abrir(mesa_id, usuario)
+        return container.comanda_service.abrir(mesa_id, usuario)
 
     def cambiar_estado(self, mesa_id: int, nuevo_estado: str):
         mesa_domain = self.repo.obtener_por_id(mesa_id)
@@ -122,14 +117,9 @@ class MesaService:
 
         if comanda and mesa.estado == 'LIBRE':
             try:
-                from pedidos.services import ComandaService
                 from infraestructura.container import get_container
                 container = get_container()
-                svc = ComandaService(
-                    comanda_repo=container.comanda_repo,
-                    mesa_repo=container.mesa_repo,
-                )
-                svc.anular(comanda.id, usuario=usuario)
+                container.comanda_service.anular(comanda.id, usuario=usuario)
             except AppError:
                 pass
             comanda = None
@@ -210,16 +200,11 @@ class UnionMesaService:
                     m.estado = 'OCUPADA'
                     m.save(update_fields=['estado'])
         if comandas_activas.count() >= 2:
-            from pedidos.services import ComandaService
             from infraestructura.container import get_container
             container = get_container()
-            svc = ComandaService(
-                comanda_repo=container.comanda_repo,
-                mesa_repo=container.mesa_repo,
-            )
             principal = comandas_activas.first()
             for otras in comandas_activas[1:]:
-                svc.fusionar(principal.id, otras.id)
+                container.comanda_service.fusionar(principal.id, otras.id)
 
         _notificar_plano()
         return union
@@ -260,15 +245,10 @@ class UnionMesaService:
                 raise CajaNoAbierta('No hay un turno de caja abierto')
             mesa_model.estado = 'OCUPADA'
             mesa_model.save(update_fields=['estado'])
-            from pedidos.services import ComandaService
             from infraestructura.container import get_container
             container = get_container()
-            svc = ComandaService(
-                comanda_repo=container.comanda_repo,
-                mesa_repo=container.mesa_repo,
-            )
-            comanda_nueva = svc.abrir(mesa_model.id, usuario)
-            svc.fusionar(comanda_union.id, comanda_nueva.id)
+            comanda_nueva = container.comanda_service.abrir(mesa_model.id, usuario)
+            container.comanda_service.fusionar(comanda_union.id, comanda_nueva.id)
 
         _notificar_plano()
         return union
@@ -290,16 +270,11 @@ class UnionMesaService:
             estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
         )
         errores = []
-        from pedidos.services import ComandaService
         from infraestructura.container import get_container
         container = get_container()
-        svc = ComandaService(
-            comanda_repo=container.comanda_repo,
-            mesa_repo=container.mesa_repo,
-        )
         for comanda in comandas_activas:
             try:
-                svc.anular(comanda.id, usuario=usuario)
+                container.comanda_service.anular(comanda.id, usuario=usuario)
             except AppError as e:
                 errores.append(str(e))
 
