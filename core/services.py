@@ -15,8 +15,8 @@ class DashboardService:
     @staticmethod
     def datos_mozo():
         return {
-            'mesas_libres': Mesa.objects.filter(estado='LIBRE').count(),
-            'mesas_ocupadas': Mesa.objects.filter(estado='OCUPADA').count(),
+            'mesas_libres': Mesa.activos.filter(estado='LIBRE').count(),
+            'mesas_ocupadas': Mesa.activos.filter(estado='OCUPADA').count(),
             'comandas_activas': Comanda.objects.filter(
                 estado__in=['ABIERTA', 'EN_PREPARACION']
             ).count(),
