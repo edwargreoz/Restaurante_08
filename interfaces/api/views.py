@@ -29,38 +29,45 @@ from .permissions import EsMozo, EsCocinero, EsCajero, EsAdmin
 class CategoriaViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar categorías del menú."""
     permission_classes = [EsMozo | EsAdmin]
-    queryset = Categoria.objects.all()
+    def get_queryset(self):
+        return get_container().categoria_service.categoria_repo.listar_con_platos()
     serializer_class = CategoriaSerializer
 
 class PlatoViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar platos del menú con su precio y disponibilidad."""
     permission_classes = [EsMozo | EsAdmin]
-    queryset = Plato.objects.select_related('categoria', 'receta').all()
+    def get_queryset(self):
+        return get_container().plato_service.plato_repo.listar()
     serializer_class = PlatoSerializer
     filterset_class = PlatoFilter
 
 class InsumoViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar insumos del inventario (solo admin)."""
     permission_classes = [EsAdmin]
-    queryset = Insumo.objects.all()
+    def get_queryset(self):
+        return get_container().insumo_service.repo.listar()
     serializer_class = InsumoSerializer
 
 class RecetaViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar recetas asociadas a platos."""
     permission_classes = [EsAdmin]
-    queryset = Receta.objects.all()
+    def get_queryset(self):
+        return get_container().receta_service.repo.listar()
     serializer_class = RecetaSerializer
 
 class RecetaInsumoViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar los ingredientes de cada receta."""
     permission_classes = [EsAdmin]
-    queryset = RecetaInsumo.objects.select_related('receta', 'insumo').all()
+    def get_queryset(self):
+        from inventario.models import RecetaInsumo
+        return RecetaInsumo.objects.select_related('receta', 'insumo').all()
     serializer_class = RecetaInsumoSerializer
 
 class ReservaViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar reservas. Soporta crear, editar, cancelar y finalizar."""
     permission_classes = [EsMozo | EsAdmin]
-    queryset = Reserva.activos.select_related('mesa', 'creado_por').all()
+    def get_queryset(self):
+        return get_container().reserva_service.listar()
     serializer_class = ReservaSerializer
 
     def perform_destroy(self, instance):
@@ -70,7 +77,8 @@ class ReservaViewSet(viewsets.ModelViewSet):
 class MesaViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar mesas y su estado actual en tiempo real."""
     permission_classes = [EsMozo | EsAdmin]
-    queryset = Mesa.activos.all()
+    def get_queryset(self):
+        return get_container().mesa_service.mesa_repo.listar_activas()
     serializer_class = MesaSerializer
 
     @action(detail=False, methods=['get'])
@@ -87,7 +95,9 @@ class MesaViewSet(viewsets.ReadOnlyModelViewSet):
 class UnionMesaViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar uniones de mesas (mesas combinadas)."""
     permission_classes = [EsMozo | EsAdmin]
-    queryset = UnionMesa.activos.all()
+    def get_queryset(self):
+        from mesas.models import UnionMesa
+        return UnionMesa.activos.all()
     serializer_class = UnionMesaSerializer
 
 class ComandaViewSet(viewsets.ModelViewSet):
@@ -96,7 +106,8 @@ class ComandaViewSet(viewsets.ModelViewSet):
     Incluye acciones para abrir, agregar platos, anular, pagar y pagar con split.
     """
     permission_classes = [EsMozo | EsCajero|EsAdmin]
-    queryset = Comanda.objects.prefetch_related('lineas__plato')
+    def get_queryset(self):
+        return get_container().comanda_service.comanda_repo.listar()
     serializer_class = ComandaSerializer
     filterset_class = ComandaFilter
 
@@ -231,7 +242,8 @@ class ComandaViewSet(viewsets.ModelViewSet):
 class LineaComandaViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar líneas de comanda (platos individuales). Permite enviar a cocina y marcar como listo."""
     permission_classes = [EsCocinero | EsAdmin]
-    queryset = LineaComanda.objects.select_related('plato','comanda__mesa')
+    def get_queryset(self):
+        return get_container().linea_comanda_service.linea_comanda_repo.listar()
     serializer_class = LineaComandaSerializer
     filterset_fields= ['estado','comanda','plato']
     search_fields = ['plato__nombre','observacion']
@@ -281,9 +293,7 @@ class CocinaViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         comanda_ids = LineaComandaService.obtener_comandas_con_lineas_pendientes()
-        return Comanda.objects.filter(
-            Q(estado='EN_PREPARACION') | Q(id__in=comanda_ids)
-        ).prefetch_related('lineas__plato').order_by('fecha_apertura')
+        return [c for c in get_container().comanda_service.comanda_repo.listar() if c.estado == 'EN_PREPARACION' or c.id in comanda_ids]
     
 class ReportesViewSet(viewsets.ViewSet):
     """ViewSet para consultar reportes de ventas del turno y stock crítico de insumos."""
