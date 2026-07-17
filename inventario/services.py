@@ -16,13 +16,13 @@ class InsumoService:
         self.repo = insumo_repo
 
     def listar_insumos(self):
-        return Insumo.objects.all()
+        return self.repo.listar()
 
     def obtener_por_id(self, insumo_id: int):
         insumo_domain = self.repo.obtener_por_id(insumo_id)
         if not insumo_domain:
             raise RecursoNoEncontrado('Insumo no encontrado')
-        return Insumo.objects.get(id=insumo_id)
+        return insumo_domain
 
     def crear(self, nombre: str, unidad: str,
               stock_actual=Decimal('0'), stock_minimo=Decimal('0'),
@@ -54,8 +54,7 @@ class InsumoService:
         insumo_domain = self.repo.obtener_por_id(insumo_id)
         if not insumo_domain:
             raise RecursoNoEncontrado('Insumo no encontrado')
-        insumo_model = Insumo.objects.get(id=insumo_id)
-        insumo_model.eliminar()
+        self.repo.eliminar(insumo_id)
 
     @staticmethod
     @transaction.atomic

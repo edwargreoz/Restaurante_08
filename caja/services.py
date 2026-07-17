@@ -36,10 +36,10 @@ class CajaService:
         caja_domain = self.repo.obtener_abierta()
         if not caja_domain:
             raise CajaNoAbierta('No hay un turno de caja abierto')
-        return Caja.objects.filter(estado='ABIERTA').first()
+        return caja_domain
 
     def listar_todas(self):
-        return Caja.objects.all()
+        return self.repo.listar()
 
     @transaction.atomic
     def cerrar_turno(self, caja_id: int) -> dict:
