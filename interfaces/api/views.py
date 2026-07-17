@@ -46,7 +46,7 @@ class RecetaViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar recetas asociadas a platos."""
     permission_classes = [EsAdmin]
     def get_queryset(self):
-        return get_container().receta_service.repo.listar()
+        return get_container().receta_service.listar_recetas()
     serializer_class = RecetaSerializer
 
 class RecetaInsumoViewSet(viewsets.ReadOnlyModelViewSet):
@@ -190,11 +190,13 @@ class ComandaViewSet(viewsets.ModelViewSet):
 
         try:
             container = get_container()
+            caja = container.caja_repo.obtener_abierta()
             container.comanda_service.pagar(
                 comanda.id,
                 metodo=data['metodo'], monto=data['monto'],
                 vuelto=data.get('vuelto', 0),
-                referencia=data.get('referencia', '')
+                referencia=data.get('referencia', ''),
+                caja=caja,
             )
         except AppError as e:
             return Response(
@@ -221,7 +223,8 @@ class ComandaViewSet(viewsets.ModelViewSet):
             )
         try:
             container = get_container()
-            container.comanda_service.pagar_split(comanda.id, pagos_data)
+            caja = container.caja_repo.obtener_abierta()
+            container.comanda_service.pagar_split(comanda.id, pagos_data, caja=caja)
         except AppError as e:
             return Response(
                 {'error': str(e)},
@@ -284,8 +287,7 @@ class CocinaViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = CocinaComandaSerializer
 
     def get_queryset(self):
-        comanda_ids = LineaComandaService.obtener_comandas_con_lineas_pendientes()
-        return [c for c in get_container().comanda_service.comanda_repo.listar() if c.estado == 'EN_PREPARACION' or c.id in comanda_ids]
+        return get_container().comanda_service.comanda_repo.listar_para_kds()
     
 class ReportesViewSet(viewsets.ViewSet):
     """ViewSet para consultar reportes de ventas del turno y stock crítico de insumos."""

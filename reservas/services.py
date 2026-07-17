@@ -21,6 +21,9 @@ class ReservaService:
     def __init__(self, reserva_repo: Optional[IReservaRepository] = None):
         self.reserva_repo = reserva_repo
 
+    def listar(self):
+        return self.reserva_repo.listar()
+
     @transaction.atomic
     def crear(self, mesas_ids: list, fecha, hora_inicio, hora_fin,
               num_personas: int, cliente_nombre: str,
