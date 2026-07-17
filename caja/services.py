@@ -62,8 +62,10 @@ class CajaService:
         }
 
 class PagoService:
-    @staticmethod
-    def obtener_comanda_para_cobro(comanda_id: int):
+    def __init__(self, comanda_service=None):
+        self.comanda_service = comanda_service
+
+    def obtener_comanda_para_cobro(self, comanda_id: int):
         comanda = Comanda.objects.prefetch_related(
             'lineas__plato', 'pagos'
         ).filter(id=comanda_id, estado='LISTA').first()
@@ -73,14 +75,12 @@ class PagoService:
             )
         return comanda
 
-    @staticmethod
-    def listar_comandas_para_cobro():
+    def listar_comandas_para_cobro(self):
         return Comanda.objects.filter(
             estado__in=['ABIERTA', 'LISTA']
         ).select_related('mesa', 'mozo').order_by('-fecha_apertura')
 
-    @staticmethod
-    def listar_pagos_con_filtros(caja_id=None,
+    def listar_pagos_con_filtros(self, caja_id=None,
                                   fecha_desde=None, fecha_hasta=None):
         pagos = Pago.objects.select_related(
             'comanda__mesa', 'comanda__mozo', 'caja'
@@ -93,25 +93,18 @@ class PagoService:
             pagos = pagos.filter(fecha__date__lte=fecha_hasta)
         return pagos[:50]
 
-    @staticmethod
-    def procesar_pago(comanda, metodo: str, monto, vuelto,
+    def procesar_pago(self, comanda, metodo: str, monto, vuelto,
                       referencia: str, caja) -> None:
-        from infraestructura.container import get_container
-        container = get_container()
-        container.comanda_service.pagar(
+        self.comanda_service.pagar(
             comanda.id,
             metodo=metodo, monto=monto, vuelto=vuelto,
             referencia=referencia, caja=caja,
         )
 
-    @staticmethod
-    def procesar_pago_split(comanda, pagos_lista: list, caja) -> None:
-        from infraestructura.container import get_container
-        container = get_container()
-        container.comanda_service.pagar_split(comanda.id, pagos_lista, caja=caja)
+    def procesar_pago_split(self, comanda, pagos_lista: list, caja) -> None:
+        self.comanda_service.pagar_split(comanda.id, pagos_lista, caja=caja)
 
-    @staticmethod
-    def reporte_ventas(caja_id=None, fecha_desde=None,
+    def reporte_ventas(self, caja_id=None, fecha_desde=None,
                        fecha_hasta=None) -> dict:
         pagos = Pago.objects.all()
         if caja_id:

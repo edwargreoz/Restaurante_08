@@ -11,7 +11,6 @@ from pedidos.models import Comanda, LineaComanda
 
 from core.excepciones import AppError
 from pedidos.services import LineaComandaService
-from caja.services import PagoService
 from infraestructura.container import get_container
 
     
@@ -296,7 +295,8 @@ class ReportesViewSet(viewsets.ViewSet):
         GET /api/v1/reportes/ventas-turno/
         Retorna el resumen de ventas del turno. Params: caja_id, fecha_desde, fecha_hasta.
         """
-        data = PagoService.reporte_ventas(
+        container = get_container()
+        data = container.pago_service.reporte_ventas(
             caja_id=request.query_params.get('caja_id'),
             fecha_desde=request.query_params.get('fecha_desde'),
             fecha_hasta=request.query_params.get('fecha_hasta'),

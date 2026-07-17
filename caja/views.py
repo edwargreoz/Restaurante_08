@@ -5,7 +5,6 @@ from django.contrib import messages
 from core.rol_utils import es_mozo_o_cajero, es_cajero_o_admin
 from core.excepciones import CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioViolada
 from caja.models import Pago
-from caja.services import PagoService
 from infraestructura.container import get_container
 
 
@@ -13,7 +12,8 @@ from infraestructura.container import get_container
 @user_passes_test(es_mozo_o_cajero)
 def cobrar_comanda(request, comanda_id):
     try:
-        comanda = PagoService.obtener_comanda_para_cobro(comanda_id)
+        container = get_container()
+        comanda = container.pago_service.obtener_comanda_para_cobro(comanda_id)
     except RecursoNoEncontrado as e:
         messages.error(request, str(e))
         return redirect('lista_comandas_cobro')
@@ -39,14 +39,14 @@ def cobrar_comanda(request, comanda_id):
                         'vuelto': vueltos[i] if i < len(vueltos) else '0',
                         'referencia': referencias[i] if i < len(referencias) else '',
                     })
-                PagoService.procesar_pago_split(comanda, pagos_lista, caja=caja_activa)
+                container.pago_service.procesar_pago_split(comanda, pagos_lista, caja=caja_activa)
                 messages.success(request, 'Pago dividido registrado correctamente')
                 return redirect('dashboard')
             except (ReglaNegocioViolada, RecursoNoEncontrado) as e:
                 messages.error(request, str(e))
         else:
             try:
-                PagoService.procesar_pago(
+                container.pago_service.procesar_pago(
                     comanda,
                     metodo=request.POST.get('metodo'),
                     monto=request.POST.get('monto'),
@@ -66,7 +66,8 @@ def cobrar_comanda(request, comanda_id):
 @login_required
 @user_passes_test(es_cajero_o_admin)
 def lista_comandas_cobro(request):
-    comandas = PagoService.listar_comandas_para_cobro()
+    container = get_container()
+    comandas = container.pago_service.listar_comandas_para_cobro()
     try:
         container = get_container()
         caja_abierta = container.caja_service.obtener_activa()
@@ -112,10 +113,10 @@ def reportes_turno(request):
     caja_id = request.GET.get('caja_id')
     fecha_desde = request.GET.get('fecha_desde')
     fecha_hasta = request.GET.get('fecha_hasta')
-    reporte = PagoService.reporte_ventas(caja_id, fecha_desde, fecha_hasta)
+    reporte = container.pago_service.reporte_ventas(caja_id, fecha_desde, fecha_hasta)
     container = get_container()
     cajas = container.caja_service.listar_todas()
-    pagos = PagoService.listar_pagos_con_filtros(caja_id, fecha_desde, fecha_hasta)
+    pagos = container.pago_service.listar_pagos_con_filtros(caja_id, fecha_desde, fecha_hasta)
     return render(request, 'reportes/reportes_turno.html', {
         'reporte': reporte,
         'cajas': cajas,
