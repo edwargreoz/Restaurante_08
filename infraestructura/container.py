@@ -17,7 +17,7 @@ from infraestructura.persistencia.repositorios.usuario_repo import UsuarioReposi
 from menu.services import CategoriaService, PlatoService
 from mesas.services import MesaService, UnionMesaService
 from pedidos.services import ComandaService, LineaComandaService
-from inventario.services import InsumoService, RecetaService
+from inventario.services import InsumoService, RecetaService, UnidadConversionService
 from caja.services import CajaService, PagoService
 from reservas.services import ReservaService
 from core.services import DashboardService, UsuarioService
@@ -52,11 +52,19 @@ class Container:
         self.union_mesa_service = UnionMesaService(mesa_repo=self.mesa_repo)
         self.union_mesa_service.repo = self.union_mesa_repo
 
-        self.insumo_service = InsumoService(insumo_repo=self.insumo_repo)
-        self.insumo_service.unidad_conversion_repo = self.unidad_conversion_repo
+        self.insumo_service = InsumoService(
+            insumo_repo=self.insumo_repo,
+            unidad_conversion_repo=self.unidad_conversion_repo,
+            movimiento_insumo_repo=self.movimiento_insumo_repo,
+        )
+        self.unidad_conversion_service = UnidadConversionService(
+            unidad_conversion_repo=self.unidad_conversion_repo,
+        )
 
-        self.receta_service = RecetaService(receta_repo=self.receta_repo)
-        self.receta_service.insumo_repo = self.insumo_repo
+        self.receta_service = RecetaService(
+            receta_repo=self.receta_repo,
+            insumo_repo=self.insumo_repo,
+        )
 
         self.comanda_service = ComandaService(
             comanda_repo=self.comanda_repo,

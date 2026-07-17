@@ -1,12 +1,13 @@
 from decimal import Decimal
 from django.db import transaction
-from dominio.puertos.repositorios import IInsumoRepository
+from dominio.puertos.repositorios import (
+    IInsumoRepository, IUnidadConversionRepository,
+    IMovimientoInsumoRepository,
+)
 from core.excepciones import (
     RecursoNoEncontrado, ReglaNegocioViolada,
 )
 from inventario.models import convertir_unidad
-
-
 
 
 class InsumoService:
@@ -14,8 +15,12 @@ class InsumoService:
     def obtener_queryset_api(self):
         return self.repo.listar()
 
-    def __init__(self, insumo_repo: IInsumoRepository):
+    def __init__(self, insumo_repo: IInsumoRepository,
+                 unidad_conversion_repo: IUnidadConversionRepository = None,
+                 movimiento_insumo_repo: IMovimientoInsumoRepository = None):
         self.repo = insumo_repo
+        self.unidad_conversion_repo = unidad_conversion_repo
+        self.movimiento_insumo_repo = movimiento_insumo_repo
 
     def listar_insumos(self):
         return self.repo.listar()
@@ -53,16 +58,14 @@ class InsumoService:
             raise RecursoNoEncontrado('Insumo no encontrado')
         self.repo.eliminar(insumo_id)
 
-    @staticmethod
     @transaction.atomic
-    def registrar_compra(insumo_id: int, unidad_conversion_id: int,
+    def registrar_compra(self, insumo_id: int, unidad_conversion_id: int,
                          cantidad_unidades: int, costo_total: Decimal,
                          usuario=None):
-        from infraestructura.container import get_container
-        insumo = get_container().insumo_service.repo.obtener_por_id(insumo_id)
+        insumo = self.repo.obtener_por_id(insumo_id)
         if not insumo:
             raise RecursoNoEncontrado('Insumo no encontrado')
-        uc = get_container().unidad_conversion_repo.obtener_por_id(unidad_conversion_id)
+        uc = self.unidad_conversion_repo.obtener_por_id(unidad_conversion_id)
         if not uc:
             raise RecursoNoEncontrado("Unidad de conversion no encontrada")
         cantidad_base = uc.factor_conversion * cantidad_unidades
@@ -72,9 +75,9 @@ class InsumoService:
             costo_total / cantidad_base if cantidad_base > 0 else Decimal('0')
         )
         insumo.costo_unitario = costo_unitario
-        get_container().insumo_service.repo.guardar(insumo)
+        self.repo.guardar(insumo)
         from dominio.entidades.movimiento_insumo import MovimientoInsumo
-        return get_container().movimiento_insumo_repo.guardar(MovimientoInsumo(
+        return self.movimiento_insumo_repo.guardar(MovimientoInsumo(
             insumo_id=insumo.id, tipo='COMPRA',
             cantidad=cantidad_base,
             stock_anterior=stock_anterior,
@@ -87,16 +90,15 @@ class InsumoService:
     @transaction.atomic
     def ajustar_stock(self, insumo_id: int, nueva_cantidad: Decimal,
                       motivo: str, usuario=None):
-        from infraestructura.container import get_container
         insumo = self.repo.obtener_por_id(insumo_id)
         if not insumo:
             raise RecursoNoEncontrado('Insumo no encontrado')
         stock_anterior = insumo.stock_actual
         diferencia = nueva_cantidad - stock_anterior
         insumo.stock_actual = nueva_cantidad
-        get_container().insumo_service.repo.guardar(insumo)
+        self.repo.guardar(insumo)
         from dominio.entidades.movimiento_insumo import MovimientoInsumo
-        return get_container().movimiento_insumo_repo.guardar(MovimientoInsumo(
+        return self.movimiento_insumo_repo.guardar(MovimientoInsumo(
             insumo_id=insumo.id, tipo='AJUSTE',
             cantidad=abs(diferencia),
             stock_anterior=stock_anterior,
@@ -115,8 +117,9 @@ class RecetaService:
     def obtener_queryset_api(self):
         return self.repo.listar()
 
-    def __init__(self, receta_repo):
+    def __init__(self, receta_repo, insumo_repo: IInsumoRepository = None):
         self.repo = receta_repo
+        self.insumo_repo = insumo_repo
 
     def listar_recetas(self):
         return self.repo.listar()
@@ -176,7 +179,6 @@ class RecetaService:
 
     def calcular_insumos_para_platos(self, receta_id: int,
                                      cantidad_platos: int) -> dict:
-        from infraestructura.container import get_container
         receta = next((r for r in self.repo.listar() if r.id == receta_id), None)
         if not receta:
             raise RecursoNoEncontrado('Receta no encontrada')
@@ -185,7 +187,7 @@ class RecetaService:
         todos_ri = self.repo.listar_receta_insumos()
         recetas_de_esta = [ri for ri in todos_ri if ri.receta_id == receta.id and ri.activo]
         for ri in recetas_de_esta:
-            insumo = get_container().insumo_service.repo.obtener_por_id(ri.insumo_id)
+            insumo = self.insumo_repo.obtener_por_id(ri.insumo_id)
             if not insumo:
                 continue
             necesario = (
@@ -219,17 +221,17 @@ class RecetaService:
 class UnidadConversionService:
     """Servicio para gestionar la jerarquía de unidades de compra."""
 
-    @staticmethod
-    def convertir(unidad_origen_id: int, cantidad: Decimal,
+    def __init__(self, unidad_conversion_repo: IUnidadConversionRepository):
+        self.repo = unidad_conversion_repo
+
+    def convertir(self, unidad_origen_id: int, cantidad: Decimal,
                   unidad_destino_id: int = None) -> Decimal:
         """Convierte cantidad desde unidad_origen hasta unidad_destino
         (o hasta la unidad base si no se especifica)."""
-        from infraestructura.container import get_container
-        uo = get_container().unidad_conversion_repo.obtener_por_id(unidad_origen_id)
-        return UnidadConversionService._convertir_recursivo(uo, cantidad, unidad_destino_id)
+        uo = self.repo.obtener_por_id(unidad_origen_id)
+        return self._convertir_recursivo(uo, cantidad, unidad_destino_id)
 
-    @staticmethod
-    def _convertir_recursivo(unidad, cantidad: Decimal,
+    def _convertir_recursivo(self, unidad, cantidad: Decimal,
                               destino_id: int = None) -> Decimal:
         if getattr(unidad, 'es_base', False):
             return cantidad
@@ -238,17 +240,15 @@ class UnidadConversionService:
         total_en_sub = cantidad * unidad.factor_conversion
         parent = None
         if unidad.unidad_base_id:
-            from infraestructura.container import get_container
-            parent = get_container().unidad_conversion_repo.obtener_por_id(unidad.unidad_base_id)
+            parent = self.repo.obtener_por_id(unidad.unidad_base_id)
         if not parent:
             return total_en_sub
-        return UnidadConversionService._convertir_recursivo(
+        return self._convertir_recursivo(
             parent, total_en_sub, destino_id
         )
 
-    @staticmethod
     @transaction.atomic
-    def crear_cadena(insumo_id: int, niveles: list) -> list:
+    def crear_cadena(self, insumo_id: int, niveles: list) -> list:
         """Crea una cadena de unidades de conversión de abajo hacia arriba.
         niveles = [
             {'nombre': 'Paquete', 'contiene': 10, 'sub_unidad': 'Subpaquete'},
@@ -256,8 +256,7 @@ class UnidadConversionService:
         ]
         La última sub_unidad debe ser una unidad base existente.
         """
-        from infraestructura.container import get_container
-        todas_unidades = get_container().unidad_conversion_repo.listar()
+        todas_unidades = self.repo.listar()
         niveles_procesados = []
         for nivel in reversed(niveles):
             sub = next((u for u in todas_unidades if getattr(u, 'nombre', '') == nivel['sub_unidad']), None)
@@ -270,7 +269,7 @@ class UnidadConversionService:
                 factor_conversion=nivel['contiene'],
                 unidad_base_id=sub.id if sub else None,
             )
-            uc = get_container().unidad_conversion_repo.guardar(uc_domain)
+            uc = self.repo.guardar(uc_domain)
             niveles_procesados.append(uc)
             todas_unidades.append(uc)  # Para que niveles posteriores lo encuentren
         return list(reversed(niveles_procesados))

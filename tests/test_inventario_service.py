@@ -8,11 +8,23 @@ from infraestructura.container import get_container
 
 
 def _insumo_service():
-    return InsumoService(insumo_repo=get_container().insumo_repo)
+    return InsumoService(
+        insumo_repo=get_container().insumo_repo,
+        unidad_conversion_repo=get_container().unidad_conversion_repo,
+    )
 
 
 def _receta_service():
-    return RecetaService(insumo_repo=get_container().insumo_repo)
+    return RecetaService(
+        receta_repo=get_container().receta_repo,
+        insumo_repo=get_container().insumo_repo,
+    )
+
+
+def _unidad_conversion_service():
+    return UnidadConversionService(
+        unidad_conversion_repo=get_container().unidad_conversion_repo,
+    )
 
 
 class UnidadConversionServiceTest(TestCase):
@@ -23,7 +35,7 @@ class UnidadConversionServiceTest(TestCase):
         )
 
     def test_crear_cadena_dos_niveles(self):
-        cadenas = UnidadConversionService.crear_cadena(self.insumo.id, [
+        cadenas = _unidad_conversion_service().crear_cadena(self.insumo.id, [
             {'nombre': 'Kg', 'contiene': 1000, 'sub_unidad': 'Gramo'},
         ])
         self.assertEqual(len(cadenas), 1)
@@ -32,7 +44,7 @@ class UnidadConversionServiceTest(TestCase):
         self.assertEqual(cadenas[0].contiene_unidad, self.unidad_base)
 
     def test_crear_cadena_tres_niveles(self):
-        cadenas = UnidadConversionService.crear_cadena(self.insumo.id, [
+        cadenas = _unidad_conversion_service().crear_cadena(self.insumo.id, [
             {'nombre': 'Saco', 'contiene': 10, 'sub_unidad': 'Kg'},
             {'nombre': 'Kg', 'contiene': 1000, 'sub_unidad': 'Gramo'},
         ])
@@ -41,29 +53,32 @@ class UnidadConversionServiceTest(TestCase):
         self.assertEqual(cadenas[1].nombre, 'Kg')
 
     def test_convertir_un_nivel(self):
-        kg = UnidadConversionService.crear_cadena(self.insumo.id, [
+        svc = _unidad_conversion_service()
+        kg = svc.crear_cadena(self.insumo.id, [
             {'nombre': 'Kg', 'contiene': 1000, 'sub_unidad': 'Gramo'},
         ])[0]
-        resultado = UnidadConversionService.convertir(kg.id, Decimal('2'))
+        resultado = svc.convertir(kg.id, Decimal('2'))
         self.assertEqual(resultado, Decimal('2000'))
 
     def test_convertir_dos_niveles(self):
-        cadenas = UnidadConversionService.crear_cadena(self.insumo.id, [
+        svc = _unidad_conversion_service()
+        cadenas = svc.crear_cadena(self.insumo.id, [
             {'nombre': 'Saco', 'contiene': 10, 'sub_unidad': 'Kg'},
             {'nombre': 'Kg', 'contiene': 1000, 'sub_unidad': 'Gramo'},
         ])
-        resultado = UnidadConversionService.convertir(cadenas[0].id, Decimal('3'))
+        resultado = svc.convertir(cadenas[0].id, Decimal('3'))
         self.assertEqual(resultado, Decimal('30000'))
 
     def test_convertir_unidad_base_retorna_mismo(self):
-        resultado = UnidadConversionService.convertir(self.unidad_base.id, Decimal('500'))
+        resultado = _unidad_conversion_service().convertir(self.unidad_base.id, Decimal('500'))
         self.assertEqual(resultado, Decimal('500'))
 
     def test_convertir_cantidad_cero(self):
-        kg = UnidadConversionService.crear_cadena(self.insumo.id, [
+        svc = _unidad_conversion_service()
+        kg = svc.crear_cadena(self.insumo.id, [
             {'nombre': 'Kg', 'contiene': 1000, 'sub_unidad': 'Gramo'},
         ])[0]
-        resultado = UnidadConversionService.convertir(kg.id, Decimal('0'))
+        resultado = svc.convertir(kg.id, Decimal('0'))
         self.assertEqual(resultado, Decimal('0'))
 
 
@@ -179,7 +194,8 @@ class InsumoServiceTest(TestCase):
         self.assertEqual(self.insumo.stock_minimo, Decimal('5'))
 
     def test_ajustar_stock(self):
-        mov = InsumoService.ajustar_stock(
+        svc = _insumo_service()
+        mov = svc.ajustar_stock(
             self.insumo.id, Decimal('20'), motivo='Ajuste manual'
         )
         self.insumo.refresh_from_db()
@@ -189,4 +205,4 @@ class InsumoServiceTest(TestCase):
 
     def test_ajustar_stock_negativo(self):
         with self.assertRaises(Exception):
-            InsumoService.ajustar_stock(self.insumo.id, Decimal('-5'), motivo='Invalido')
+            _insumo_service().ajustar_stock(self.insumo.id, Decimal('-5'), motivo='Invalido')
