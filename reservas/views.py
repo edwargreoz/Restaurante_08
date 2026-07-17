@@ -13,16 +13,17 @@ from infraestructura.container import get_container
 @login_required
 @user_passes_test(es_mozo)
 def lista_reservas(request):
-    reservas = Reserva.activos.select_related(
-        'mesa', 'creado_por', 'union_mesa'
-    ).prefetch_related('union_mesa__mesas').all()
+    container = get_container()
+    reservas = container.reserva_service.listar()
     return render(request, 'reservas/lista_reservas.html', {'reservas': reservas})
 
 
 @login_required
 @user_passes_test(es_mozo)
 def crear_reserva(request):
-    mesas = Mesa.activos.filter(estado='LIBRE')
+    container = get_container()
+    todas_mesas = container.mesa_service.mesa_repo.listar_activas()
+    mesas = [m for m in todas_mesas if m.estado == 'LIBRE']
 
     if request.method == 'POST':
         try:

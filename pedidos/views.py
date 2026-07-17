@@ -10,19 +10,17 @@ from infraestructura.container import get_container
 from mesas.models import Mesa
 from menu.models import Categoria
 
+from django.http import Http404
+
 @login_required
 @user_passes_test(es_mozo)
 def tomar_pedido(request, mesa_id):
-    mesa = get_object_or_404(Mesa, id=mesa_id)
-    comanda = Comanda.objects.filter(
-        mesa =mesa, estado__in=['ABIERTA','EN_PREPARACION','LISTA']
-    ).prefetch_related('lineas__plato').first()
-    categorias = Categoria.objects.prefetch_related('platos').all()
-    return render(request, 'pedidos/tomar_pedido.html',{
-        'mesa':mesa,
-        'comanda':comanda,
-        'categorias':categorias
-    })
+    container = get_container()
+    try:
+        data = container.comanda_service.obtener_datos_tomar_pedido(mesa_id)
+    except AppError:
+        raise Http404()
+    return render(request, 'pedidos/tomar_pedido.html', data)
 def _procesar_agregar_plato(request, comanda):
     try:
         container = get_container()
@@ -45,10 +43,13 @@ def _procesar_agregar_plato(request, comanda):
 @login_required
 @user_passes_test(es_mozo)
 def agregar_platos_pedido(request, comanda_id):
-    comanda = get_object_or_404(Comanda, id=comanda_id)
+    container = get_container()
+    comanda = container.comanda_service.comanda_repo.obtener_por_id(comanda_id)
+    if not comanda:
+        raise Http404()
     if request.method == 'POST':
         _procesar_agregar_plato(request, comanda)
-    return redirect('tomar_pedido', mesa_id=comanda.mesa.id)
+    return redirect('tomar_pedido', mesa_id=comanda.mesa_id)
 
 #kds cocina
 

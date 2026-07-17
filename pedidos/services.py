@@ -307,6 +307,19 @@ class ComandaService:
         _notificar_comanda(comanda.id)
         return comanda
 
+    def obtener_datos_tomar_pedido(self, mesa_id: int):
+        from pedidos.models import Comanda
+        from mesas.models import Mesa
+        from menu.models import Categoria
+        mesa = Mesa.objects.filter(id=mesa_id).first()
+        if not mesa:
+            raise RecursoNoEncontrado('Mesa no encontrada')
+        comanda = Comanda.objects.filter(
+            mesa=mesa, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
+        ).prefetch_related('lineas__plato').first()
+        categorias = Categoria.objects.prefetch_related('platos').all()
+        return {'mesa': mesa, 'comanda': comanda, 'categorias': categorias}
+
 
 class LineaComandaService:
     """Lógica de líneas de comanda (KDS)."""

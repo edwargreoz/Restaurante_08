@@ -1,4 +1,5 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
+from django.http import Http404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from core.rol_utils import es_mozo, es_admin
@@ -44,7 +45,10 @@ def abrir_comanda(request, mesa_id):
 @login_required
 @user_passes_test(es_mozo)
 def agregar_plato_comanda(request, comanda_id):
-    comanda = get_object_or_404(Comanda, id=comanda_id)
+    container = get_container()
+    comanda = container.comanda_service.comanda_repo.obtener_por_id(comanda_id)
+    if not comanda:
+        raise Http404()
     if request.method == 'POST':
         try:
             container = get_container()
@@ -60,13 +64,16 @@ def agregar_plato_comanda(request, comanda_id):
                 messages.error(request, error.get('error', str(error)))
         except AppError as e:
             messages.error(request, str(e))
-    return redirect('detalle_mesa', mesa_id=comanda.mesa.id)
+    return redirect('detalle_mesa', mesa_id=comanda.mesa_id)
 
 
 @login_required
 @user_passes_test(es_mozo)
 def anular_comanda(request, comanda_id):
-    comanda = get_object_or_404(Comanda, id=comanda_id)
+    container = get_container()
+    comanda = container.comanda_service.comanda_repo.obtener_por_id(comanda_id)
+    if not comanda:
+        raise Http404()
     if request.method == 'POST':
         try:
             container = get_container()
@@ -74,7 +81,7 @@ def anular_comanda(request, comanda_id):
             messages.success(request, 'Comanda anulada, mesa liberada')
         except AppError as e:
             messages.error(request, str(e))
-    return redirect('detalle_mesa', mesa_id=comanda.mesa.id)
+    return redirect('detalle_mesa', mesa_id=comanda.mesa_id)
 
 
 @login_required
@@ -155,7 +162,10 @@ def lista_mesas_admin(request):
     else:
         form = MesaForm()
 
-    mesas = Mesa.activos.order_by('numero')
+    container = get_container()
+    mesas = container.mesa_service.mesa_repo.listar_activas() # Asumiendo que el repo tiene este método
+    # Nota: Si el repo no soporta order_by en DB, se asume que las retorna ordenadas o se ordenan en memoria.
+    mesas = sorted(mesas, key=lambda m: m.numero)
     return render(request, 'mesas/lista_mesas_admin.html', {'mesas': mesas, 'form': form})
 
 
@@ -199,7 +209,10 @@ def editar_mesa(request, mesa_id):
 @login_required
 @user_passes_test(es_admin)
 def eliminar_mesa(request, mesa_id):
-    mesa = get_object_or_404(Mesa.activos, id=mesa_id)
+    container = get_container()
+    mesa = container.mesa_service.mesa_repo.obtener_por_id(mesa_id)
+    if not mesa:
+        raise Http404()
     if request.method == 'POST':
         try:
             container = get_container()
