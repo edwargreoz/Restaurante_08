@@ -46,6 +46,7 @@ class Container:
         self.plato_service = PlatoService(
             plato_repo=self.plato_repo,
             categoria_repo=self.categoria_repo,
+            receta_repo=self.receta_repo,
         )
         self.mesa_service = MesaService(mesa_repo=self.mesa_repo)
         self.union_mesa_service = UnionMesaService(mesa_repo=self.mesa_repo)

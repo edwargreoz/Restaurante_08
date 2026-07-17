@@ -1,9 +1,11 @@
 
 from django.db import transaction
 from core.excepciones import RecursoNoEncontrado
-from dominio.puertos.repositorios import ICategoriaRepository, IPlatoRepository
-from menu.models import Categoria
-from inventario.models import Receta
+from dominio.puertos.repositorios import (
+    ICategoriaRepository, IPlatoRepository, IRecetaRepository,
+)
+from dominio.entidades.categoria import Categoria as CategoriaDominio
+from dominio.entidades.plato import Plato as PlatoDominio
 
 
 class CategoriaService:
@@ -21,8 +23,7 @@ class CategoriaService:
 
     def crear(self, nombre: str, es_bebida: bool = False,
               orden_display: int = 0):
-        from dominio.entidades.categoria import Categoria as CatDominio
-        cat = CatDominio(
+        cat = CategoriaDominio(
             id=None, nombre=nombre, es_bebida=es_bebida,
             orden_display=orden_display
         )
@@ -31,9 +32,11 @@ class CategoriaService:
 
 class PlatoService:
     def __init__(self, plato_repo: IPlatoRepository,
-                 categoria_repo: ICategoriaRepository):
+                 categoria_repo: ICategoriaRepository,
+                 receta_repo: IRecetaRepository = None):
         self.plato_repo = plato_repo
         self.categoria_repo = categoria_repo
+        self.receta_repo = receta_repo
 
     def obtener_por_id(self, plato_id: int):
         plato = self.plato_repo.obtener_por_id(plato_id)
@@ -49,10 +52,12 @@ class PlatoService:
         categoria = self.categoria_repo.obtener_por_id(categoria_id)
         if not categoria:
             raise RecursoNoEncontrado('Categoría no encontrada')
-        receta = Receta.objects.filter(id=receta_id).first()
+        if self.receta_repo:
+            receta = self.receta_repo.obtener_por_id(receta_id)
+        else:
+            receta = None
         if not receta:
             raise RecursoNoEncontrado('Receta no encontrada')
-        from dominio.entidades.plato import Plato as PlatoDominio
         plato = PlatoDominio(
             id=None, nombre=nombre, precio=precio,
             categoria_id=categoria_id, receta_id=receta_id,
