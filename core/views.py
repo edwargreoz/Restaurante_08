@@ -2,7 +2,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
 from django.contrib import messages
 from core.rol_utils import es_admin
 from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
@@ -13,18 +12,18 @@ from django.contrib.auth.decorators import user_passes_test
 
 def login_view(request):
     if request.user.is_authenticated:
-        if request.user.groups.filter(name='Cocinero').exists() and not request.user.is_superuser:
-            return redirect('kds_panel')
-        return redirect('dashboard')
+        container = get_container()
+        destino = container.usuario_service.obtener_panel_destino(request.user.id)
+        return redirect(destino)
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
         if user is not None:
             login(request, user)
-            if user.groups.filter(name='Cocinero').exists() and not user.is_superuser:
-                return redirect('kds_panel')
-            return redirect('dashboard')
+            container = get_container()
+            destino = container.usuario_service.obtener_panel_destino(user.id)
+            return redirect(destino)
         else:
             return render(request, 'auth/login.html', {
                 'error': 'Usuario o contrasena incorrectos'
@@ -34,12 +33,14 @@ def login_view(request):
 
 @login_required
 def dashboard_view(request):
+    container = get_container()
+    destino = container.usuario_service.obtener_panel_destino(request.user.id)
+    if destino != 'dashboard':
+        return redirect(destino)
+
     es_mozo_grupo = request.user.is_superuser or request.user.groups.filter(name='Mozo').exists()
     es_cajero_grupo = request.user.is_superuser or request.user.groups.filter(name='Cajero').exists()
-    if not es_mozo_grupo and not es_cajero_grupo:
-        return redirect('kds_panel')
 
-    container = get_container()
     context = {}
 
     if es_mozo_grupo:
@@ -97,7 +98,7 @@ def editar_usuario(request, user_id):
         messages.error(request, 'Usuario no encontrado')
         return redirect('lista_usuarios')
 
-    user_orm = User.objects.get(id=user_id)
+    user_orm = container.usuario_service.obtener_usuario_orm(user_id)
 
     if request.method == 'POST':
         form = UsuarioForm(request.POST, instance=user_orm)

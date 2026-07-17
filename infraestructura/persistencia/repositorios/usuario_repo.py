@@ -56,6 +56,10 @@ class UsuarioRepository:
             grupo, _ = Group.objects.get_or_create(name=rol)
             u.groups.add(grupo)
 
+    def obtener_usuario_orm(self, user_id: int):
+        from django.contrib.auth.models import User
+        return User.objects.get(id=user_id)
+
     def _a_entidad(self, u) -> Usuario:
         grupos = list(u.groups.values_list('name', flat=True))
         return Usuario(

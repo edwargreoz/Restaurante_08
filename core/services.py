@@ -119,3 +119,14 @@ class UsuarioService:
             raise RecursoNoEncontrado('Usuario no encontrado')
         user.is_active = False
         return self.repo.actualizar(user)
+
+    def obtener_panel_destino(self, user_id: int) -> str:
+        user = self.repo.obtener_por_id(user_id)
+        if not user:
+            return 'login'
+        if 'Cocinero' in user.grupos and not user.is_superuser:
+            return 'kds_panel'
+        return 'dashboard'
+
+    def obtener_usuario_orm(self, user_id: int):
+        return self.repo.obtener_usuario_orm(user_id)
