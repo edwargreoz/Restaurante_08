@@ -12,6 +12,11 @@ from inventario.models import (
 
 
 class InsumoService:
+
+    def obtener_queryset_api(self):
+        from inventario.models import Insumo
+        return Insumo.objects.all()
+
     def __init__(self, insumo_repo: IInsumoRepository):
         self.repo = insumo_repo
 
@@ -104,6 +109,16 @@ class InsumoService:
         )
     
 class RecetaService:
+
+    def listar_receta_insumos(self):
+        from inventario.models import RecetaInsumo
+        return RecetaInsumo.objects.select_related('receta', 'insumo').all()
+
+
+    def obtener_queryset_api(self):
+        from inventario.models import Receta
+        return Receta.objects.all()
+
     def __init__(self, insumo_repo: IInsumoRepository):
         self.insumo_repo = insumo_repo
 
