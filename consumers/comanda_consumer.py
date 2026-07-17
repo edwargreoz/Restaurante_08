@@ -4,6 +4,9 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 class ComandaConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        if self.scope["user"].is_anonymous:
+            await self.close()
+            return
         self.comanda_id = self.scope['url_route']['kwargs']['comanda_id']
         self.group_name = f'comanda_{self.comanda_id}'
         await self.channel_layer.group_add(self.group_name, self.channel_name)

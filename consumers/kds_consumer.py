@@ -4,6 +4,9 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 class KDSConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        if self.scope["user"].is_anonymous:
+            await self.close()
+            return
         self.group_name = 'kds'
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
