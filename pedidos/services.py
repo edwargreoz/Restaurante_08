@@ -9,6 +9,10 @@ from core.excepciones import (
     StockInsuficiente, TransicionEstadoInvalida,
     ComandaNoDisponible, MontoInvalido, ReferenciaInvalida,
 )
+from dominio.entidades.comanda import Comanda
+from dominio.entidades.linea_comanda import LineaComanda
+from dominio.entidades.movimiento_insumo import MovimientoInsumo
+from dominio.entidades.pago import Pago
 from dominio.puertos.repositorios import (
     IComandaRepository, IMesaRepository, ILineaComandaRepository,
     IUnionMesaRepository, IReservaRepository, IPlatoRepository,
@@ -16,6 +20,7 @@ from dominio.puertos.repositorios import (
     IPagoRepository,
 )
 from inventario.models import convertir_unidad
+from mesas.services import _notificar_plano as _notificar_plano_mesa
 
 
 
@@ -77,7 +82,6 @@ class ComandaService:
                         f'La mesa {m_obj.numero} de la unión no está libre ni reservada'
                     )
 
-        from dominio.entidades.comanda import Comanda
         comanda = self.comanda_repo.guardar(Comanda(mesa_id=mesa.id, mozo_id=usuario.id, estado='ABIERTA', total=0))
         mesa.estado = 'OCUPADA'
         self.mesa_repo.guardar(mesa)
@@ -155,7 +159,6 @@ class ComandaService:
                 insumo.stock_actual -= necesario
                 self.insumo_repo.guardar(insumo)
 
-                from dominio.entidades.movimiento_insumo import MovimientoInsumo
                 deducciones.append(MovimientoInsumo(
                     insumo_id=insumo.id, comanda_id=comanda.id,
                     tipo='DEDUCCION', cantidad=necesario,
@@ -174,7 +177,6 @@ class ComandaService:
                 continue
 
             movimientos.extend(deducciones)
-            from dominio.entidades.linea_comanda import LineaComanda
             lineas_a_crear.append(LineaComanda(
                 comanda_id=comanda.id, plato_id=plato.id,
                 cantidad=cantidad, observacion=observacion,
@@ -254,7 +256,6 @@ class ComandaService:
                 stock_anterior = insumo.stock_actual
                 insumo.stock_actual += cantidad_a_restaurar
                 self.insumo_repo.guardar(insumo)
-                from dominio.entidades.movimiento_insumo import MovimientoInsumo
                 movimientos.append(MovimientoInsumo(
                     insumo_id=insumo.id, comanda_id=comanda.id,
                     tipo='REPOSICION', cantidad=cantidad_a_restaurar,
@@ -294,7 +295,6 @@ class ComandaService:
         if metodo == 'TARJETA':
             _validar_referencia_tarjeta(referencia)
 
-        from dominio.entidades.pago import Pago
         self.pago_repo.guardar(Pago(
             comanda_id=comanda.id, metodo=metodo,
             monto=monto, vuelto=vuelto, referencia=referencia, caja_id=caja.id
@@ -334,7 +334,6 @@ class ComandaService:
         for pd in pagos_lista:
             if pd.get('metodo') == 'TARJETA':
                 _validar_referencia_tarjeta(pd.get('referencia', ''))
-            from dominio.entidades.pago import Pago
             self.pago_repo.guardar(Pago(comanda_id=comanda.id, metodo=pd['metodo'], monto=pd['monto'], vuelto=pd.get('vuelto', 0), referencia=pd.get('referencia', ''), caja_id=caja.id))
 
         comanda.estado = 'COBRADA'
@@ -517,5 +516,4 @@ def _notificar_comanda(comanda_id: int):
         pass
 
 def _notificar_plano():
-    from mesas.services import _notificar_plano as notificar
-    notificar()
+    _notificar_plano_mesa()

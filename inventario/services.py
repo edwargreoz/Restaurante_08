@@ -1,5 +1,8 @@
 from decimal import Decimal
 from django.db import transaction
+from dominio.entidades.insumo import Insumo as InsumoDomain
+from dominio.entidades.movimiento_insumo import MovimientoInsumo
+from dominio.entidades.unidad_conversion import UnidadConversion as UnidadConversionDomain
 from dominio.puertos.repositorios import (
     IInsumoRepository, IUnidadConversionRepository,
     IMovimientoInsumoRepository,
@@ -34,7 +37,6 @@ class InsumoService:
     def crear(self, nombre: str, unidad: str,
               stock_actual=Decimal('0'), stock_minimo=Decimal('0'),
               costo_unitario=Decimal('0')):
-        from dominio.entidades.insumo import Insumo as InsumoDomain
         insumo_domain = InsumoDomain(
             id=None, nombre=nombre, unidad=unidad,
             stock_actual=stock_actual, stock_minimo=stock_minimo,
@@ -76,7 +78,6 @@ class InsumoService:
         )
         insumo.costo_unitario = costo_unitario
         self.repo.guardar(insumo)
-        from dominio.entidades.movimiento_insumo import MovimientoInsumo
         return self.movimiento_insumo_repo.guardar(MovimientoInsumo(
             insumo_id=insumo.id, tipo='COMPRA',
             cantidad=cantidad_base,
@@ -97,7 +98,6 @@ class InsumoService:
         diferencia = nueva_cantidad - stock_anterior
         insumo.stock_actual = nueva_cantidad
         self.repo.guardar(insumo)
-        from dominio.entidades.movimiento_insumo import MovimientoInsumo
         return self.movimiento_insumo_repo.guardar(MovimientoInsumo(
             insumo_id=insumo.id, tipo='AJUSTE',
             cantidad=abs(diferencia),
@@ -261,7 +261,6 @@ class UnidadConversionService:
         for nivel in reversed(niveles):
             sub = next((u for u in todas_unidades if getattr(u, 'nombre', '') == nivel['sub_unidad']), None)
 
-            from dominio.entidades.unidad_conversion import UnidadConversion as UnidadConversionDomain
             uc_domain = UnidadConversionDomain(
                 id=None,
                 nombre=nivel['nombre'],

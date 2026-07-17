@@ -4,13 +4,13 @@ from django.db import transaction
 from core.excepciones import (
     RecursoNoEncontrado, CapacidadExcedida, ReglaNegocioViolada,
 )
-from mesas.services import _notificar_plano
+from dominio.entidades.reserva import Reserva as ReservaDominio
 from dominio.entidades.union_mesa import UnionMesa
-
 from dominio.puertos.repositorios import (
     IReservaRepository, IMesaRepository, IUnionMesaRepository,
 )
 from typing import Optional
+from mesas.services import _notificar_plano
 
 
 class ReservaService:
@@ -44,7 +44,6 @@ class ReservaService:
                 UnionMesa(id=None, mesa_ids=[m.id for m in ms], activo=True)
             )
 
-        from dominio.entidades.reserva import Reserva as ReservaDominio
         reserva_domain = ReservaDominio(
             id=None,
             mesa_id=mesa_obj.id if mesa_obj else None,

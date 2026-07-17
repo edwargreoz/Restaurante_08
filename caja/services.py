@@ -1,13 +1,15 @@
 
+from collections import defaultdict
 from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
-from django.db.models import Sum, Count
-from core.excepciones import (
-    CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioViolada,
-)
+from dominio.entidades.caja import Caja
 from dominio.puertos.repositorios import (
     ICajaRepository, IComandaRepository, IPagoRepository,
+)
+from pedidos.models import LineaComanda
+from core.excepciones import (
+    CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioViolada,
 )
 from typing import TYPE_CHECKING
 
@@ -30,7 +32,6 @@ class CajaService:
         caja_existente = self.repo.obtener_abierta()
         if caja_existente:
             raise ReglaNegocioViolada('Ya hay un turno de caja abierto')
-        from dominio.entidades.caja import Caja
         return self.repo.guardar(Caja(
             turno=turno_nombre, cajero_id=usuario.id,
             saldo_inicial=saldo_inicial, estado='ABIERTA'
@@ -116,7 +117,6 @@ class PagoService:
             pagos = [p for p in pagos if getattr(p, 'fecha', None) and p.fecha.date() >= fecha_desde]
         if fecha_hasta:
             pagos = [p for p in pagos if getattr(p, 'fecha', None) and p.fecha.date() <= fecha_hasta]
-        from collections import defaultdict
         resumen = defaultdict(lambda: {'total': 0, 'cantidad': 0})
         total_general = 0
         for p in pagos:
@@ -154,5 +154,4 @@ class ReporteService:
 
     @staticmethod
     def top_platos(limite: int = 5):
-        from pedidos.models import LineaComanda
         return []
