@@ -1,86 +1,101 @@
-
-from django.db.models import Sum, F
+from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
-from mesas.models import Mesa
-from pedidos.models import Comanda
-from inventario.models import Insumo
-from caja.models import Caja, Pago
-from django.contrib.auth.models import User
 from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
+from dominio.puertos.repositorios import (
+    IMesaRepository, IComandaRepository, IInsumoRepository,
+    ICajaRepository, IPagoRepository, IUsuarioRepository,
+)
 
 
 class DashboardService:
-    @staticmethod
-    def datos_mozo():
+    """Datos agregados para el dashboard segun el rol del usuario."""
+
+    def __init__(self, mesa_repo: IMesaRepository,
+                 comanda_repo: IComandaRepository,
+                 insumo_repo: IInsumoRepository,
+                 caja_repo: ICajaRepository,
+                 pago_repo: IPagoRepository):
+        self.mesa_repo = mesa_repo
+        self.comanda_repo = comanda_repo
+        self.insumo_repo = insumo_repo
+        self.caja_repo = caja_repo
+        self.pago_repo = pago_repo
+
+    def datos_mozo(self) -> dict:
+        mesas = self.mesa_repo.listar_activas()
+        comandas_activas = self.comanda_repo.contar_activas()
+        alertas = self.insumo_repo.listar_criticos()
+        ultimas_comandas = [
+            c for c in self.comanda_repo.listar_activas()
+            if c.estado in ['ABIERTA', 'EN_PREPARACION']
+        ][:5]
         return {
-            'mesas_libres': Mesa.activos.filter(estado='LIBRE').count(),
-            'mesas_ocupadas': Mesa.activos.filter(estado='OCUPADA').count(),
-            'comandas_activas': Comanda.objects.filter(
-                estado__in=['ABIERTA', 'EN_PREPARACION']
-            ).count(),
-            'alertas_stock': Insumo.objects.filter(
-                stock_actual__lt=F('stock_minimo')
-            ).count(),
-            'ultimas_comandas': Comanda.objects.filter(
-                estado__in=['ABIERTA', 'EN_PREPARACION']
-            ).select_related('mesa', 'mozo').order_by('-fecha_apertura')[:5],
-            'alertas_detalle': Insumo.objects.filter(
-                stock_actual__lt=F('stock_minimo')
-            )[:5],
+            'mesas_libres': sum(1 for m in mesas if m.estado == 'LIBRE'),
+            'mesas_ocupadas': sum(1 for m in mesas if m.estado == 'OCUPADA'),
+            'comandas_activas': comandas_activas,
+            'alertas_stock': len(alertas),
+            'ultimas_comandas': ultimas_comandas,
+            'alertas_detalle': alertas[:5],
         }
 
-    @staticmethod
-    def datos_cajero():
+    def datos_cajero(self) -> dict:
         hoy = timezone.now().date()
+        pagos_hoy = self.pago_repo.listar_por_rango_fecha(
+            hoy, hoy + timedelta(days=1)
+        )
+        total_ventas = sum(p.monto for p in pagos_hoy)
+        caja_actual = self.caja_repo.obtener_abierta()
         return {
-            'ventas_hoy': Pago.objects.filter(
-                fecha__date__gte=hoy,
-                fecha__date__lt=hoy + timedelta(days=1)
-            ).aggregate(total=Sum('monto'))['total'] or 0,
-            'caja_actual': Caja.objects.filter(estado='ABIERTA').first(),
+            'ventas_hoy': total_ventas,
+            'caja_actual': caja_actual,
         }
 
 
 class UsuarioService:
-    @staticmethod
-    def obtener_por_id(user_id: int) -> User:
-        user = User.objects.filter(id=user_id).first()
+    """Gestión de usuarios del sistema."""
+
+    def __init__(self, usuario_repo: IUsuarioRepository):
+        self.repo = usuario_repo
+
+    def obtener_por_id(self, user_id: int):
+        user = self.repo.obtener_por_id(user_id)
         if not user:
             raise RecursoNoEncontrado('Usuario no encontrado')
         return user
-    @staticmethod
-    def listar_usuarios():
-        return User.objects.prefetch_related('groups').order_by('-is_active', 'username')
 
-    @staticmethod
+    def listar_usuarios(self):
+        return self.repo.listar()
+
     @transaction.atomic
-    def crear(username, password, grupo_nombre=None, **extra) -> User:
-        from django.contrib.auth.models import Group
-        user = User.objects.create_user(
-            username=username, password=password, **extra
+    def crear(self, username: str, password: str,
+              grupo_nombre: str = None, **extra):
+        return self.repo.crear(
+            username=username, password=password,
+            grupo_nombre=grupo_nombre, **extra
         )
-        if grupo_nombre:
-            grupo, _ = Group.objects.get_or_create(name=grupo_nombre)
-            user.groups.add(grupo)
-        return user
 
-    @staticmethod
     @transaction.atomic
-    def actualizar(user_id: int, solicitante_id: int, **campos) -> User:
-        from django.contrib.auth.models import Group
-        user = UsuarioService.obtener_por_id(user_id)
+    def actualizar(self, user_id: int, solicitante_id: int, **campos):
+        user = self.repo.obtener_por_id(user_id)
+        if not user:
+            raise RecursoNoEncontrado('Usuario no encontrado')
+
         is_active = campos.get('is_active', user.is_active)
         if not is_active and user_id == solicitante_id:
             raise ReglaNegocioViolada('No puedes desactivar tu propio usuario')
+
         for attr in ('username', 'first_name', 'last_name', 'email'):
             if attr in campos:
                 setattr(user, attr, campos[attr])
+
         user.is_active = is_active
+
         password = campos.get('password')
         if password:
-            user.set_password(password)
+            user.password_hash = password
+
         rol = campos.get('rol')
         if rol == 'Admin':
             user.is_superuser = True
@@ -88,24 +103,19 @@ class UsuarioService:
         else:
             user.is_superuser = False
             user.is_staff = False
-        user.save(update_fields=[
-            'username', 'first_name', 'last_name', 'email',
-            'is_active', 'is_superuser', 'is_staff', 'password',
-        ])
+
+        user = self.repo.actualizar(user)
+
         if rol is not None:
-            user.groups.clear()
-            if rol != 'Admin':
-                grupo, _ = Group.objects.get_or_create(name=rol)
-                user.groups.add(grupo)
+            self.repo.sincronizar_grupos(user_id, rol)
+
         return user
 
-    @staticmethod
-    def desactivar(user_id: int, solicitante_id: int) -> User:
+    def desactivar(self, user_id: int, solicitante_id: int):
         if user_id == solicitante_id:
             raise ReglaNegocioViolada('No puedes desactivarte a ti mismo')
-        user = User.objects.filter(id=user_id).first()
+        user = self.repo.obtener_por_id(user_id)
         if not user:
             raise RecursoNoEncontrado('Usuario no encontrado')
         user.is_active = False
-        user.save(update_fields=['is_active'])
-        return user
+        return self.repo.actualizar(user)
