@@ -421,8 +421,8 @@ def _actualizar_estado_mesa_post_pago(comanda):
     mesa = comanda.mesa
     union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id)
     
-    tiene_reserva = mesa.reservas.filter(activo=True).exists()
-    tiene_reserva_union = union.reservas.filter(activo=True).exists() if union else False
+    tiene_reserva = bool(get_container().reserva_service.repo.listar_activas_por_mesa(mesa.id))
+    tiene_reserva_union = bool(get_container().reserva_service.repo.listar_activas_por_union(union.id)) if union else False
     
     mesa.estado = 'RESERVADA' if (tiene_reserva or tiene_reserva_union) else 'LIMPIEZA'
     self.mesa_repo.guardar(mesa)
@@ -451,9 +451,9 @@ def _liberar_mesas(comanda):
     for m in mesas_a_liberar:
         tiene_otra = False
         if not tiene_otra:
-            tiene_reserva = m.reservas.filter(activo=True).exists()
+            tiene_reserva = bool(get_container().reserva_service.repo.listar_activas_por_mesa(m.id))
             if union:
-                tiene_reserva = tiene_reserva or union.reservas.filter(activo=True).exists()
+                tiene_reserva = tiene_reserva or bool(get_container().reserva_service.repo.listar_activas_por_union(union.id))
             m.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
             self.mesa_repo.guardar(m)
 

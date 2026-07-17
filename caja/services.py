@@ -80,11 +80,11 @@ class PagoService:
         pagos = get_container().pago_service.repo.listar_por_caja(caja_id) if caja_id else []
         # if not caja_id, it is a complex query, we return empty list to keep it simple since this is an analytics endpoint that should be separated.
         if caja_id:
-            pagos = pagos.filter(caja_id=caja_id)
+            pagos = [p for p in pagos if p.caja_id == caja_id]
         if fecha_desde:
-            pagos = pagos.filter(fecha__date__gte=fecha_desde)
+            pagos = [p for p in pagos if getattr(p, 'fecha', None) and p.fecha.date() >= fecha_desde]
         if fecha_hasta:
-            pagos = pagos.filter(fecha__date__lte=fecha_hasta)
+            pagos = [p for p in pagos if getattr(p, 'fecha', None) and p.fecha.date() <= fecha_hasta]
         return pagos[:50]
 
     def procesar_pago(self, comanda, metodo: str, monto, vuelto,
@@ -102,28 +102,31 @@ class PagoService:
                        fecha_hasta=None) -> dict:
         pagos = []
         if caja_id:
-            pagos = pagos.filter(caja_id=caja_id)
+            pagos = [p for p in pagos if p.caja_id == caja_id]
         if fecha_desde:
-            pagos = pagos.filter(fecha__date__gte=fecha_desde)
+            pagos = [p for p in pagos if getattr(p, 'fecha', None) and p.fecha.date() >= fecha_desde]
         if fecha_hasta:
-            pagos = pagos.filter(fecha__date__lte=fecha_hasta)
-        totales_metodo = pagos.values('metodo').annotate(
-            total=Sum('monto'), cantidad=Count('id')
-        )
-        total_general = pagos.aggregate(
-            total=Sum('monto')
-        )['total'] or 0
+            pagos = [p for p in pagos if getattr(p, 'fecha', None) and p.fecha.date() <= fecha_hasta]
+        from collections import defaultdict
+        resumen = defaultdict(lambda: {'total': 0, 'cantidad': 0})
+        total_general = 0
+        for p in pagos:
+            resumen[p.metodo]['total'] += p.monto
+            resumen[p.metodo]['cantidad'] += 1
+            total_general += p.monto
+        
+        totales_metodo = [{'metodo': k, 'total': v['total'], 'cantidad': v['cantidad']} for k, v in resumen.items()]
         for item in totales_metodo:
             item['porcentaje'] = (
                 int(item['total'] / total_general * 100)
                 if total_general else 0
             )
         ticket_promedio = (
-            total_general / pagos.count() if pagos.count() else 0
+            total_general / len(pagos) if len(pagos) else 0
         )
         return {
             'total_general': total_general,
-            'total_pagos': pagos.count(),
+            'total_pagos': len(pagos),
             'por_metodo': list(totales_metodo),
             'ticket_promedio': ticket_promedio,
         }
