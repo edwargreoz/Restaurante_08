@@ -122,7 +122,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        comanda.refresh_from_db()
+        comanda = container.comanda_service.comanda_repo.obtener_por_id(comanda.id) if comanda.id else comanda
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
@@ -150,7 +150,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 error_data,
                 status=status.HTTP_400_BAD_REQUEST
             )
-        comanda.refresh_from_db()
+        comanda = container.comanda_service.comanda_repo.obtener_por_id(comanda.id) if comanda.id else comanda
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
     
@@ -169,7 +169,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        comanda.refresh_from_db()
+        comanda = container.comanda_service.comanda_repo.obtener_por_id(comanda.id) if comanda.id else comanda
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -202,7 +202,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        comanda.refresh_from_db()
+        comanda = container.comanda_service.comanda_repo.obtener_por_id(comanda.id) if comanda.id else comanda
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
@@ -229,7 +229,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        comanda.refresh_from_db()
+        comanda = container.comanda_service.comanda_repo.obtener_por_id(comanda.id) if comanda.id else comanda
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -257,7 +257,7 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
                 )
-        linea.refresh_from_db()
+        linea = container.linea_comanda_service.linea_comanda_repo.obtener_por_id(linea.id) if linea.id else linea
         serializer = self.get_serializer(linea)
         return Response(serializer.data)
     
@@ -276,7 +276,7 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
                 )
-        linea.refresh_from_db()
+        linea = container.linea_comanda_service.linea_comanda_repo.obtener_por_id(linea.id) if linea.id else linea
         serializer = self.get_serializer(linea)
         return Response(serializer.data)
 

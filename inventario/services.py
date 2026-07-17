@@ -268,14 +268,14 @@ class UnidadConversionService:
             except UnidadConversion.DoesNotExist:
                 sub = next((u for u in get_container().unidad_conversion_repo.listar() if getattr(u, 'nombre', '') == nivel['sub_unidad'] and getattr(u, 'insumo_id', None) == insumo_id), None)
 
-            uc = get_container().unidad_conversion_repo.guardar(
+            from dominio.entidades.unidad_conversion import UnidadConversion as UnidadConversionDomain
+            uc_domain = UnidadConversionDomain(
                 insumo_id=insumo_id,
                 nombre=nivel['nombre'],
-                defaults={
-                    'contiene_cantidad': nivel['contiene'],
-                    'contiene_unidad': sub,
-                    'es_base': False,
-                }
+                contiene_cantidad=nivel['contiene'],
+                contiene_unidad_id=sub.id if sub else None,
+                es_base=False
             )
+            uc = get_container().unidad_conversion_repo.guardar(uc_domain)
             niveles_procesados.append(uc)
         return list(reversed(niveles_procesados))

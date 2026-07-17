@@ -11,7 +11,8 @@ from dominio.entidades.categoria import Categoria
 from dominio.entidades.union_mesa import UnionMesa
 from dominio.entidades.movimiento_insumo import MovimientoInsumo
 from dominio.entidades.unidad_conversion import UnidadConversion
-from dominio.entidades.receta import Receta, RecetaInsumo
+from dominio.entidades.receta import Receta
+from dominio.entidades.receta_insumo import RecetaInsumo
 
 class IComandaRepository(Protocol):
     def obtener_por_id(self, comanda_id: int) -> Optional[Comanda]: ...

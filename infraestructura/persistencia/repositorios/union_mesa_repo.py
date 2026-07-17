@@ -21,3 +21,10 @@ class UnionMesaRepository:
         ent = UnionMesa(id=u.id, activo=u.activo)
         ent.mesas = [m.id for m in u.mesas.all()] if u.id else []
         return ent
+
+    def obtener_por_id(self, union_id: int) -> Optional[UnionMesa]:
+        u = UnionMesaModel.objects.filter(id=union_id, activo=True).first()
+        return self._a_entidad(u) if u else None
+
+    def listar_activas(self):
+        return [self._a_entidad(u) for u in UnionMesaModel.objects.filter(activo=True)]

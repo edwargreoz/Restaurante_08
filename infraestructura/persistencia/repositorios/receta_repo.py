@@ -1,6 +1,7 @@
 from typing import List, Optional
 from inventario.models import Receta as RecetaModel, RecetaInsumo as RecetaInsumoModel
-from dominio.entidades.receta import Receta, RecetaInsumo
+from dominio.entidades.receta import Receta
+from dominio.entidades.receta_insumo import RecetaInsumo
 
 class RecetaRepository:
     def obtener_o_crear(self, nombre: str) -> Receta:
