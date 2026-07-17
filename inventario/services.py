@@ -15,7 +15,7 @@ class InsumoService:
 
     def obtener_queryset_api(self):
         from inventario.models import Insumo
-        return Insumo.objects.all()
+        return self.repo.listar()
 
     def __init__(self, insumo_repo: IInsumoRepository):
         self.repo = insumo_repo
@@ -39,7 +39,7 @@ class InsumoService:
             costo_unitario=costo_unitario,
         )
         self.repo.guardar(insumo_domain)
-        return Insumo.objects.get(nombre=nombre)
+        return next((i for i in self.repo.listar() if i.nombre == nombre), None)
 
     def actualizar(self, insumo_id: int, **kwargs):
         insumo_domain = self.repo.obtener_por_id(insumo_id)
@@ -66,7 +66,7 @@ class InsumoService:
     def registrar_compra(insumo_id: int, unidad_conversion_id: int,
                          cantidad_unidades: int, costo_total: Decimal,
                          usuario=None):
-        insumo = Insumo.objects.select_for_update().filter(id=insumo_id).first()
+        insumo = self.repo.obtener_por_id(insumo_id)
         if not insumo:
             raise RecursoNoEncontrado('Insumo no encontrado')
         uc = UnidadConversion.objects.get(id=unidad_conversion_id)
@@ -92,7 +92,7 @@ class InsumoService:
     @transaction.atomic
     def ajustar_stock(insumo_id: int, nueva_cantidad: Decimal,
                       motivo: str, usuario=None):
-        insumo = Insumo.objects.select_for_update().filter(id=insumo_id).first()
+        insumo = self.repo.obtener_por_id(insumo_id)
         if not insumo:
             raise RecursoNoEncontrado('Insumo no encontrado')
         stock_anterior = insumo.stock_actual
@@ -117,7 +117,7 @@ class RecetaService:
 
     def obtener_queryset_api(self):
         from inventario.models import Receta
-        return Receta.objects.all()
+        return self.repo.listar()
 
     def __init__(self, insumo_repo: IInsumoRepository):
         self.insumo_repo = insumo_repo

@@ -4,6 +4,21 @@ from dominio.entidades.linea_comanda import LineaComanda
 
 
 class LineaComandaRepository:
+
+    def obtener_con_bloqueo(self, linea_id: int) -> Optional[LineaComanda]:
+        try:
+            l = LineaComandaModel.objects.select_for_update().get(id=linea_id)
+            return self._a_entidad(l)
+        except LineaComandaModel.DoesNotExist:
+            return None
+
+    def guardar_lote(self, lineas: List[LineaComanda]) -> None:
+        modelos = [LineaComandaModel(
+            comanda_id=l.comanda_id, plato_id=l.plato_id,
+            cantidad=l.cantidad, observacion=l.observacion, estado=l.estado
+        ) for l in lineas]
+        LineaComandaModel.objects.bulk_create(modelos)
+
     def obtener_por_id(self, linea_id: int) -> Optional[LineaComanda]:
         try:
             l = LineaComandaModel.objects.get(id=linea_id)

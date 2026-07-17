@@ -4,6 +4,14 @@ from dominio.entidades.reserva import Reserva
 
 
 class ReservaRepository:
+
+    def obtener_con_bloqueo(self, reserva_id: int) -> Optional[Reserva]:
+        try:
+            m = ReservaModel.objects.select_for_update().get(id=reserva_id)
+            return self._a_entidad(m)
+        except ReservaModel.DoesNotExist:
+            return None
+
     def obtener_por_id(self, reserva_id: int) -> Optional[Reserva]:
         try:
             r = ReservaModel.objects.select_related(

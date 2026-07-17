@@ -5,6 +5,14 @@ from dominio.entidades.comanda import Comanda
 
 
 class ComandaRepository:
+
+    def obtener_con_bloqueo(self, comanda_id: int) -> Optional[Comanda]:
+        try:
+            m = ComandaModel.objects.select_for_update().get(id=comanda_id)
+            return self._modelo_a_entidad(m)
+        except ComandaModel.DoesNotExist:
+            return None
+
     """Adaptador Django ORM para el repositorio de comandas."""
 
     def obtener_por_id(self, comanda_id: int) -> Optional[Comanda]:

@@ -58,7 +58,7 @@ class ReservaService:
 
     @transaction.atomic
     def cancelar(self, reserva_id: int) -> Reserva:
-        reserva = Reserva.objects.select_for_update().filter(id=reserva_id).first()
+        reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if not reserva.activo:
@@ -68,6 +68,7 @@ class ReservaService:
         reserva.save(update_fields=['activo'])
 
         if reserva.mesa:
+            tiene_otra = from reservas.models import Reserva
             tiene_otra = Reserva.objects.filter(
                 mesa=reserva.mesa, activo=True
             ).exclude(id=reserva.id).exists()
@@ -75,6 +76,7 @@ class ReservaService:
                 reserva.mesa.estado = 'LIBRE'
                 reserva.mesa.save(update_fields=['estado'])
         elif reserva.union_mesa:
+            tiene_otra = from reservas.models import Reserva
             tiene_otra = Reserva.objects.filter(
                 union_mesa=reserva.union_mesa, activo=True
             ).exclude(id=reserva.id).exists()
@@ -90,7 +92,7 @@ class ReservaService:
 
     @transaction.atomic
     def finalizar(self, reserva_id: int) -> Reserva:
-        reserva = Reserva.objects.select_for_update().filter(id=reserva_id).first()
+        reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if not reserva.activo:
@@ -101,6 +103,7 @@ class ReservaService:
         reserva.save(update_fields=['activo', 'finalizada'])
 
         if reserva.mesa:
+            tiene_otra = from reservas.models import Reserva
             tiene_otra = Reserva.objects.filter(
                 mesa=reserva.mesa, activo=True
             ).exclude(id=reserva.id).exists()
@@ -108,6 +111,7 @@ class ReservaService:
                 reserva.mesa.estado = 'LIMPIEZA'
                 reserva.mesa.save(update_fields=['estado'])
         elif reserva.union_mesa:
+            tiene_otra = from reservas.models import Reserva
             tiene_otra = Reserva.objects.filter(
                 union_mesa=reserva.union_mesa, activo=True
             ).exclude(id=reserva.id).exists()
@@ -126,7 +130,7 @@ class ReservaService:
                hora_inicio, hora_fin, num_personas: int,
                cliente_nombre: str, cliente_contacto: str = '',
                observacion: str = '', usuario=None) -> Reserva:
-        reserva = Reserva.objects.select_for_update().filter(id=reserva_id).first()
+        reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if not reserva.activo:
@@ -196,7 +200,7 @@ class ReservaService:
 
     @transaction.atomic
     def eliminar_definitivamente(self, reserva_id: int) -> None:
-        reserva = Reserva.objects.select_for_update().filter(id=reserva_id).first()
+        reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if reserva.activo:

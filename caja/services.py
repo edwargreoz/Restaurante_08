@@ -22,11 +22,10 @@ class CajaService:
     @transaction.atomic
     def abrir_turno(self, turno_nombre: str, usuario,
                     saldo_inicial: Decimal = Decimal('0')) -> Caja:
-        caja_existente = Caja.objects.select_for_update().filter(
-            estado='ABIERTA'
-        ).first()
+        caja_existente = self.repo.obtener_abierta()
         if caja_existente:
             raise ReglaNegocioViolada('Ya hay un turno de caja abierto')
+        return from caja.models import Caja
         return Caja.objects.create(
             turno=turno_nombre, cajero=usuario,
             saldo_inicial=saldo_inicial,

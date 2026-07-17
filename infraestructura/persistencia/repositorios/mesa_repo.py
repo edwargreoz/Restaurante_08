@@ -4,6 +4,14 @@ from dominio.entidades.mesa import Mesa
 
 
 class MesaRepository:
+
+    def obtener_con_bloqueo(self, mesa_id: int) -> Optional[Mesa]:
+        try:
+            m = MesaModel.activos.select_for_update().get(id=mesa_id)
+            return self._a_entidad(m)
+        except MesaModel.DoesNotExist:
+            return None
+
     def obtener_por_id(self, mesa_id: int) -> Optional[Mesa]:
         try:
             m = MesaModel.activos.select_related().get(id=mesa_id)
