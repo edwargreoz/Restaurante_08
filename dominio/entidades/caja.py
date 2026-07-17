@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-from core.excepciones import ReglaNegocioViolada, TransicionEstadoInvalida
+from dominio.excepciones import ReglaNegocioViolada, TransicionEstadoInvalida
 
 
 @dataclass

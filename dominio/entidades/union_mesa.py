@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Optional
-from core.excepciones import UnionInvalida
+from dominio.excepciones import UnionInvalida
 
 
 @dataclass

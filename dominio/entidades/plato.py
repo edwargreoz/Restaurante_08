@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Optional
-from core.excepciones import ReglaNegocioViolada, PlatoNoDisponible
+from dominio.excepciones import ReglaNegocioViolada, PlatoNoDisponible
 
 
 @dataclass

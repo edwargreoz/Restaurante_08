@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Optional
-from core.excepciones import MontoInvalido, ReferenciaInvalida
+from dominio.excepciones import MontoInvalido, ReferenciaInvalida
 
 
 @dataclass

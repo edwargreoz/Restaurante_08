@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Optional
-from core.excepciones import ReglaNegocioViolada
+from dominio.excepciones import ReglaNegocioViolada
 
 
 @dataclass
