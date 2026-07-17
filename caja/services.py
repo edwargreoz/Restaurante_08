@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pedidos.services import ComandaService
 
+from infraestructura.container import get_container
+
 
 class CajaService:
     def __init__(self, caja_repo: ICajaRepository):
@@ -26,7 +28,7 @@ class CajaService:
         if caja_existente:
             raise ReglaNegocioViolada('Ya hay un turno de caja abierto')
         from dominio.entidades.caja import Caja
-        return get_container().caja_service.repo.guardar(Caja(
+        return self.repo.guardar(Caja(
             turno=turno_nombre, cajero_id=usuario.id,
             saldo_inicial=saldo_inicial, estado='ABIERTA'
         ))
@@ -100,7 +102,7 @@ class PagoService:
 
     def reporte_ventas(self, caja_id=None, fecha_desde=None,
                        fecha_hasta=None) -> dict:
-        pagos = []
+        pagos = get_container().pago_service.repo.listar_por_caja(caja_id) if caja_id else get_container().pago_service.repo.listar()
         if caja_id:
             pagos = [p for p in pagos if p.caja_id == caja_id]
         if fecha_desde:
@@ -134,7 +136,7 @@ class ReporteService:
     @staticmethod
     def ventas_del_dia():
         hoy = timezone.now().date()
-        return PagoService.reporte_ventas(fecha_desde=hoy, fecha_hasta=hoy)
+        return get_container().pago_service.reporte_ventas(fecha_desde=hoy, fecha_hasta=hoy)
 
     @staticmethod
     def stock_critico():
