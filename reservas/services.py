@@ -38,17 +38,19 @@ class ReservaService:
             union_mesa_obj.mesas.set(ms)
             union_mesa_obj.save()
 
-        reserva = Reserva.objects.create(
-            mesa=mesa_obj, union_mesa=union_mesa_obj,
+        from dominio.entidades.reserva import Reserva as ReservaDominio
+        reserva_domain = ReservaDominio(
+            id=None,
+            mesa_id=mesa_obj.id if mesa_obj else None,
+            union_mesa_id=union_mesa_obj.id if union_mesa_obj else None,
             cliente_nombre=datos['cliente_nombre'],
-            cliente_contacto=datos['cliente_contacto'],
             fecha=datos['fecha'],
             hora_inicio=datos['hora_inicio'],
             hora_fin=datos['hora_fin'],
-            num_personas=datos['num_personas'],
-            observacion=datos['observacion'],
-            creado_por=usuario,
+            num_personas=datos['num_personas']
         )
+        # TODO: Pasar otros campos como observacion y creado_por si el puerto/entidad los soporta
+        reserva = self.reserva_repo.guardar(reserva_domain)
         return reserva
 
     @transaction.atomic

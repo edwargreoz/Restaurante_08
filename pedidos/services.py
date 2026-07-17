@@ -39,11 +39,10 @@ class ComandaService:
         if not mesa:
             raise RecursoNoEncontrado('Mesa no encontrada')
 
-        comanda_existente = Comanda.objects.filter(
-            mesa=mesa, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
-        ).first()
+        comandas_mesa = self.comanda_repo.listar_por_mesa(mesa_id)
+        comanda_existente = next((c for c in comandas_mesa if c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA']), None)
         if comanda_existente:
-            return comanda_existente
+            return Comanda.objects.get(id=comanda_existente.id)
 
         if mesa.estado not in ['LIBRE', 'RESERVADA']:
             raise MesaConComandaActiva('La mesa no está libre ni reservada')
@@ -51,11 +50,10 @@ class ComandaService:
         union = UnionMesa.objects.filter(mesas=mesa, activo=True).first()
         if union:
             for m in union.mesas.all():
-                comanda_m = Comanda.objects.filter(
-                    mesa=m, estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA']
-                ).first()
+                comandas_m = self.comanda_repo.listar_por_mesa(m.id)
+                comanda_m = next((c for c in comandas_m if c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA']), None)
                 if comanda_m:
-                    return comanda_m
+                    return Comanda.objects.get(id=comanda_m.id)
                 if m.estado not in ['LIBRE', 'RESERVADA']:
                     raise MesaConComandaActiva(
                         f'La mesa {m.numero} de la unión no está libre ni reservada'
