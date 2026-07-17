@@ -52,3 +52,8 @@ class LineaComandaRepository:
             id=l.id, comanda_id=l.comanda_id, plato_id=l.plato_id,
             cantidad=l.cantidad, observacion=l.observacion, estado=l.estado,
         )
+
+    def cambiar_comanda_lote(self, comanda_origen_id: int, comanda_destino_id: int) -> None:
+        LineaComandaModel.objects.filter(
+            comanda_id=comanda_origen_id
+        ).update(comanda_id=comanda_destino_id)

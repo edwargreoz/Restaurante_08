@@ -12,6 +12,13 @@ class InsumoRepository:
         except InsumoModel.DoesNotExist:
             return None
 
+    def obtener_con_bloqueo(self, insumo_id: int) -> Optional[Insumo]:
+        try:
+            m = InsumoModel.objects.select_for_update().get(id=insumo_id)
+            return self._a_entidad(m)
+        except InsumoModel.DoesNotExist:
+            return None
+
     def guardar(self, insumo: Insumo) -> Insumo:
         m, _ = InsumoModel.objects.update_or_create(
             id=insumo.id,
