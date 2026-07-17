@@ -227,6 +227,7 @@ class UnidadConversionService:
                   unidad_destino_id: int = None) -> Decimal:
         """Convierte cantidad desde unidad_origen hasta unidad_destino
         (o hasta la unidad base si no se especifica)."""
+        from infraestructura.container import get_container
         uo = get_container().unidad_conversion_repo.obtener_por_id(unidad_origen_id)
         return UnidadConversionService._convertir_recursivo(uo, cantidad, unidad_destino_id)
 
@@ -252,15 +253,10 @@ class UnidadConversionService:
         ]
         La última sub_unidad debe ser una unidad base existente.
         """
+        from infraestructura.container import get_container
         niveles_procesados = []
         for nivel in reversed(niveles):
-            sub = None
-            try:
-                sub = get_container().unidad_conversion_repo.obtener_por_id(
-                    nombre=nivel['sub_unidad'], es_base=True
-                )
-            except UnidadConversion.DoesNotExist:
-                sub = next((u for u in get_container().unidad_conversion_repo.listar() if getattr(u, 'nombre', '') == nivel['sub_unidad'] and getattr(u, 'insumo_id', None) == insumo_id), None)
+            sub = next((u for u in get_container().unidad_conversion_repo.listar() if getattr(u, 'nombre', '') == nivel['sub_unidad'] and getattr(u, 'insumo_id', None) == insumo_id), None)
 
             from dominio.entidades.unidad_conversion import UnidadConversion as UnidadConversionDomain
             uc_domain = UnidadConversionDomain(
