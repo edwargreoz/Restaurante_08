@@ -57,8 +57,8 @@ class Container:
         self.union_mesa_service = UnionMesaService(
             mesa_repo=self.mesa_repo,
             comanda_repo=self.comanda_repo,
+            union_mesa_repo=self.union_mesa_repo,
         )
-        self.union_mesa_service.repo = self.union_mesa_repo
 
         self.insumo_service = InsumoService(
             insumo_repo=self.insumo_repo,
@@ -74,12 +74,19 @@ class Container:
             insumo_repo=self.insumo_repo,
         )
 
+        self.reserva_service = ReservaService(
+            reserva_repo=self.reserva_repo,
+            mesa_repo=self.mesa_repo,
+            union_mesa_repo=self.union_mesa_repo,
+        )
+
         self.comanda_service = ComandaService(
             comanda_repo=self.comanda_repo,
             mesa_repo=self.mesa_repo,
             caja_repo=self.caja_repo,
             union_mesa_repo=self.union_mesa_repo,
             reserva_repo=self.reserva_repo,
+            reserva_service=self.reserva_service,
             linea_comanda_repo=self.linea_comanda_repo,
             pago_repo=self.pago_repo,
             plato_repo=self.plato_repo,
@@ -98,12 +105,6 @@ class Container:
             comanda_repo=self.comanda_repo,
             pago_repo=self.pago_repo,
         )
-        self.reserva_service = ReservaService(
-            reserva_repo=self.reserva_repo,
-            mesa_repo=self.mesa_repo,
-            union_mesa_repo=self.union_mesa_repo,
-        )
-        self.comanda_service.reserva_service = self.reserva_service
         self.pago_service = PagoService(
             comanda_service=self.comanda_service,
             comanda_repo=self.comanda_repo,
@@ -122,6 +123,7 @@ class Container:
         self.reporte_service = ReporteService(
             pago_service=self.pago_service,
             insumo_repo=self.insumo_repo,
+            linea_comanda_repo=self.linea_comanda_repo,
         )
 
 import threading

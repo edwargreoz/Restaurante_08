@@ -197,9 +197,11 @@ class UnionMesaService:
         return self.repo.listar_activas()
 
     def __init__(self, mesa_repo: IMesaRepository,
-                 comanda_repo: IComandaRepository = None):
+                 comanda_repo: IComandaRepository = None,
+                 union_mesa_repo: IUnionMesaRepository = None):
         self.mesa_repo = mesa_repo
         self.comanda_repo = comanda_repo
+        self.repo = union_mesa_repo
 
     def limpiar_uniones_invalidas(self):
         uniones = self.repo.listar_activas()
