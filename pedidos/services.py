@@ -418,6 +418,7 @@ def _finalizar_reservas_comanda(comanda):
 
 
 def _actualizar_estado_mesa_post_pago(comanda):
+    from infraestructura.container import get_container
     mesa = comanda.mesa
     union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id)
     
@@ -425,17 +426,16 @@ def _actualizar_estado_mesa_post_pago(comanda):
     tiene_reserva_union = bool(get_container().reserva_service.repo.listar_activas_por_union(union.id)) if union else False
     
     mesa.estado = 'RESERVADA' if (tiene_reserva or tiene_reserva_union) else 'LIMPIEZA'
-    self.mesa_repo.guardar(mesa)
+    get_container().mesa_service.mesa_repo.guardar(mesa)
     
     if union:
         # Pre-cargar las mesas de la union con sus reservas
         mesas_union = list(union.mesas.all())
         for m in mesas_union:
             if m.id != mesa.id:
-                # Usar python en memoria gracias al prefetch_related
-                tiene_r = any(r.activo for r in m.reservas.all()) or tiene_reserva_union
+                tiene_r = bool(get_container().reserva_service.repo.listar_activas_por_mesa(m.id)) or tiene_reserva_union
                 m.estado = 'RESERVADA' if tiene_r else 'LIMPIEZA'
-                self.mesa_repo.guardar(m)
+                get_container().mesa_service.mesa_repo.guardar(m)
 
 
 def _liberar_mesas(comanda):
@@ -455,7 +455,7 @@ def _liberar_mesas(comanda):
             if union:
                 tiene_reserva = tiene_reserva or bool(get_container().reserva_service.repo.listar_activas_por_union(union.id))
             m.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
-            self.mesa_repo.guardar(m)
+            get_container().mesa_service.mesa_repo.guardar(m)
 
 
 def _notificar_kds():
