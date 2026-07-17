@@ -12,7 +12,6 @@ from mesas.services import _notificar_plano
 
 from dominio.puertos.repositorios import IReservaRepository
 from typing import Optional
-from infraestructura.container import get_container
 
 
 class ReservaService:
@@ -34,6 +33,7 @@ class ReservaService:
             mesas_ids, fecha, hora_inicio, hora_fin,
             num_personas, cliente_nombre, cliente_contacto, observacion
         )
+        from infraestructura.container import get_container
         ms = datos['mesas']
         mesa_obj = ms.first() if len(ms) == 1 else None
         union_mesa_obj = None
@@ -59,6 +59,7 @@ class ReservaService:
 
     @transaction.atomic
     def cancelar(self, reserva_id: int) -> Reserva:
+        from infraestructura.container import get_container
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
@@ -87,6 +88,7 @@ class ReservaService:
 
     @transaction.atomic
     def finalizar(self, reserva_id: int) -> Reserva:
+        from infraestructura.container import get_container
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
@@ -119,6 +121,7 @@ class ReservaService:
                hora_inicio, hora_fin, num_personas: int,
                cliente_nombre: str, cliente_contacto: str = '',
                observacion: str = '', usuario=None) -> Reserva:
+        from infraestructura.container import get_container
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
@@ -184,6 +187,7 @@ class ReservaService:
 
     @transaction.atomic
     def eliminar_definitivamente(self, reserva_id: int) -> None:
+        from infraestructura.container import get_container
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
@@ -209,6 +213,7 @@ class ReservaService:
     def _validar_datos(self, mesas_ids, fecha, hora_inicio, hora_fin,
                        num_personas, cliente_nombre, cliente_contacto,
                        observacion, mesas_actuales_ids=None):
+        from infraestructura.container import get_container
         if not mesas_ids:
             raise ReglaNegocioViolada(
                 'Debe seleccionar al menos una mesa'
@@ -281,6 +286,7 @@ class ReservaService:
 
     def obtener_datos_edicion(self, reserva_id: int):
         from django.db.models import Q
+        from infraestructura.container import get_container
         reserva = get_container().reserva_service.reserva_repo.obtener_por_id(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')

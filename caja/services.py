@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pedidos.services import ComandaService
 
-from infraestructura.container import get_container
 
 
 class CajaService:
@@ -24,6 +23,7 @@ class CajaService:
     @transaction.atomic
     def abrir_turno(self, turno_nombre: str, usuario,
                     saldo_inicial: Decimal = Decimal('0')) -> Caja:
+        from infraestructura.container import get_container
         caja_existente = self.repo.obtener_abierta()
         if caja_existente:
             raise ReglaNegocioViolada('Ya hay un turno de caja abierto')
@@ -44,6 +44,7 @@ class CajaService:
 
     @transaction.atomic
     def cerrar_turno(self, caja_id: int) -> dict:
+        from infraestructura.container import get_container
         caja = self.repo.obtener_abierta()
         if not caja:
             raise RecursoNoEncontrado('No hay turno abierto o no existe')
@@ -65,6 +66,7 @@ class PagoService:
         self.comanda_service = comanda_service
 
     def obtener_comanda_para_cobro(self, comanda_id: int):
+        from infraestructura.container import get_container
         comanda = get_container().comanda_service.comanda_repo.obtener_con_lineas(comanda_id)
         if comanda and comanda.estado != 'LISTA':
             comanda = None
@@ -75,6 +77,7 @@ class PagoService:
         return comanda
 
     def listar_comandas_para_cobro(self):
+        from infraestructura.container import get_container
         return [c for c in get_container().comanda_service.comanda_repo.listar() if c.estado in ['ABIERTA', 'LISTA']]
 
     def listar_pagos_con_filtros(self, caja_id=None,
@@ -102,6 +105,7 @@ class PagoService:
 
     def reporte_ventas(self, caja_id=None, fecha_desde=None,
                        fecha_hasta=None) -> dict:
+        from infraestructura.container import get_container
         pagos = get_container().pago_service.repo.listar_por_caja(caja_id) if caja_id else get_container().pago_service.repo.listar()
         if caja_id:
             pagos = [p for p in pagos if p.caja_id == caja_id]
@@ -135,11 +139,13 @@ class PagoService:
 class ReporteService:
     @staticmethod
     def ventas_del_dia():
+        from infraestructura.container import get_container
         hoy = timezone.now().date()
         return get_container().pago_service.reporte_ventas(fecha_desde=hoy, fecha_hasta=hoy)
 
     @staticmethod
     def stock_critico():
+        from infraestructura.container import get_container
         from django.db.models import F
         from inventario.models import Insumo
         return get_container().insumo_service.insumo_repo.listar_criticos()

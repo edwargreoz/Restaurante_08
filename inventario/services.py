@@ -45,14 +45,10 @@ class InsumoService:
         insumo_domain = self.repo.obtener_por_id(insumo_id)
         if not insumo_domain:
             raise RecursoNoEncontrado('Insumo no encontrado')
-        insumo_model = self.insumo_repo.obtener_por_id(insumo_id)
-        if not insumo_model:
-            raise AppError("Insumo no encontrado")
         for attr, value in kwargs.items():
-            setattr(insumo_model, attr, value)
-        insumo_model.full_clean()
-        self.insumo_repo.guardar(insumo_model)
-        return insumo_model
+            setattr(insumo_domain, attr, value)
+        self.repo.guardar(insumo_domain)
+        return insumo_domain
 
     def eliminar(self, insumo_id: int):
         insumo_domain = self.repo.obtener_por_id(insumo_id)
@@ -65,12 +61,13 @@ class InsumoService:
     def registrar_compra(insumo_id: int, unidad_conversion_id: int,
                          cantidad_unidades: int, costo_total: Decimal,
                          usuario=None):
-        insumo = self.repo.obtener_por_id(insumo_id)
+        from infraestructura.container import get_container
+        insumo = get_container().insumo_service.repo.obtener_por_id(insumo_id)
         if not insumo:
             raise RecursoNoEncontrado('Insumo no encontrado')
-        uc = self.unidad_conversion_repo.obtener_por_id(unidad_conversion_id)
+        uc = get_container().unidad_conversion_repo.obtener_por_id(unidad_conversion_id)
         if not uc:
-            raise AppError("Unidad de conversion no encontrada")
+            raise RecursoNoEncontrado("Unidad de conversion no encontrada")
         cantidad_base = uc.convertir_a_base(cantidad_unidades)
         stock_anterior = insumo.stock_actual
         insumo.stock_actual += cantidad_base
@@ -78,7 +75,7 @@ class InsumoService:
             costo_total / cantidad_base if cantidad_base > 0 else Decimal('0')
         )
         insumo.costo_unitario = costo_unitario
-        self.repo.guardar(insumo)
+        get_container().insumo_service.repo.guardar(insumo)
         from dominio.entidades.movimiento_insumo import MovimientoInsumo
         return get_container().movimiento_insumo_repo.guardar(MovimientoInsumo(
             insumo=insumo, tipo='COMPRA',
@@ -93,13 +90,14 @@ class InsumoService:
     @transaction.atomic
     def ajustar_stock(self, insumo_id: int, nueva_cantidad: Decimal,
                       motivo: str, usuario=None):
+        from infraestructura.container import get_container
         insumo = self.repo.obtener_por_id(insumo_id)
         if not insumo:
             raise RecursoNoEncontrado('Insumo no encontrado')
         stock_anterior = insumo.stock_actual
         diferencia = nueva_cantidad - stock_anterior
         insumo.stock_actual = nueva_cantidad
-        self.repo.guardar(insumo)
+        get_container().insumo_service.repo.guardar(insumo)
         from dominio.entidades.movimiento_insumo import MovimientoInsumo
         return get_container().movimiento_insumo_repo.guardar(MovimientoInsumo(
             insumo=insumo, tipo='AJUSTE',
@@ -121,8 +119,8 @@ class RecetaService:
         from inventario.models import Receta
         return self.repo.listar()
 
-    def __init__(self, insumo_repo: IInsumoRepository):
-        self.insumo_repo = insumo_repo
+    def __init__(self, receta_repo):
+        self.repo = receta_repo
 
     def listar_recetas(self):
         return self.repo.listar()
@@ -135,7 +133,7 @@ class RecetaService:
 
     @transaction.atomic
     def crear(self, nombre: str, insumos_data: list = None):
-        receta = self.repo.obtener_o_crear(nombre=nombre)
+        receta, created = self.repo.obtener_o_crear(nombre=nombre)
         if insumos_data and created:
             for item in insumos_data:
                 self.repo.obtener_receta_insumo_o_crear(
@@ -154,10 +152,12 @@ class RecetaService:
         receta = self.obtener_por_id(receta_id)
         if nombre:
             receta.nombre = nombre
-            receta.full_clean()
             self.repo.guardar(receta)
         if insumos_data:
-            receta.insumos.all().update(activo=False)
+            for ri in self.repo.listar_receta_insumos():
+                if ri.receta_id == receta_id:
+                    ri.activo = False
+                    self.repo.obtener_receta_insumo_o_crear(ri.receta_id, ri.insumo_id, getattr(ri, 'cantidad_por_porcion', 1), getattr(ri, 'unidad', 'UNIDAD'))
             for item in insumos_data:
                 ri, created = self.repo.obtener_receta_insumo_o_crear(
                     receta=receta,
@@ -175,20 +175,14 @@ class RecetaService:
         return receta
 
     def eliminar_insumo(self, receta_insumo_id: int):
-        try:
-            from inventario.models import RecetaInsumo
-            from inventario.models import RecetaInsumo
-            ri = self.repo.obtener_receta_insumo(receta_insumo_id)
-            if not ri:
-                raise RecetaInsumo.DoesNotExist
-
-            ri.eliminar()
-        except RecetaInsumo.DoesNotExist:
+        ri = self.repo.obtener_receta_insumo(receta_insumo_id)
+        if not ri:
             raise RecursoNoEncontrado('Insumo de receta no encontrado')
+        self.repo.eliminar_receta_insumo(receta_insumo_id)
 
     def eliminar(self, receta_id: int):
         receta = self.obtener_por_id(receta_id)
-        receta.eliminar()
+        self.repo.eliminar(receta_id)
 
     def calcular_insumos_para_platos(self, receta_id: int,
                                      cantidad_platos: int) -> dict:
