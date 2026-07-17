@@ -81,7 +81,7 @@ class InsumoService:
             costo_total / cantidad_base if cantidad_base > 0 else Decimal('0')
         )
         insumo.costo_unitario = costo_unitario
-        insumo.save(update_fields=['stock_actual', 'costo_unitario'])
+        self.repo.guardar(insumo)
         from dominio.entidades.movimiento_insumo import MovimientoInsumo
         return get_container().movimiento_insumo_repo.guardar(MovimientoInsumo(
             insumo=insumo, tipo='COMPRA',
@@ -91,11 +91,10 @@ class InsumoService:
             usuario=usuario,
             observacion=f'Compra: {cantidad_unidades} {uc.nombre}',
             origen='COMPRA',
-        )
+        ))
 
-    @staticmethod
     @transaction.atomic
-    def ajustar_stock(insumo_id: int, nueva_cantidad: Decimal,
+    def ajustar_stock(self, insumo_id: int, nueva_cantidad: Decimal,
                       motivo: str, usuario=None):
         insumo = self.repo.obtener_por_id(insumo_id)
         if not insumo:
@@ -103,7 +102,7 @@ class InsumoService:
         stock_anterior = insumo.stock_actual
         diferencia = nueva_cantidad - stock_anterior
         insumo.stock_actual = nueva_cantidad
-        insumo.save(update_fields=['stock_actual'])
+        self.repo.guardar(insumo)
         from dominio.entidades.movimiento_insumo import MovimientoInsumo
         return get_container().movimiento_insumo_repo.guardar(MovimientoInsumo(
             insumo=insumo, tipo='AJUSTE',
@@ -112,7 +111,7 @@ class InsumoService:
             stock_posterior=insumo.stock_actual,
             usuario=usuario, observacion=motivo,
             origen='AJUSTE',
-        )
+        ))
     
 class RecetaService:
 
