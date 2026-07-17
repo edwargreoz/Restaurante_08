@@ -6,7 +6,9 @@ from dominio.entidades.reserva import Reserva
 class ReservaRepository:
     def obtener_por_id(self, reserva_id: int) -> Optional[Reserva]:
         try:
-            r = ReservaModel.objects.get(id=reserva_id)
+            r = ReservaModel.objects.select_related(
+                'mesa', 'union_mesa', 'creado_por'
+            ).get(id=reserva_id)
             return self._a_entidad(r)
         except ReservaModel.DoesNotExist:
             return None
@@ -25,12 +27,14 @@ class ReservaRepository:
         return self._a_entidad(r)
 
     def listar(self) -> List[Reserva]:
-        return [self._a_entidad(r) for r in ReservaModel.activos.all()]
+        return [self._a_entidad(r) for r in ReservaModel.activos.select_related(
+            'mesa', 'union_mesa', 'creado_por'
+        ).prefetch_related('union_mesa__mesas').all()]
 
     def eliminar(self, reserva_id: int) -> None:
         ReservaModel.objects.filter(id=reserva_id).update(activo=False)
 
-    def _a_entidad(self, r):
+    def _a_entidad(self, r) -> Reserva:
         return Reserva(
             id=r.id, mesa_id=r.mesa_id, union_mesa_id=r.union_mesa_id,
             cliente_nombre=r.cliente_nombre, fecha=r.fecha,

@@ -22,8 +22,15 @@ class LineaComandaRepository:
         )
         return self._a_entidad(l)
 
+    def listar(self) -> List[LineaComanda]:
+        return [self._a_entidad(l) for l in LineaComandaModel.objects.select_related(
+            'plato', 'comanda'
+        ).order_by('-id')]
+
     def listar_por_comanda(self, comanda_id: int) -> List[LineaComanda]:
-        return [self._a_entidad(l) for l in LineaComandaModel.objects.filter(comanda_id=comanda_id)]
+        return [self._a_entidad(l) for l in LineaComandaModel.objects.select_related(
+            'plato'
+        ).filter(comanda_id=comanda_id)]
 
     def _a_entidad(self, l) -> LineaComanda:
         return LineaComanda(
