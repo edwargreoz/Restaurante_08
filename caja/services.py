@@ -9,6 +9,11 @@ from core.excepciones import (
 from caja.models import Caja, Pago
 from pedidos.models import Comanda
 from dominio.puertos.repositorios import ICajaRepository
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pedidos.services import ComandaService
+
 
 class CajaService:
     def __init__(self, caja_repo: ICajaRepository):
@@ -62,7 +67,7 @@ class CajaService:
         }
 
 class PagoService:
-    def __init__(self, comanda_service=None):
+    def __init__(self, comanda_service: 'ComandaService' = None):
         self.comanda_service = comanda_service
 
     def obtener_comanda_para_cobro(self, comanda_id: int):

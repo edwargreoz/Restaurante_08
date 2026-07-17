@@ -10,11 +10,15 @@ from mesas.services import _notificar_plano
 
 
 
+from dominio.puertos.repositorios import IReservaRepository
+from typing import Optional
+
+
 class ReservaService:
     HORA_APERTURA = time_obj(7, 0)
     HORA_CIERRE = time_obj(22, 0)
 
-    def __init__(self, reserva_repo=None):
+    def __init__(self, reserva_repo: Optional[IReservaRepository] = None):
         self.reserva_repo = reserva_repo
 
     @transaction.atomic
