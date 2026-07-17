@@ -7,6 +7,11 @@ from infraestructura.persistencia.repositorios.caja_repo import CajaRepository
 from infraestructura.persistencia.repositorios.pago_repo import PagoRepository
 from infraestructura.persistencia.repositorios.linea_comanda_repo import LineaComandaRepository
 from infraestructura.persistencia.repositorios.categoria_repo import CategoriaRepository
+from infraestructura.persistencia.repositorios.union_mesa_repo import UnionMesaRepository
+from infraestructura.persistencia.repositorios.movimiento_insumo_repo import MovimientoInsumoRepository
+from infraestructura.persistencia.repositorios.unidad_conversion_repo import UnidadConversionRepository
+from infraestructura.persistencia.repositorios.receta_repo import RecetaRepository
+
 
 from menu.services import CategoriaService, PlatoService
 from mesas.services import MesaService, UnionMesaService
@@ -27,6 +32,10 @@ class Container:
         self.pago_repo = PagoRepository()
         self.linea_comanda_repo = LineaComandaRepository()
         self.categoria_repo = CategoriaRepository()
+        self.union_mesa_repo = UnionMesaRepository()
+        self.movimiento_insumo_repo = MovimientoInsumoRepository()
+        self.unidad_conversion_repo = UnidadConversionRepository()
+        self.receta_repo = RecetaRepository()
 
         self.categoria_service = CategoriaService(
             categoria_repo=self.categoria_repo
@@ -37,6 +46,16 @@ class Container:
         )
         self.mesa_service = MesaService(mesa_repo=self.mesa_repo)
         self.union_mesa_service = UnionMesaService(mesa_repo=self.mesa_repo)
+        self.union_mesa_service.repo = self.union_mesa_repo
+        
+        self.comanda_service.movimiento_insumo_repo = self.movimiento_insumo_repo
+        self.comanda_service.plato_repo = self.plato_repo
+        self.comanda_service.pago_repo = self.pago_repo
+        self.comanda_service.categoria_repo = self.categoria_repo
+        
+        self.insumo_service.unidad_conversion_repo = self.unidad_conversion_repo
+        self.receta_service.repo = self.receta_repo
+
         self.comanda_service = ComandaService(
             comanda_repo=self.comanda_repo,
             mesa_repo=self.mesa_repo,

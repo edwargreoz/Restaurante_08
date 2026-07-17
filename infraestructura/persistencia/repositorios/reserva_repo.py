@@ -49,3 +49,9 @@ class ReservaRepository:
             hora_inicio=r.hora_inicio, hora_fin=r.hora_fin,
             num_personas=r.num_personas, activo=r.activo, finalizada=r.finalizada,
         )
+
+    def listar_activas_por_mesa(self, mesa_id: int) -> List[Reserva]:
+        return [self._a_entidad(r) for r in ReservaModel.activos.filter(mesa_id=mesa_id, activo=True)]
+        
+    def listar_activas_por_union(self, union_id: int) -> List[Reserva]:
+        return [self._a_entidad(r) for r in ReservaModel.activos.filter(union_mesa_id=union_id, activo=True)]

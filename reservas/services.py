@@ -37,7 +37,7 @@ class ReservaService:
         mesa_obj = ms.first() if len(ms) == 1 else None
         union_mesa_obj = None
         if len(ms) > 1:
-            union_mesa_obj = UnionMesa.objects.create(activo=True)
+            union_mesa_obj = get_container().union_mesa_service.repo.guardar(UnionMesa(activo=True))
             union_mesa_obj.mesas.set(ms)
             union_mesa_obj.save()
 
@@ -68,16 +68,12 @@ class ReservaService:
         reserva.save(update_fields=['activo'])
 
         if reserva.mesa:
-            tiene_otra = Reserva.objects.filter(
-                mesa=reserva.mesa, activo=True
-            ).exclude(id=reserva.id).exists()
+            tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_mesa(reserva.mesa_id))
             if not tiene_otra:
                 reserva.mesa.estado = 'LIBRE'
                 reserva.mesa.save(update_fields=['estado'])
         elif reserva.union_mesa:
-            tiene_otra = Reserva.objects.filter(
-                union_mesa=reserva.union_mesa, activo=True
-            ).exclude(id=reserva.id).exists()
+            tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_union(reserva.union_mesa_id))
             if not tiene_otra:
                 for m in reserva.union_mesa.mesas.all():
                     m.estado = 'LIBRE'
@@ -101,16 +97,12 @@ class ReservaService:
         reserva.save(update_fields=['activo', 'finalizada'])
 
         if reserva.mesa:
-            tiene_otra = Reserva.objects.filter(
-                mesa=reserva.mesa, activo=True
-            ).exclude(id=reserva.id).exists()
+            tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_mesa(reserva.mesa_id))
             if not tiene_otra:
                 reserva.mesa.estado = 'LIMPIEZA'
                 reserva.mesa.save(update_fields=['estado'])
         elif reserva.union_mesa:
-            tiene_otra = Reserva.objects.filter(
-                union_mesa=reserva.union_mesa, activo=True
-            ).exclude(id=reserva.id).exists()
+            tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_union(reserva.union_mesa_id))
             if not tiene_otra:
                 for m in reserva.union_mesa.mesas.all():
                     m.estado = 'LIMPIEZA'
@@ -156,7 +148,7 @@ class ReservaService:
             reserva.mesa = ms.first()
             reserva.union_mesa = None
         else:
-            union_mesa_obj = UnionMesa.objects.create(activo=True)
+            union_mesa_obj = get_container().union_mesa_service.repo.guardar(UnionMesa(activo=True))
             union_mesa_obj.mesas.set(ms)
             union_mesa_obj.save()
             reserva.mesa = None
@@ -225,7 +217,7 @@ class ReservaService:
             raise ReglaNegocioViolada(
                 'Debe seleccionar al menos una mesa'
             )
-        ms = Mesa.objects.filter(id__in=mesas_ids)
+        ms = get_container().mesa_service.mesa_repo.listar_activas_por_ids(mesas_ids)
         if ms.count() != len(mesas_ids):
             raise ReglaNegocioViolada('Algunas mesas no existen')
         zonas = set(m.zona for m in ms)
@@ -293,9 +285,7 @@ class ReservaService:
 
     def obtener_datos_edicion(self, reserva_id: int):
         from django.db.models import Q
-        reserva = Reserva.objects.select_related(
-            'mesa', 'union_mesa'
-        ).filter(id=reserva_id).first()
+        reserva = get_container().reserva_service.reserva_repo.obtener_por_id(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
 
@@ -305,9 +295,8 @@ class ReservaService:
         elif reserva.union_mesa:
             mesas_actuales_ids = [m.id for m in reserva.union_mesa.mesas.all()]
 
-        mesas = Mesa.activos.filter(
-            Q(estado='LIBRE') | Q(id__in=mesas_actuales_ids)
-        )
+        todas = get_container().mesa_service.mesa_repo.listar_activas()
+        mesas = [m for m in todas if m.estado == 'LIBRE' or m.id in mesas_actuales_ids]
         return {
             'reserva': reserva,
             'mesas': mesas,

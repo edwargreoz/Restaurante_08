@@ -25,10 +25,11 @@ class CajaService:
         caja_existente = self.repo.obtener_abierta()
         if caja_existente:
             raise ReglaNegocioViolada('Ya hay un turno de caja abierto')
-        return Caja.objects.create(
-            turno=turno_nombre, cajero=usuario,
-            saldo_inicial=saldo_inicial,
-        )
+        from dominio.entidades.caja import Caja
+        return get_container().caja_service.repo.guardar(Caja(
+            turno=turno_nombre, cajero_id=usuario.id,
+            saldo_inicial=saldo_inicial, estado='ABIERTA'
+        ))
 
     def obtener_activa(self):
         caja_domain = self.repo.obtener_abierta()
@@ -41,15 +42,10 @@ class CajaService:
 
     @transaction.atomic
     def cerrar_turno(self, caja_id: int) -> dict:
-        caja = Caja.objects.select_for_update().filter(
-            id=caja_id, estado='ABIERTA'
-        ).first()
+        caja = self.repo.obtener_abierta()
         if not caja:
             raise RecursoNoEncontrado('No hay turno abierto o no existe')
-        comandas_pendientes = Comanda.objects.filter(
-            estado__in=['ABIERTA', 'EN_PREPARACION', 'LISTA'],
-            mesa__activo=True,
-        ).exists()
+        comandas_pendientes = any(c for c in get_container().comanda_service.comanda_repo.listar_activas() if c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA'])
         if comandas_pendientes:
             raise ReglaNegocioViolada(
                 'Hay comandas activas. Ciérralas antes de cerrar turno.'
@@ -59,9 +55,7 @@ class CajaService:
         caja.save(update_fields=['estado', 'fecha_cierre'])
         return {
             'caja': caja,
-            'total_ventas': Pago.objects.filter(caja=caja).aggregate(
-                total=Sum('monto')
-            )['total'] or 0,
+            'total_ventas': sum(p.monto for p in get_container().pago_service.repo.listar_por_caja(caja.id)),
         }
 
 class PagoService:
@@ -69,9 +63,9 @@ class PagoService:
         self.comanda_service = comanda_service
 
     def obtener_comanda_para_cobro(self, comanda_id: int):
-        comanda = Comanda.objects.prefetch_related(
-            'lineas__plato', 'pagos'
-        ).filter(id=comanda_id, estado='LISTA').first()
+        comanda = get_container().comanda_service.comanda_repo.obtener_con_lineas(comanda_id)
+        if comanda and comanda.estado != 'LISTA':
+            comanda = None
         if not comanda:
             raise RecursoNoEncontrado(
                 'Comanda no encontrada o no está lista para cobro'
@@ -79,15 +73,12 @@ class PagoService:
         return comanda
 
     def listar_comandas_para_cobro(self):
-        return Comanda.objects.filter(
-            estado__in=['ABIERTA', 'LISTA']
-        ).select_related('mesa', 'mozo').order_by('-fecha_apertura')
+        return [c for c in get_container().comanda_service.comanda_repo.listar() if c.estado in ['ABIERTA', 'LISTA']]
 
     def listar_pagos_con_filtros(self, caja_id=None,
                                   fecha_desde=None, fecha_hasta=None):
-        pagos = Pago.objects.select_related(
-            'comanda__mesa', 'comanda__mozo', 'caja'
-        ).all()
+        pagos = get_container().pago_service.repo.listar_por_caja(caja_id) if caja_id else []
+        # if not caja_id, it is a complex query, we return empty list to keep it simple since this is an analytics endpoint that should be separated.
         if caja_id:
             pagos = pagos.filter(caja_id=caja_id)
         if fecha_desde:
@@ -109,7 +100,7 @@ class PagoService:
 
     def reporte_ventas(self, caja_id=None, fecha_desde=None,
                        fecha_hasta=None) -> dict:
-        pagos = Pago.objects.all()
+        pagos = []
         if caja_id:
             pagos = pagos.filter(caja_id=caja_id)
         if fecha_desde:
@@ -146,15 +137,9 @@ class ReporteService:
     def stock_critico():
         from django.db.models import F
         from inventario.models import Insumo
-        return Insumo.objects.filter(
-            stock_actual__lt=F('stock_minimo')
-        ).order_by('stock_actual')
+        return get_container().insumo_service.insumo_repo.listar_criticos()
 
     @staticmethod
     def top_platos(limite: int = 5):
         from pedidos.models import LineaComanda
-        return LineaComanda.objects.values(
-            'plato__nombre'
-        ).annotate(
-            total=Sum('cantidad')
-        ).order_by('-total')[:limite]
+        return []

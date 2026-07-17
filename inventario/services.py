@@ -45,7 +45,9 @@ class InsumoService:
         insumo_domain = self.repo.obtener_por_id(insumo_id)
         if not insumo_domain:
             raise RecursoNoEncontrado('Insumo no encontrado')
-        insumo_model = Insumo.objects.get(id=insumo_id)
+        insumo_model = self.insumo_repo.obtener_por_id(insumo_id)
+        if not insumo_model:
+            raise AppError("Insumo no encontrado")
         for attr, value in kwargs.items():
             setattr(insumo_model, attr, value)
         insumo_model.full_clean()
@@ -69,7 +71,9 @@ class InsumoService:
         insumo = self.repo.obtener_por_id(insumo_id)
         if not insumo:
             raise RecursoNoEncontrado('Insumo no encontrado')
-        uc = UnidadConversion.objects.get(id=unidad_conversion_id)
+        uc = self.unidad_conversion_repo.obtener_por_id(unidad_conversion_id)
+        if not uc:
+            raise AppError("Unidad de conversion no encontrada")
         cantidad_base = uc.convertir_a_base(cantidad_unidades)
         stock_anterior = insumo.stock_actual
         insumo.stock_actual += cantidad_base
@@ -78,7 +82,8 @@ class InsumoService:
         )
         insumo.costo_unitario = costo_unitario
         insumo.save(update_fields=['stock_actual', 'costo_unitario'])
-        return MovimientoInsumo.objects.create(
+        from dominio.entidades.movimiento_insumo import MovimientoInsumo
+        return get_container().movimiento_insumo_repo.guardar(MovimientoInsumo(
             insumo=insumo, tipo='COMPRA',
             cantidad=cantidad_base,
             stock_anterior=stock_anterior,
@@ -99,7 +104,8 @@ class InsumoService:
         diferencia = nueva_cantidad - stock_anterior
         insumo.stock_actual = nueva_cantidad
         insumo.save(update_fields=['stock_actual'])
-        return MovimientoInsumo.objects.create(
+        from dominio.entidades.movimiento_insumo import MovimientoInsumo
+        return get_container().movimiento_insumo_repo.guardar(MovimientoInsumo(
             insumo=insumo, tipo='AJUSTE',
             cantidad=abs(diferencia),
             stock_anterior=stock_anterior,
@@ -112,7 +118,7 @@ class RecetaService:
 
     def listar_receta_insumos(self):
         from inventario.models import RecetaInsumo
-        return RecetaInsumo.objects.select_related('receta', 'insumo').all()
+        return self.repo.listar_receta_insumos()
 
 
     def obtener_queryset_api(self):
@@ -123,22 +129,20 @@ class RecetaService:
         self.insumo_repo = insumo_repo
 
     def listar_recetas(self):
-        return Receta.activos.prefetch_related('insumos__insumo').all()
+        return self.repo.listar()
 
     def obtener_por_id(self, receta_id: int):
-        receta = Receta.objects.prefetch_related('insumos__insumo').filter(
-            id=receta_id
-        ).first()
+        receta = next((r for r in self.repo.listar() if r.id == receta_id), None)
         if not receta:
             raise RecursoNoEncontrado('Receta no encontrada')
         return receta
 
     @transaction.atomic
     def crear(self, nombre: str, insumos_data: list = None):
-        receta, created = Receta.objects.get_or_create(nombre=nombre)
+        receta = self.repo.obtener_o_crear(nombre=nombre)
         if insumos_data and created:
             for item in insumos_data:
-                RecetaInsumo.objects.get_or_create(
+                self.repo.obtener_receta_insumo_o_crear(
                     receta=receta,
                     insumo_id=item['insumo_id'],
                     defaults={
@@ -159,7 +163,7 @@ class RecetaService:
         if insumos_data:
             receta.insumos.all().update(activo=False)
             for item in insumos_data:
-                ri, created = RecetaInsumo.objects.get_or_create(
+                ri, created = self.repo.obtener_receta_insumo_o_crear(
                     receta=receta,
                     insumo_id=item['insumo_id'],
                     defaults={
@@ -179,7 +183,12 @@ class RecetaService:
 
     def eliminar_insumo(self, receta_insumo_id: int):
         try:
-            ri = RecetaInsumo.objects.get(id=receta_insumo_id)
+            from inventario.models import RecetaInsumo
+            from inventario.models import RecetaInsumo
+            ri = self.repo.obtener_receta_insumo(receta_insumo_id)
+            if not ri:
+                raise RecetaInsumo.DoesNotExist
+
             ri.eliminar()
         except RecetaInsumo.DoesNotExist:
             raise RecursoNoEncontrado('Insumo de receta no encontrado')
@@ -190,7 +199,7 @@ class RecetaService:
 
     def calcular_insumos_para_platos(self, receta_id: int,
                                      cantidad_platos: int) -> dict:
-        receta = Receta.objects.filter(id=receta_id).first()
+        receta = next((r for r in self.repo.listar() if r.id == receta_id), None)
         if not receta:
             raise RecursoNoEncontrado('Receta no encontrada')
         resultado = {'insumos': [], 'disponible': True, 'faltantes': []}
@@ -231,7 +240,7 @@ class UnidadConversionService:
                   unidad_destino_id: int = None) -> Decimal:
         """Convierte cantidad desde unidad_origen hasta unidad_destino
         (o hasta la unidad base si no se especifica)."""
-        uo = UnidadConversion.objects.get(id=unidad_origen_id)
+        uo = get_container().unidad_conversion_repo.obtener_por_id(unidad_origen_id)
         return UnidadConversionService._convertir_recursivo(uo, cantidad, unidad_destino_id)
 
     @staticmethod
@@ -260,15 +269,13 @@ class UnidadConversionService:
         for nivel in reversed(niveles):
             sub = None
             try:
-                sub = UnidadConversion.objects.get(
+                sub = get_container().unidad_conversion_repo.obtener_por_id(
                     nombre=nivel['sub_unidad'], es_base=True
                 )
             except UnidadConversion.DoesNotExist:
-                sub = UnidadConversion.objects.filter(
-                    nombre=nivel['sub_unidad'], insumo_id=insumo_id
-                ).first()
+                sub = next((u for u in get_container().unidad_conversion_repo.listar() if getattr(u, 'nombre', '') == nivel['sub_unidad'] and getattr(u, 'insumo_id', None) == insumo_id), None)
 
-            uc, _ = UnidadConversion.objects.get_or_create(
+            uc = get_container().unidad_conversion_repo.guardar(
                 insumo_id=insumo_id,
                 nombre=nivel['nombre'],
                 defaults={
