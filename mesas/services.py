@@ -170,6 +170,11 @@ class MesaService:
 
 
 class UnionMesaService:
+
+    def listar(self):
+        from mesas.models import UnionMesa
+        return UnionMesa.activos.all()
+
     def __init__(self, mesa_repo: IMesaRepository):
         self.mesa_repo = mesa_repo
 

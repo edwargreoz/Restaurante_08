@@ -59,8 +59,7 @@ class RecetaInsumoViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar los ingredientes de cada receta."""
     permission_classes = [EsAdmin]
     def get_queryset(self):
-        from inventario.models import RecetaInsumo
-        return RecetaInsumo.objects.select_related('receta', 'insumo').all()
+        return get_container().receta_service.listar_receta_insumos()
     serializer_class = RecetaInsumoSerializer
 
 class ReservaViewSet(viewsets.ModelViewSet):
@@ -96,8 +95,7 @@ class UnionMesaViewSet(viewsets.ModelViewSet):
     """ViewSet para gestionar uniones de mesas (mesas combinadas)."""
     permission_classes = [EsMozo | EsAdmin]
     def get_queryset(self):
-        from mesas.models import UnionMesa
-        return UnionMesa.activos.all()
+        return get_container().union_mesa_service.listar()
     serializer_class = UnionMesaSerializer
 
 class ComandaViewSet(viewsets.ModelViewSet):
