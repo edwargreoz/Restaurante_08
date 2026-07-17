@@ -1,13 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Q
 
-from mesas.models import Mesa, UnionMesa
-from menu.models import Categoria, Plato
-from inventario.models import Insumo, Receta, RecetaInsumo
-from reservas.models import Reserva
-from pedidos.models import Comanda, LineaComanda
 
 from core.excepciones import AppError
 from pedidos.services import LineaComandaService
