@@ -47,27 +47,29 @@ class Container:
         self.mesa_service = MesaService(mesa_repo=self.mesa_repo)
         self.union_mesa_service = UnionMesaService(mesa_repo=self.mesa_repo)
         self.union_mesa_service.repo = self.union_mesa_repo
-        
-        self.comanda_service.movimiento_insumo_repo = self.movimiento_insumo_repo
-        self.comanda_service.plato_repo = self.plato_repo
-        self.comanda_service.pago_repo = self.pago_repo
-        self.comanda_service.categoria_repo = self.categoria_repo
-        
+
+        self.insumo_service = InsumoService(insumo_repo=self.insumo_repo)
         self.insumo_service.unidad_conversion_repo = self.unidad_conversion_repo
-        self.receta_service.repo = self.receta_repo
+
+        self.receta_service = RecetaService(receta_repo=self.receta_repo)
+        self.receta_service.insumo_repo = self.insumo_repo
 
         self.comanda_service = ComandaService(
             comanda_repo=self.comanda_repo,
             mesa_repo=self.mesa_repo,
         )
+        self.comanda_service.movimiento_insumo_repo = self.movimiento_insumo_repo
+        self.comanda_service.plato_repo = self.plato_repo
+        self.comanda_service.pago_repo = self.pago_repo
+        self.comanda_service.categoria_repo = self.categoria_repo
+
         self.linea_comanda_service = LineaComandaService(
             linea_comanda_repo=self.linea_comanda_repo,
         )
-        self.insumo_service = InsumoService(insumo_repo=self.insumo_repo)
-        self.receta_service = RecetaService(insumo_repo=self.insumo_repo)
         self.caja_service = CajaService(caja_repo=self.caja_repo)
         self.reserva_service = ReservaService(reserva_repo=self.reserva_repo)
         self.pago_service = PagoService(comanda_service=self.comanda_service)
+        self.pago_service.repo = self.pago_repo
 
 import threading
 
