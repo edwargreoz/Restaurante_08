@@ -77,14 +77,21 @@ class Container:
         self.comanda_service = ComandaService(
             comanda_repo=self.comanda_repo,
             mesa_repo=self.mesa_repo,
+            caja_repo=self.caja_repo,
+            union_mesa_repo=self.union_mesa_repo,
+            reserva_repo=self.reserva_repo,
+            linea_comanda_repo=self.linea_comanda_repo,
+            pago_repo=self.pago_repo,
+            plato_repo=self.plato_repo,
+            receta_repo=self.receta_repo,
+            insumo_repo=self.insumo_repo,
+            movimiento_insumo_repo=self.movimiento_insumo_repo,
+            categoria_repo=self.categoria_repo,
         )
-        self.comanda_service.movimiento_insumo_repo = self.movimiento_insumo_repo
-        self.comanda_service.plato_repo = self.plato_repo
-        self.comanda_service.pago_repo = self.pago_repo
-        self.comanda_service.categoria_repo = self.categoria_repo
 
         self.linea_comanda_service = LineaComandaService(
             linea_comanda_repo=self.linea_comanda_repo,
+            comanda_repo=self.comanda_repo,
         )
         self.caja_service = CajaService(
             caja_repo=self.caja_repo,
@@ -96,6 +103,7 @@ class Container:
             mesa_repo=self.mesa_repo,
             union_mesa_repo=self.union_mesa_repo,
         )
+        self.comanda_service.reserva_service = self.reserva_service
         self.pago_service = PagoService(
             comanda_service=self.comanda_service,
             comanda_repo=self.comanda_repo,

@@ -56,7 +56,8 @@ def agregar_platos_pedido(request, comanda_id):
 @login_required
 @user_passes_test(es_cocinero)
 def kds_panel(request):
-    comandas = LineaComandaService.obtener_panel_kds()
+    container = get_container()
+    comandas = container.linea_comanda_service.obtener_panel_kds()
     return render(request, 'cocina/kds_panel.html', {'comandas': comandas})
 @login_required
 @user_passes_test(es_mozo_o_cocinero)
