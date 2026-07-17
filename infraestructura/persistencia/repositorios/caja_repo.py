@@ -16,14 +16,15 @@ class CajaRepository:
         return CajaModel.objects.filter(estado='ABIERTA').exists()
 
     def guardar(self, caja: Caja) -> Caja:
-        CajaModel.objects.update_or_create(
+        obj, _ = CajaModel.objects.update_or_create(
             id=caja.id,
             defaults={
                 'turno': caja.turno, 'cajero_id': caja.cajero_id,
                 'saldo_inicial': caja.saldo_inicial, 'estado': caja.estado,
             }
         )
-        return caja
+        return Caja(id=obj.id, turno=obj.turno, cajero_id=obj.cajero_id,
+                    saldo_inicial=obj.saldo_inicial, estado=obj.estado)
 
     def listar(self) -> List[Caja]:
         return [

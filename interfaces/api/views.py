@@ -4,7 +4,6 @@ from rest_framework.response import Response
 
 
 from core.excepciones import AppError
-from pedidos.services import LineaComandaService
 from infraestructura.container import get_container
 
     
@@ -190,7 +189,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
 
         try:
             container = get_container()
-            caja = container.caja_repo.obtener_abierta()
+            caja = container.caja_service.obtener_activa()
             container.comanda_service.pagar(
                 comanda.id,
                 metodo=data['metodo'], monto=data['monto'],
@@ -223,7 +222,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
             )
         try:
             container = get_container()
-            caja = container.caja_repo.obtener_abierta()
+            caja = container.caja_service.obtener_activa()
             container.comanda_service.pagar_split(comanda.id, pagos_data, caja=caja)
         except AppError as e:
             return Response(
