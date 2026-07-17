@@ -3,6 +3,7 @@ from core.excepciones import (
     RecursoNoEncontrado, UnionInvalida,
     CajaNoAbierta, ReglaNegocioViolada, AppError,
 )
+from dominio.entidades.mesa import Mesa as MesaDomain
 from dominio.puertos.repositorios import IMesaRepository
 
 
@@ -160,13 +161,34 @@ class MesaService:
                 union.save(update_fields=['activo', 'actualizado_en'])
 
     def validar_editable(self, mesa_id: int):
-        from mesas.models import Mesa
-        mesa = Mesa.activos.get(id=mesa_id)
+        mesa = self.repo.obtener_por_id(mesa_id)
+        if not mesa:
+            raise RecursoNoEncontrado('Mesa no encontrada')
         if mesa.estado == 'RESERVADA':
             raise ReglaNegocioViolada(
                 'No puedes editar una mesa que actualmente se encuentra RESERVADA.'
             )
         return mesa
+
+    def obtener_modelo(self, mesa_id: int):
+        from mesas.models import Mesa
+        return Mesa.activos.get(id=mesa_id)
+
+    def crear(self, numero: int, capacidad: int, zona: str, estado: str):
+        mesa = MesaDomain(id=None, numero=numero, capacidad=capacidad,
+                          zona=zona, estado=estado)
+        return self.repo.guardar(mesa)
+
+    def editar(self, mesa_id: int, numero: int, capacidad: int,
+               zona: str, estado: str):
+        mesa = self.repo.obtener_por_id(mesa_id)
+        if not mesa:
+            raise RecursoNoEncontrado('Mesa no encontrada')
+        mesa.numero = numero
+        mesa.capacidad = capacidad
+        mesa.zona = zona
+        mesa.estado = estado
+        return self.repo.guardar(mesa)
 
 
 class UnionMesaService:

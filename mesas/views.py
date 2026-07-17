@@ -156,7 +156,13 @@ def lista_mesas_admin(request):
     if request.method == 'POST':
         form = MesaForm(request.POST)
         if form.is_valid():
-            form.save()
+            container = get_container()
+            container.mesa_service.crear(
+                numero=form.cleaned_data['numero'],
+                capacidad=form.cleaned_data['capacidad'],
+                zona=form.cleaned_data['zona'],
+                estado=form.cleaned_data['estado'],
+            )
             messages.success(request, 'Mesa creada exitosamente.')
             return redirect('lista_mesas_admin')
     else:
@@ -175,7 +181,13 @@ def crear_mesa(request):
     if request.method == 'POST':
         form = MesaForm(request.POST)
         if form.is_valid():
-            form.save()
+            container = get_container()
+            container.mesa_service.crear(
+                numero=form.cleaned_data['numero'],
+                capacidad=form.cleaned_data['capacidad'],
+                zona=form.cleaned_data['zona'],
+                estado=form.cleaned_data['estado'],
+            )
             messages.success(request, 'Mesa creada exitosamente.')
             return redirect('lista_mesas_admin')
     else:
@@ -189,21 +201,29 @@ def crear_mesa(request):
 def editar_mesa(request, mesa_id):
     container = get_container()
     try:
-        mesa = container.mesa_service.validar_editable(mesa_id)
+        container.mesa_service.validar_editable(mesa_id)
     except ReglaNegocioViolada as e:
         messages.error(request, str(e))
         return redirect('lista_mesas_admin')
 
+    mesa_model = container.mesa_service.obtener_modelo(mesa_id)
+
     if request.method == 'POST':
-        form = MesaForm(request.POST, instance=mesa)
+        form = MesaForm(request.POST, instance=mesa_model)
         if form.is_valid():
-            form.save()
-            messages.success(request, f'Mesa {mesa.numero} actualizada exitosamente.')
+            container.mesa_service.editar(
+                mesa_id=mesa_model.id,
+                numero=form.cleaned_data['numero'],
+                capacidad=form.cleaned_data['capacidad'],
+                zona=form.cleaned_data['zona'],
+                estado=form.cleaned_data['estado'],
+            )
+            messages.success(request, f'Mesa {mesa_model.numero} actualizada exitosamente.')
             return redirect('lista_mesas_admin')
     else:
-        form = MesaForm(instance=mesa)
+        form = MesaForm(instance=mesa_model)
 
-    return render(request, 'mesas/form_mesa.html', {'form': form, 'titulo': f'Editar Mesa {mesa.numero}'})
+    return render(request, 'mesas/form_mesa.html', {'form': form, 'titulo': f'Editar Mesa {mesa_model.numero}'})
 
 
 @login_required
