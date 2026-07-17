@@ -36,3 +36,17 @@ class Reserva:
 
     def es_para_union(self) -> bool:
         return self.union_mesa_id is not None
+
+    def validar_horario(self) -> None:
+        if self.hora_inicio >= self.hora_fin:
+            raise ReglaNegocioViolada('La hora de inicio debe ser anterior a la hora de fin')
+        hora_apertura = time(8, 0)
+        hora_cierre = time(23, 0)
+        if self.hora_inicio < hora_apertura or self.hora_fin > hora_cierre:
+            raise ReglaNegocioViolada(f'El horario de reserva debe ser entre {hora_apertura} y {hora_cierre}')
+
+    def validar_capacidad(self) -> None:
+        if self.num_personas <= 0:
+            raise ReglaNegocioViolada('El número de personas debe ser mayor a 0')
+        if self.num_personas > 20:
+            raise ReglaNegocioViolada('El número de personas no puede exceder 20')

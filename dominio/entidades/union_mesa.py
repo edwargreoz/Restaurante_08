@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Optional, List
+from typing import Optional
 from core.excepciones import UnionInvalida
 
 
 @dataclass
 class UnionMesa:
     id: Optional[int]
-    mesa_ids: list = field(default_factory=list)
+    mesa_ids: list[int] = field(default_factory=list)
     activo: bool = True
 
     def validar_minimo_mesas(self) -> None:

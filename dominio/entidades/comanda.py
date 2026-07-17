@@ -18,7 +18,7 @@ class Comanda:
     TRANSICIONES = {
         'ABIERTA': ['EN_PREPARACION', 'ANULADA'],
         'EN_PREPARACION': ['LISTA', 'ANULADA'],
-        'LISTA': ['COBRADA', 'ABIERTA'],
+        'LISTA': ['COBRADA'],
         'COBRADA': [],
         'ANULADA': [],
     }

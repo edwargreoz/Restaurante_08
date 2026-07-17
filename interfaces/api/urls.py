@@ -14,18 +14,18 @@ from .views import (
 # Router principal para ViewSets
 # Los ViewSets se registran con: router.register('nombre', ViewSet)
 router = DefaultRouter()
-router.register(r'mesas', MesaViewSet)
-router.register(r'uniones-mesas',UnionMesaViewSet)
-router.register(r'comandas',ComandaViewSet)
-router.register(r'lineas-comanda',LineaComandaViewSet)
+router.register(r'mesas', MesaViewSet, basename='mesa')
+router.register(r'uniones-mesas',UnionMesaViewSet, basename='unionmesa')
+router.register(r'comandas',ComandaViewSet, basename='comanda')
+router.register(r'lineas-comanda',LineaComandaViewSet, basename='lineacomanda')
 router.register(r'cocina', CocinaViewSet, basename='cocina')
 router.register(r'reportes',ReportesViewSet,basename='reportes')
-router.register(r'categorias', CategoriaViewSet)
-router.register(r'platos', PlatoViewSet)
-router.register(r'insumos', InsumoViewSet)
-router.register(r'recetas', RecetaViewSet)
-router.register(r'recetas-insumo', RecetaInsumoViewSet)
-router.register(r'reservas', ReservaViewSet)
+router.register(r'categorias', CategoriaViewSet, basename='categoria')
+router.register(r'platos', PlatoViewSet, basename='plato')
+router.register(r'insumos', InsumoViewSet, basename='insumo')
+router.register(r'recetas', RecetaViewSet, basename='receta')
+router.register(r'recetas-insumo', RecetaInsumoViewSet, basename='recetainsumo')
+router.register(r'reservas', ReservaViewSet, basename='reserva')
 
 
 urlpatterns = [

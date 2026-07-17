@@ -20,10 +20,16 @@ class Mesa:
         self.estado = 'OCUPADA'
 
     def liberar(self):
+        if self.estado != 'OCUPADA':
+            raise ReglaNegocioViolada(f'Mesa {self.numero} no se puede liberar desde estado {self.estado}')
         self.estado = 'LIBRE'
 
     def limpiar(self):
+        if self.estado != 'OCUPADA':
+            raise ReglaNegocioViolada(f'Mesa {self.numero} no se puede limpiar desde estado {self.estado}')
         self.estado = 'LIMPIEZA'
 
     def reservar(self):
+        if self.estado != 'LIBRE':
+            raise ReglaNegocioViolada(f'Mesa {self.numero} no se puede reservar desde estado {self.estado}')
         self.estado = 'RESERVADA'
