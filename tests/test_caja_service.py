@@ -64,6 +64,7 @@ class PagoServiceTest(TestCase):
         self.usuario = User.objects.create_user(username='cajero', password='pass123')
         container = get_container()
         self.caja_svc = CajaService(caja_repo=container.caja_repo)
+        self.pago_svc = container.pago_service
         self.caja = self.caja_svc.abrir_turno('TARDE', self.usuario)
         self.mesa = Mesa.objects.create(numero=1, capacidad=4)
         self.comanda = Comanda.objects.create(
@@ -71,7 +72,7 @@ class PagoServiceTest(TestCase):
         )
 
     def test_reporte_sin_pagos(self):
-        reporte = PagoService.reporte_ventas()
+        reporte = self.pago_svc.reporte_ventas()
         self.assertEqual(reporte['total_general'], Decimal('0'))
         self.assertEqual(reporte['total_pagos'], 0)
 
@@ -81,7 +82,7 @@ class PagoServiceTest(TestCase):
                 comanda=self.comanda, caja=self.caja, metodo='EFECTIVO',
                 monto=Decimal('100'), vuelto=Decimal('0'),
             )
-        reporte = PagoService.reporte_ventas()
+        reporte = self.pago_svc.reporte_ventas()
         self.assertEqual(reporte['total_general'], Decimal('300'))
         self.assertEqual(reporte['total_pagos'], 3)
 
@@ -102,7 +103,7 @@ class PagoServiceTest(TestCase):
             comanda=otra_comanda, caja=otra_caja, metodo='YAPE',
             monto=Decimal('200'), vuelto=Decimal('0'),
         )
-        reporte = PagoService.reporte_ventas(caja_id=self.caja.id)
+        reporte = self.pago_svc.reporte_ventas(caja_id=self.caja.id)
         self.assertEqual(reporte['total_general'], Decimal('100'))
         self.assertEqual(reporte['total_pagos'], 2)
 
@@ -115,7 +116,7 @@ class PagoServiceTest(TestCase):
             comanda=self.comanda, caja=self.caja, metodo='EFECTIVO',
             monto=Decimal('100'), vuelto=Decimal('0'),
         )
-        reporte = PagoService.reporte_ventas()
+        reporte = self.pago_svc.reporte_ventas()
         self.assertEqual(reporte['ticket_promedio'], Decimal('150'))
 
     def test_reporte_por_metodo(self):
@@ -127,21 +128,21 @@ class PagoServiceTest(TestCase):
             comanda=self.comanda, caja=self.caja, metodo='YAPE',
             monto=Decimal('50'), vuelto=Decimal('0'),
         )
-        reporte = PagoService.reporte_ventas()
+        reporte = self.pago_svc.reporte_ventas()
         self.assertEqual(len(reporte['por_metodo']), 2)
 
     def test_obtener_comanda_para_cobro_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            PagoService.obtener_comanda_para_cobro(999)
+            self.pago_svc.obtener_comanda_para_cobro(999)
 
     def test_obtener_comanda_para_cobro_no_lista(self):
         with self.assertRaises(RecursoNoEncontrado):
-            PagoService.obtener_comanda_para_cobro(self.comanda.id)
+            self.pago_svc.obtener_comanda_para_cobro(self.comanda.id)
 
     def test_listar_comandas_para_cobro(self):
         self.comanda.estado = 'ABIERTA'
         self.comanda.save()
-        resultado = PagoService.listar_comandas_para_cobro()
+        resultado = self.pago_svc.listar_comandas_para_cobro()
         self.assertEqual(resultado.count(), 1)
 
 

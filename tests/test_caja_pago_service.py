@@ -3,6 +3,7 @@ from django.test import TestCase
 from model_bakery import baker
 from caja.services import CajaService, PagoService
 from caja.models import Caja
+from infraestructura.container import get_container
 
 
 class PagoServiceTests(TestCase):
@@ -17,12 +18,14 @@ class PagoServiceTests(TestCase):
             'pedidos.Comanda', mesa=self.mesa, mozo=self.usuario,
             estado='LISTA',
         )
+        container = get_container()
+        self.pago_svc = container.pago_service
 
     def test_reporte_ventas_sin_pagos(self):
-        data = PagoService.reporte_ventas(caja_id=self.caja.id)
+        data = self.pago_svc.reporte_ventas(caja_id=self.caja.id)
         self.assertEqual(data['total_general'], Decimal('0'))
         self.assertEqual(data['total_pagos'], 0)
 
     def test_listar_comandas_para_cobro(self):
-        comandas = PagoService.listar_comandas_para_cobro()
+        comandas = self.pago_svc.listar_comandas_para_cobro()
         self.assertIn(self.comanda, comandas)

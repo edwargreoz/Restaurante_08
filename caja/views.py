@@ -113,8 +113,8 @@ def reportes_turno(request):
     caja_id = request.GET.get('caja_id')
     fecha_desde = request.GET.get('fecha_desde')
     fecha_hasta = request.GET.get('fecha_hasta')
-    reporte = container.pago_service.reporte_ventas(caja_id, fecha_desde, fecha_hasta)
     container = get_container()
+    reporte = container.pago_service.reporte_ventas(caja_id, fecha_desde, fecha_hasta)
     cajas = container.caja_service.listar_todas()
     pagos = container.pago_service.listar_pagos_con_filtros(caja_id, fecha_desde, fecha_hasta)
     return render(request, 'reportes/reportes_turno.html', {

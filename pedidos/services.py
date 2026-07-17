@@ -389,14 +389,15 @@ def _validar_referencia_tarjeta(referencia: str):
 
 def _finalizar_reservas_comanda(comanda):
     from reservas.models import Reserva
-    from reservas.services import ReservaService
+    from infraestructura.container import get_container
+    container = get_container()
     mesa = comanda.mesa
     union = UnionMesa.objects.filter(mesas=mesa, activo=True).first()
     for r in Reserva.objects.filter(mesa=mesa, activo=True):
-        ReservaService.finalizar(r.id)
+        container.reserva_service.finalizar(r.id)
     if union:
         for r in Reserva.objects.filter(union_mesa=union, activo=True):
-            ReservaService.finalizar(r.id)
+            container.reserva_service.finalizar(r.id)
 
 
 def _actualizar_estado_mesa_post_pago(comanda):
