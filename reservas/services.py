@@ -39,7 +39,7 @@ class ReservaService:
         if len(ms) > 1:
             union_mesa_obj = get_container().union_mesa_service.repo.guardar(UnionMesa(activo=True))
             union_mesa_obj.mesas.set(ms)
-            union_mesa_obj.save()
+            get_container().union_mesa_service.repo.guardar(union_mesa_obj)
 
         from dominio.entidades.reserva import Reserva as ReservaDominio
         reserva_domain = ReservaDominio(
@@ -65,21 +65,21 @@ class ReservaService:
             raise ReglaNegocioViolada('Esta reserva ya estaba cancelada')
 
         reserva.activo = False
-        reserva.save(update_fields=['activo'])
+        self.reserva_repo.guardar(reserva)
 
         if reserva.mesa:
             tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_mesa(reserva.mesa_id))
             if not tiene_otra:
                 reserva.mesa.estado = 'LIBRE'
-                reserva.mesa.save(update_fields=['estado'])
+                get_container().mesa_service.mesa_repo.guardar(reserva.mesa)
         elif reserva.union_mesa:
             tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_union(reserva.union_mesa_id))
             if not tiene_otra:
                 for m in reserva.union_mesa.mesas.all():
                     m.estado = 'LIBRE'
-                    m.save(update_fields=['estado'])
+                    get_container().mesa_service.mesa_repo.guardar(m)
                 reserva.union_mesa.activo = False
-                reserva.union_mesa.save(update_fields=['activo'])
+                get_container().union_mesa_service.repo.guardar(reserva.union_mesa)
 
         _notificar_plano()
         return reserva
@@ -94,21 +94,21 @@ class ReservaService:
 
         reserva.activo = False
         reserva.finalizada = True
-        reserva.save(update_fields=['activo', 'finalizada'])
+        self.reserva_repo.guardar(reserva)
 
         if reserva.mesa:
             tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_mesa(reserva.mesa_id))
             if not tiene_otra:
                 reserva.mesa.estado = 'LIMPIEZA'
-                reserva.mesa.save(update_fields=['estado'])
+                get_container().mesa_service.mesa_repo.guardar(reserva.mesa)
         elif reserva.union_mesa:
             tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_union(reserva.union_mesa_id))
             if not tiene_otra:
                 for m in reserva.union_mesa.mesas.all():
                     m.estado = 'LIMPIEZA'
-                    m.save(update_fields=['estado'])
+                    get_container().mesa_service.mesa_repo.guardar(m)
                 reserva.union_mesa.activo = False
-                reserva.union_mesa.save(update_fields=['activo'])
+                get_container().union_mesa_service.repo.guardar(reserva.union_mesa)
 
         _notificar_plano()
         return reserva
@@ -150,7 +150,7 @@ class ReservaService:
         else:
             union_mesa_obj = get_container().union_mesa_service.repo.guardar(UnionMesa(activo=True))
             union_mesa_obj.mesas.set(ms)
-            union_mesa_obj.save()
+            get_container().union_mesa_service.repo.guardar(union_mesa_obj)
             reserva.mesa = None
             reserva.union_mesa = union_mesa_obj
 
@@ -161,27 +161,22 @@ class ReservaService:
         reserva.hora_fin = datos['hora_fin']
         reserva.num_personas = datos['num_personas']
         reserva.observacion = datos['observacion']
-        reserva.save(update_fields=[
-            'mesa', 'union_mesa', 'cliente_nombre',
-            'cliente_contacto', 'fecha', 'hora_inicio',
-            'hora_fin', 'num_personas', 'observacion',
-            'actualizado_en',
-        ])
+        self.reserva_repo.guardar(reserva)
 
         if vieja_mesa and vieja_mesa != reserva.mesa:
             vieja_mesa.estado = 'LIBRE'
-            vieja_mesa.save(update_fields=['estado'])
+            get_container().mesa_service.mesa_repo.guardar(vieja_mesa)
         if vieja_union and vieja_union != reserva.union_mesa:
             vieja_union.activo = False
-            vieja_union.save(update_fields=['activo'])
+            get_container().union_mesa_service.repo.guardar(vieja_union)
             for m in vieja_union.mesas.all():
                 if m not in ms:
                     m.estado = 'LIBRE'
-                    m.save(update_fields=['estado'])
+                    get_container().mesa_service.mesa_repo.guardar(m)
 
         for m in ms:
             m.estado = 'RESERVADA'
-            m.save(update_fields=['estado'])
+            get_container().mesa_service.mesa_repo.guardar(m)
 
         _notificar_plano()
         return reserva
@@ -198,15 +193,15 @@ class ReservaService:
             )
         if reserva.mesa and reserva.mesa.estado == 'RESERVADA':
             reserva.mesa.estado = 'LIBRE'
-            reserva.mesa.save(update_fields=['estado'])
+            get_container().mesa_service.mesa_repo.guardar(reserva.mesa)
         elif reserva.union_mesa:
             for m in reserva.union_mesa.mesas.all():
                 if m.estado == 'RESERVADA':
                     m.estado = 'LIBRE'
-                    m.save(update_fields=['estado'])
+                    get_container().mesa_service.mesa_repo.guardar(m)
             if reserva.union_mesa.activo:
                 reserva.union_mesa.activo = False
-                reserva.union_mesa.save(update_fields=['activo'])
+                get_container().union_mesa_service.repo.guardar(reserva.union_mesa)
         reserva.delete()
         _notificar_plano()
 

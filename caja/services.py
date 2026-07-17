@@ -52,7 +52,7 @@ class CajaService:
             )
         caja.estado = 'CERRADA'
         caja.fecha_cierre = timezone.now()
-        caja.save(update_fields=['estado', 'fecha_cierre'])
+        self.repo.guardar(caja)
         return {
             'caja': caja,
             'total_ventas': sum(p.monto for p in get_container().pago_service.repo.listar_por_caja(caja.id)),

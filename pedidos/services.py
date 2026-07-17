@@ -66,13 +66,13 @@ class ComandaService:
         from dominio.entidades.comanda import Comanda
         comanda = self.comanda_repo.guardar(Comanda(mesa_id=mesa.id, mozo_id=usuario.id, estado='ABIERTA', total=0))
         mesa.estado = 'OCUPADA'
-        mesa.save(update_fields=['estado'])
+        self.mesa_repo.guardar(mesa)
 
         if union:
             for m in union.mesas.all():
                 if m.id != mesa.id:
                     m.estado = 'OCUPADA'
-                    m.save(update_fields=['estado'])
+                    self.mesa_repo.guardar(m)
 
         _notificar_plano()
         return comanda
@@ -136,7 +136,7 @@ class ComandaService:
 
                 stock_anterior = insumo.stock_actual
                 insumo.stock_actual -= necesario
-                insumo.save(update_fields=['stock_actual'])
+                get_container().insumo_service.insumo_repo.guardar(insumo)
 
                 deducciones.append(MovimientoInsumo(
                     insumo=insumo, comanda=comanda,
@@ -200,7 +200,7 @@ class ComandaService:
         self.linea_comanda_repo.cambiar_comanda_lote(otra.id, comanda.id)
         otra.estado = 'ANULADA'
         otra.fecha_cierre = timezone.now()
-        otra.save(update_fields=['estado', 'fecha_cierre'])
+        self.comanda_repo.guardar(otra)
         return comanda
 
     @transaction.atomic
@@ -230,7 +230,7 @@ class ComandaService:
                     continue
                 stock_anterior = insumo.stock_actual
                 insumo.stock_actual += cantidad_a_restaurar
-                insumo.save(update_fields=['stock_actual'])
+                get_container().insumo_service.insumo_repo.guardar(insumo)
                 movimientos.append(MovimientoInsumo(
                     insumo=insumo, comanda=comanda,
                     tipo='REPOSICION', cantidad=cantidad_a_restaurar,
@@ -246,7 +246,7 @@ class ComandaService:
         get_container().movimiento_insumo_repo.guardar_lote(movimientos)
         comanda.estado = 'ANULADA'
         comanda.fecha_cierre = timezone.now()
-        comanda.save(update_fields=['estado', 'fecha_cierre'])
+        self.comanda_repo.guardar(comanda)
 
         _liberar_mesas(comanda)
         _notificar_plano()
@@ -269,7 +269,6 @@ class ComandaService:
         if metodo == 'TARJETA':
             _validar_referencia_tarjeta(referencia)
 
-        from caja.models import Pago
         from dominio.entidades.pago import Pago
         get_container().pago_service.repo.guardar(Pago(
             comanda_id=comanda.id, metodo=metodo,
@@ -277,7 +276,7 @@ class ComandaService:
         ))
         comanda.estado = 'COBRADA'
         comanda.fecha_cierre = timezone.now()
-        comanda.save(update_fields=['estado', 'fecha_cierre'])
+        self.comanda_repo.guardar(comanda)
 
         _finalizar_reservas_comanda(comanda)
         _actualizar_estado_mesa_post_pago(comanda)
@@ -304,13 +303,12 @@ class ComandaService:
         for pd in pagos_lista:
             if pd.get('metodo') == 'TARJETA':
                 _validar_referencia_tarjeta(pd.get('referencia', ''))
-            from caja.models import Pago
             from dominio.entidades.pago import Pago
             get_container().pago_service.repo.guardar(Pago(comanda_id=comanda.id, metodo=pd['metodo'], monto=pd['monto'], vuelto=pd.get('vuelto', 0), referencia=pd.get('referencia', ''), caja_id=caja.id))
 
         comanda.estado = 'COBRADA'
         comanda.fecha_cierre = timezone.now()
-        comanda.save(update_fields=['estado', 'fecha_cierre'])
+        self.comanda_repo.guardar(comanda)
 
         _finalizar_reservas_comanda(comanda)
         _actualizar_estado_mesa_post_pago(comanda)
@@ -346,13 +344,13 @@ class LineaComandaService:
                 'Solo se puede enviar a cocina en estado PENDIENTE'
             )
         linea.estado = 'EN_PREP'
-        linea.save(update_fields=['estado'])
+        self.linea_comanda_repo.guardar(linea)
 
         comanda = linea.comanda
         lineas = list(comanda.lineas.select_related('plato').all())
         if all(l.estado == 'EN_PREP' for l in lineas):
             comanda.estado = 'EN_PREPARACION'
-            comanda.save(update_fields=['estado'])
+            self.comanda_repo.guardar(comanda)
 
         _notificar_kds()
         return linea
@@ -366,13 +364,13 @@ class LineaComandaService:
                 'Solo se puede marcar LISTO una línea EN_PREPARACION'
             )
         linea.estado = 'LISTO'
-        linea.save(update_fields=['estado'])
+        self.linea_comanda_repo.guardar(linea)
 
         comanda = linea.comanda
         lineas = list(comanda.lineas.select_related('plato').all())
         if all(l.estado == 'LISTO' for l in lineas):
             comanda.estado = 'LISTA'
-            comanda.save(update_fields=['estado'])
+            self.comanda_repo.guardar(comanda)
 
         _notificar_kds()
         _notificar_plano()
@@ -427,7 +425,7 @@ def _actualizar_estado_mesa_post_pago(comanda):
     tiene_reserva_union = union.reservas.filter(activo=True).exists() if union else False
     
     mesa.estado = 'RESERVADA' if (tiene_reserva or tiene_reserva_union) else 'LIMPIEZA'
-    mesa.save(update_fields=['estado'])
+    self.mesa_repo.guardar(mesa)
     
     if union:
         # Pre-cargar las mesas de la union con sus reservas
@@ -437,7 +435,7 @@ def _actualizar_estado_mesa_post_pago(comanda):
                 # Usar python en memoria gracias al prefetch_related
                 tiene_r = any(r.activo for r in m.reservas.all()) or tiene_reserva_union
                 m.estado = 'RESERVADA' if tiene_r else 'LIMPIEZA'
-                m.save(update_fields=['estado'])
+                self.mesa_repo.guardar(m)
 
 
 def _liberar_mesas(comanda):
@@ -457,7 +455,7 @@ def _liberar_mesas(comanda):
             if union:
                 tiene_reserva = tiene_reserva or union.reservas.filter(activo=True).exists()
             m.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
-            m.save(update_fields=['estado'])
+            self.mesa_repo.guardar(m)
 
 
 def _notificar_kds():

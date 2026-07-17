@@ -51,10 +51,7 @@ class InsumoService:
         for attr, value in kwargs.items():
             setattr(insumo_model, attr, value)
         insumo_model.full_clean()
-        insumo_model.save(update_fields=[
-            'nombre', 'unidad', 'stock_actual',
-            'stock_minimo', 'costo_unitario', 'actualizado_en',
-        ])
+        self.insumo_repo.guardar(insumo_model)
         return insumo_model
 
     def eliminar(self, insumo_id: int):
@@ -158,7 +155,7 @@ class RecetaService:
         if nombre:
             receta.nombre = nombre
             receta.full_clean()
-            receta.save(update_fields=['nombre'])
+            self.repo.guardar(receta)
         if insumos_data:
             receta.insumos.all().update(activo=False)
             for item in insumos_data:
@@ -174,10 +171,7 @@ class RecetaService:
                     ri.cantidad_por_porcion = item['cantidad']
                     ri.unidad = item.get('unidad', 'UNIDAD')
                     ri.activo = True
-                    ri.save(update_fields=[
-                        'cantidad_por_porcion', 'unidad', 'activo',
-                        'actualizado_en',
-                    ])
+                    self.repo.obtener_receta_insumo_o_crear(ri.receta_id, ri.insumo_id, getattr(ri, 'cantidad_por_porcion', 1), getattr(ri, 'unidad', 1))
         return receta
 
     def eliminar_insumo(self, receta_insumo_id: int):
