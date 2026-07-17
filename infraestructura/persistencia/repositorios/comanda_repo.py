@@ -64,6 +64,11 @@ class ComandaRepository:
             )
         ]
 
+    def contar_activas(self) -> int:
+        return ComandaModel.activos.filter(
+            estado__in=['ABIERTA', 'EN_PREPARACION']
+        ).count()
+
     def listar_por_mesa(self, mesa_id: int) -> List[Comanda]:
         return [
             self._modelo_a_entidad(m)

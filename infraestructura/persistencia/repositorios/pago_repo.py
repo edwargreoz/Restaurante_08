@@ -36,6 +36,14 @@ class PagoRepository:
         result = PagoModel.objects.filter(caja_id=caja_id).aggregate(total=Sum('monto'))
         return float(result['total'] or 0)
 
+    def listar_por_rango_fecha(self, fecha_inicio, fecha_fin) -> List[Pago]:
+        return [
+            self._a_entidad(p) for p in PagoModel.objects.filter(
+                fecha__date__gte=fecha_inicio,
+                fecha__date__lt=fecha_fin
+            )
+        ]
+
     def _a_entidad(self, p) -> Pago:
         return Pago(
             id=p.id, comanda_id=p.comanda_id, metodo=p.metodo,
