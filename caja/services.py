@@ -7,7 +7,6 @@ from dominio.entidades.caja import Caja
 from dominio.puertos.repositorios import (
     ICajaRepository, IComandaRepository, IPagoRepository,
 )
-from pedidos.models import LineaComanda
 from core.excepciones import (
     CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioViolada,
 )
@@ -154,8 +153,6 @@ class ReporteService:
         return self.insumo_repo.listar_criticos()
 
     def top_platos(self, limite: int = 5):
-        from collections import defaultdict
-        from dominio.puertos.repositorios import IPlatoRepository
         lineas = self.linea_comanda_repo.listar()
         vendidos = defaultdict(lambda: {'cantidad': 0, 'plato_id': None})
         for linea in lineas:
