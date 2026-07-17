@@ -7,7 +7,9 @@ from core.excepciones import (
 from mesas.services import _notificar_plano
 from dominio.entidades.union_mesa import UnionMesa
 
-from dominio.puertos.repositorios import IReservaRepository
+from dominio.puertos.repositorios import (
+    IReservaRepository, IMesaRepository, IUnionMesaRepository,
+)
 from typing import Optional
 
 
@@ -15,8 +17,12 @@ class ReservaService:
     HORA_APERTURA = time_obj(7, 0)
     HORA_CIERRE = time_obj(22, 0)
 
-    def __init__(self, reserva_repo: Optional[IReservaRepository] = None):
+    def __init__(self, reserva_repo: Optional[IReservaRepository] = None,
+                 mesa_repo: Optional[IMesaRepository] = None,
+                 union_mesa_repo: Optional[IUnionMesaRepository] = None):
         self.reserva_repo = reserva_repo
+        self.mesa_repo = mesa_repo
+        self.union_mesa_repo = union_mesa_repo
 
     def listar(self):
         return self.reserva_repo.listar()
@@ -30,12 +36,11 @@ class ReservaService:
             mesas_ids, fecha, hora_inicio, hora_fin,
             num_personas, cliente_nombre, cliente_contacto, observacion
         )
-        from infraestructura.container import get_container
         ms = datos['mesas']
         mesa_obj = ms[0] if len(ms) == 1 else None
         union_mesa_obj = None
         if len(ms) > 1:
-            union_mesa_obj = get_container().union_mesa_service.repo.guardar(
+            union_mesa_obj = self.union_mesa_repo.guardar(
                 UnionMesa(id=None, mesa_ids=[m.id for m in ms], activo=True)
             )
 
@@ -55,7 +60,6 @@ class ReservaService:
 
     @transaction.atomic
     def cancelar(self, reserva_id: int):
-        from infraestructura.container import get_container
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
@@ -68,27 +72,26 @@ class ReservaService:
         if reserva.mesa_id:
             tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_mesa(reserva.mesa_id))
             if not tiene_otra:
-                mesa = get_container().mesa_service.repo.obtener_por_id(reserva.mesa_id)
+                mesa = self.mesa_repo.obtener_por_id(reserva.mesa_id)
                 if mesa:
                     mesa.estado = 'LIBRE'
-                    get_container().mesa_service.repo.guardar(mesa)
+                    self.mesa_repo.guardar(mesa)
         elif reserva.union_mesa_id:
             tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_union(reserva.union_mesa_id))
             if not tiene_otra:
-                union = get_container().union_mesa_service.repo.obtener_por_id(reserva.union_mesa_id)
+                union = self.union_mesa_repo.obtener_por_id(reserva.union_mesa_id)
                 if union:
-                    for m in get_container().mesa_service.repo.listar_activas_por_ids(union.mesa_ids):
+                    for m in self.mesa_repo.listar_activas_por_ids(union.mesa_ids):
                         m.estado = 'LIBRE'
-                        get_container().mesa_service.repo.guardar(m)
+                        self.mesa_repo.guardar(m)
                     union.activo = False
-                    get_container().union_mesa_service.repo.guardar(union)
+                    self.union_mesa_repo.guardar(union)
 
         _notificar_plano()
         return reserva
 
     @transaction.atomic
     def finalizar(self, reserva_id: int):
-        from infraestructura.container import get_container
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
@@ -102,20 +105,20 @@ class ReservaService:
         if reserva.mesa_id:
             tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_mesa(reserva.mesa_id))
             if not tiene_otra:
-                mesa = get_container().mesa_service.repo.obtener_por_id(reserva.mesa_id)
+                mesa = self.mesa_repo.obtener_por_id(reserva.mesa_id)
                 if mesa:
                     mesa.estado = 'LIMPIEZA'
-                    get_container().mesa_service.repo.guardar(mesa)
+                    self.mesa_repo.guardar(mesa)
         elif reserva.union_mesa_id:
             tiene_otra = any(r.id != reserva.id for r in self.reserva_repo.listar_activas_por_union(reserva.union_mesa_id))
             if not tiene_otra:
-                union = get_container().union_mesa_service.repo.obtener_por_id(reserva.union_mesa_id)
+                union = self.union_mesa_repo.obtener_por_id(reserva.union_mesa_id)
                 if union:
-                    for m in get_container().mesa_service.repo.listar_activas_por_ids(union.mesa_ids):
+                    for m in self.mesa_repo.listar_activas_por_ids(union.mesa_ids):
                         m.estado = 'LIMPIEZA'
-                        get_container().mesa_service.repo.guardar(m)
+                        self.mesa_repo.guardar(m)
                     union.activo = False
-                    get_container().union_mesa_service.repo.guardar(union)
+                    self.union_mesa_repo.guardar(union)
 
         _notificar_plano()
         return reserva
@@ -125,7 +128,6 @@ class ReservaService:
                hora_inicio, hora_fin, num_personas: int,
                cliente_nombre: str, cliente_contacto: str = '',
                observacion: str = '', usuario=None):
-        from infraestructura.container import get_container
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
@@ -142,7 +144,7 @@ class ReservaService:
         if vieja_mesa_id:
             mesas_actuales_ids.append(vieja_mesa_id)
         elif vieja_union_id:
-            vieja_union = get_container().union_mesa_service.repo.obtener_por_id(vieja_union_id)
+            vieja_union = self.union_mesa_repo.obtener_por_id(vieja_union_id)
             if vieja_union:
                 mesas_actuales_ids = list(vieja_union.mesa_ids)
 
@@ -158,7 +160,7 @@ class ReservaService:
             reserva.mesa_id = ms[0].id
             reserva.union_mesa_id = None
         else:
-            union_mesa_obj = get_container().union_mesa_service.repo.guardar(
+            union_mesa_obj = self.union_mesa_repo.guardar(
                 UnionMesa(id=None, mesa_ids=ms_ids, activo=True)
             )
             reserva.mesa_id = None
@@ -174,30 +176,29 @@ class ReservaService:
         self.reserva_repo.guardar(reserva)
 
         if vieja_mesa_id and vieja_mesa_id not in ms_ids:
-            vieja_mesa = get_container().mesa_service.repo.obtener_por_id(vieja_mesa_id)
+            vieja_mesa = self.mesa_repo.obtener_por_id(vieja_mesa_id)
             if vieja_mesa:
                 vieja_mesa.estado = 'LIBRE'
-                get_container().mesa_service.repo.guardar(vieja_mesa)
+                self.mesa_repo.guardar(vieja_mesa)
         if vieja_union_id and vieja_union_id != reserva.union_mesa_id:
-            vieja_union = get_container().union_mesa_service.repo.obtener_por_id(vieja_union_id)
+            vieja_union = self.union_mesa_repo.obtener_por_id(vieja_union_id)
             if vieja_union:
                 vieja_union.activo = False
-                get_container().union_mesa_service.repo.guardar(vieja_union)
-                for m in get_container().mesa_service.repo.listar_activas_por_ids(vieja_union.mesa_ids):
+                self.union_mesa_repo.guardar(vieja_union)
+                for m in self.mesa_repo.listar_activas_por_ids(vieja_union.mesa_ids):
                     if m.id not in ms_ids:
                         m.estado = 'LIBRE'
-                        get_container().mesa_service.repo.guardar(m)
+                        self.mesa_repo.guardar(m)
 
         for m in ms:
             m.estado = 'RESERVADA'
-            get_container().mesa_service.repo.guardar(m)
+            self.mesa_repo.guardar(m)
 
         _notificar_plano()
         return reserva
 
     @transaction.atomic
     def eliminar_definitivamente(self, reserva_id: int) -> None:
-        from infraestructura.container import get_container
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
@@ -207,32 +208,31 @@ class ReservaService:
                 'Debes cancelarla primero.'
             )
         if reserva.mesa_id:
-            mesa = get_container().mesa_service.repo.obtener_por_id(reserva.mesa_id)
+            mesa = self.mesa_repo.obtener_por_id(reserva.mesa_id)
             if mesa and mesa.estado == 'RESERVADA':
                 mesa.estado = 'LIBRE'
-                get_container().mesa_service.repo.guardar(mesa)
+                self.mesa_repo.guardar(mesa)
         elif reserva.union_mesa_id:
-            union = get_container().union_mesa_service.repo.obtener_por_id(reserva.union_mesa_id)
+            union = self.union_mesa_repo.obtener_por_id(reserva.union_mesa_id)
             if union:
-                for m in get_container().mesa_service.repo.listar_activas_por_ids(union.mesa_ids):
+                for m in self.mesa_repo.listar_activas_por_ids(union.mesa_ids):
                     if m.estado == 'RESERVADA':
                         m.estado = 'LIBRE'
-                        get_container().mesa_service.repo.guardar(m)
+                        self.mesa_repo.guardar(m)
                 if union.activo:
                     union.activo = False
-                    get_container().union_mesa_service.repo.guardar(union)
+                    self.union_mesa_repo.guardar(union)
         self.reserva_repo.eliminar(reserva.id)
         _notificar_plano()
 
     def _validar_datos(self, mesas_ids, fecha, hora_inicio, hora_fin,
                        num_personas, cliente_nombre, cliente_contacto,
                        observacion, mesas_actuales_ids=None):
-        from infraestructura.container import get_container
         if not mesas_ids:
             raise ReglaNegocioViolada(
                 'Debe seleccionar al menos una mesa'
             )
-        ms = get_container().mesa_service.repo.listar_activas_por_ids(mesas_ids)
+        ms = self.mesa_repo.listar_activas_por_ids(mesas_ids)
         if len(ms) != len(mesas_ids):
             raise ReglaNegocioViolada('Algunas mesas no existen')
         zonas = set(m.zona for m in ms)
@@ -299,8 +299,7 @@ class ReservaService:
         }
 
     def obtener_datos_edicion(self, reserva_id: int):
-        from infraestructura.container import get_container
-        reserva = get_container().reserva_service.reserva_repo.obtener_por_id(reserva_id)
+        reserva = self.reserva_repo.obtener_por_id(reserva_id)
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
 
@@ -308,11 +307,11 @@ class ReservaService:
         if reserva.mesa_id:
             mesas_actuales_ids.append(reserva.mesa_id)
         elif reserva.union_mesa_id:
-            union = get_container().union_mesa_service.repo.obtener_por_id(reserva.union_mesa_id)
+            union = self.union_mesa_repo.obtener_por_id(reserva.union_mesa_id)
             if union:
                 mesas_actuales_ids = list(union.mesa_ids)
 
-        todas = get_container().mesa_service.repo.listar_activas()
+        todas = self.mesa_repo.listar_activas()
         mesas = [m for m in todas if m.estado == 'LIBRE' or m.id in mesas_actuales_ids]
         return {
             'reserva': reserva,

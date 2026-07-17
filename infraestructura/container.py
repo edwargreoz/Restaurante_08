@@ -71,7 +71,11 @@ class Container:
             linea_comanda_repo=self.linea_comanda_repo,
         )
         self.caja_service = CajaService(caja_repo=self.caja_repo)
-        self.reserva_service = ReservaService(reserva_repo=self.reserva_repo)
+        self.reserva_service = ReservaService(
+            reserva_repo=self.reserva_repo,
+            mesa_repo=self.mesa_repo,
+            union_mesa_repo=self.union_mesa_repo,
+        )
         self.pago_service = PagoService(comanda_service=self.comanda_service)
         self.pago_service.repo = self.pago_repo
 
