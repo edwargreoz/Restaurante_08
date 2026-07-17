@@ -12,6 +12,7 @@ from mesas.services import _notificar_plano
 
 from dominio.puertos.repositorios import IReservaRepository
 from typing import Optional
+from infraestructura.container import get_container
 
 
 class ReservaService:
@@ -202,7 +203,7 @@ class ReservaService:
             if reserva.union_mesa.activo:
                 reserva.union_mesa.activo = False
                 get_container().union_mesa_service.repo.guardar(reserva.union_mesa)
-        reserva.delete()
+        self.reserva_repo.eliminar(reserva.id)
         _notificar_plano()
 
     def _validar_datos(self, mesas_ids, fecha, hora_inicio, hora_fin,
