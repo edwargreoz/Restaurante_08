@@ -150,7 +150,7 @@ class MesaService:
         uniones = [get_container().union_mesa_service.repo.obtener_activa_por_mesa(mesa_model.id)]
         for union in uniones:
             mesas_activas = [m for m in get_container().mesa_service.repo.listar_activas_por_ids(union.mesas) if m.activo]
-            if mesas_activas.count() < 2:
+            if len(mesas_activas) < 2:
                 union.activo = False
                 get_container().union_mesa_service.repo.guardar(union)
 
@@ -232,10 +232,10 @@ class UnionMesaService:
             raise UnionInvalida('Selecciona al menos 2 mesas')
 
         mesas = self.repo.listar_activas_por_ids(mesa_ids)
-        if mesas.count() < 2:
+        if len(mesas) < 2:
             raise UnionInvalida('Las mesas seleccionadas no existen')
 
-        if mesas.filter(estado='RESERVADA').exists():
+        if any(m.estado == 'RESERVADA' for m in mesas):
             raise UnionInvalida('No puedes unir mesas que están reservadas')
 
         zonas = set(m.zona for m in mesas)

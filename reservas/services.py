@@ -213,7 +213,7 @@ class ReservaService:
                 'Debe seleccionar al menos una mesa'
             )
         ms = get_container().mesa_service.mesa_repo.listar_activas_por_ids(mesas_ids)
-        if ms.count() != len(mesas_ids):
+        if len(ms) != len(mesas_ids):
             raise ReglaNegocioViolada('Algunas mesas no existen')
         zonas = set(m.zona for m in ms)
         if len(zonas) > 1:
