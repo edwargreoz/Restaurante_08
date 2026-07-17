@@ -18,7 +18,7 @@ from menu.services import CategoriaService, PlatoService
 from mesas.services import MesaService, UnionMesaService
 from pedidos.services import ComandaService, LineaComandaService
 from inventario.services import InsumoService, RecetaService, UnidadConversionService
-from caja.services import CajaService, PagoService
+from caja.services import CajaService, PagoService, ReporteService
 from reservas.services import ReservaService
 from core.services import DashboardService, UsuarioService
 
@@ -86,14 +86,21 @@ class Container:
         self.linea_comanda_service = LineaComandaService(
             linea_comanda_repo=self.linea_comanda_repo,
         )
-        self.caja_service = CajaService(caja_repo=self.caja_repo)
+        self.caja_service = CajaService(
+            caja_repo=self.caja_repo,
+            comanda_repo=self.comanda_repo,
+            pago_repo=self.pago_repo,
+        )
         self.reserva_service = ReservaService(
             reserva_repo=self.reserva_repo,
             mesa_repo=self.mesa_repo,
             union_mesa_repo=self.union_mesa_repo,
         )
-        self.pago_service = PagoService(comanda_service=self.comanda_service)
-        self.pago_service.repo = self.pago_repo
+        self.pago_service = PagoService(
+            comanda_service=self.comanda_service,
+            comanda_repo=self.comanda_repo,
+            pago_repo=self.pago_repo,
+        )
 
         self.dashboard_service = DashboardService(
             mesa_repo=self.mesa_repo,
@@ -103,6 +110,11 @@ class Container:
             pago_repo=self.pago_repo,
         )
         self.usuario_service = UsuarioService(usuario_repo=self.usuario_repo)
+
+        self.reporte_service = ReporteService(
+            pago_service=self.pago_service,
+            insumo_repo=self.insumo_repo,
+        )
 
 import threading
 

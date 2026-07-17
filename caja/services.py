@@ -6,9 +6,9 @@ from django.db.models import Sum, Count
 from core.excepciones import (
     CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioViolada,
 )
-from caja.models import Caja, Pago
-from pedidos.models import Comanda
-from dominio.puertos.repositorios import ICajaRepository
+from dominio.puertos.repositorios import (
+    ICajaRepository, IComandaRepository, IPagoRepository,
+)
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -17,13 +17,16 @@ if TYPE_CHECKING:
 
 
 class CajaService:
-    def __init__(self, caja_repo: ICajaRepository):
+    def __init__(self, caja_repo: ICajaRepository,
+                 comanda_repo: IComandaRepository = None,
+                 pago_repo: IPagoRepository = None):
         self.repo = caja_repo
+        self.comanda_repo = comanda_repo
+        self.pago_repo = pago_repo
 
     @transaction.atomic
     def abrir_turno(self, turno_nombre: str, usuario,
-                    saldo_inicial: Decimal = Decimal('0')) -> Caja:
-        from infraestructura.container import get_container
+                    saldo_inicial: Decimal = Decimal('0')):
         caja_existente = self.repo.obtener_abierta()
         if caja_existente:
             raise ReglaNegocioViolada('Ya hay un turno de caja abierto')
@@ -44,11 +47,10 @@ class CajaService:
 
     @transaction.atomic
     def cerrar_turno(self, caja_id: int) -> dict:
-        from infraestructura.container import get_container
         caja = self.repo.obtener_abierta()
         if not caja:
             raise RecursoNoEncontrado('No hay turno abierto o no existe')
-        comandas_pendientes = any(c for c in get_container().comanda_service.comanda_repo.listar_activas() if c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA'])
+        comandas_pendientes = any(c for c in self.comanda_repo.listar_activas() if c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA'])
         if comandas_pendientes:
             raise ReglaNegocioViolada(
                 'Hay comandas activas. Ciérralas antes de cerrar turno.'
@@ -58,16 +60,19 @@ class CajaService:
         self.repo.guardar(caja)
         return {
             'caja': caja,
-            'total_ventas': sum(p.monto for p in get_container().pago_service.repo.listar_por_caja(caja.id)),
+            'total_ventas': sum(p.monto for p in self.pago_repo.listar_por_caja(caja.id)),
         }
 
 class PagoService:
-    def __init__(self, comanda_service: 'ComandaService' = None):
+    def __init__(self, comanda_service: 'ComandaService' = None,
+                 comanda_repo: IComandaRepository = None,
+                 pago_repo: IPagoRepository = None):
         self.comanda_service = comanda_service
+        self.comanda_repo = comanda_repo
+        self.pago_repo = pago_repo
 
     def obtener_comanda_para_cobro(self, comanda_id: int):
-        from infraestructura.container import get_container
-        comanda = get_container().comanda_service.comanda_repo.obtener_con_lineas(comanda_id)
+        comanda = self.comanda_repo.obtener_con_lineas(comanda_id)
         if comanda and comanda.estado != 'LISTA':
             comanda = None
         if not comanda:
@@ -77,13 +82,11 @@ class PagoService:
         return comanda
 
     def listar_comandas_para_cobro(self):
-        from infraestructura.container import get_container
-        return [c for c in get_container().comanda_service.comanda_repo.listar() if c.estado in ['ABIERTA', 'LISTA']]
+        return [c for c in self.comanda_repo.listar() if c.estado in ['ABIERTA', 'LISTA']]
 
     def listar_pagos_con_filtros(self, caja_id=None,
                                   fecha_desde=None, fecha_hasta=None):
-        from infraestructura.container import get_container
-        pagos = get_container().pago_service.repo.listar_por_caja(caja_id) if caja_id else []
+        pagos = self.pago_repo.listar_por_caja(caja_id) if caja_id else []
         # if not caja_id, it is a complex query, we return empty list to keep it simple since this is an analytics endpoint that should be separated.
         if caja_id:
             pagos = [p for p in pagos if p.caja_id == caja_id]
@@ -106,8 +109,7 @@ class PagoService:
 
     def reporte_ventas(self, caja_id=None, fecha_desde=None,
                        fecha_hasta=None) -> dict:
-        from infraestructura.container import get_container
-        pagos = get_container().pago_service.repo.listar_por_caja(caja_id) if caja_id else get_container().pago_service.repo.listar()
+        pagos = self.pago_repo.listar_por_caja(caja_id) if caja_id else self.pago_repo.listar()
         if caja_id:
             pagos = [p for p in pagos if p.caja_id == caja_id]
         if fecha_desde:
@@ -138,18 +140,17 @@ class PagoService:
             'ticket_promedio': ticket_promedio,
         }
 class ReporteService:
-    @staticmethod
-    def ventas_del_dia():
-        from infraestructura.container import get_container
-        hoy = timezone.now().date()
-        return get_container().pago_service.reporte_ventas(fecha_desde=hoy, fecha_hasta=hoy)
+    def __init__(self, pago_service: PagoService = None,
+                 insumo_repo=None):
+        self.pago_service = pago_service
+        self.insumo_repo = insumo_repo
 
-    @staticmethod
-    def stock_critico():
-        from infraestructura.container import get_container
-        from django.db.models import F
-        from inventario.models import Insumo
-        return get_container().insumo_service.repo.listar_criticos()
+    def ventas_del_dia(self):
+        hoy = timezone.now().date()
+        return self.pago_service.reporte_ventas(fecha_desde=hoy, fecha_hasta=hoy)
+
+    def stock_critico(self):
+        return self.insumo_repo.listar_criticos()
 
     @staticmethod
     def top_platos(limite: int = 5):

@@ -143,7 +143,7 @@ class PagoServiceTest(TestCase):
         self.comanda.estado = 'ABIERTA'
         self.comanda.save()
         resultado = self.pago_svc.listar_comandas_para_cobro()
-        self.assertEqual(resultado.count(), 1)
+        self.assertEqual(len(resultado), 1)
 
 
 class ReporteServiceTest(TestCase):
@@ -151,7 +151,8 @@ class ReporteServiceTest(TestCase):
         self.usuario = User.objects.create_user(username='admin', password='test')
 
     def test_stock_critico_vacio(self):
-        resultado = ReporteService.stock_critico()
+        svc = ReporteService(insumo_repo=get_container().insumo_repo)
+        resultado = svc.stock_critico()
         self.assertEqual(resultado.count(), 0)
 
     def test_top_platos_vacio(self):
