@@ -39,6 +39,18 @@ class PlatoRepository:
         )
 
 
+    def listar(self) -> List[Plato]:
+        return [
+            Plato(
+                id=p.id, nombre=p.nombre, precio=p.precio,
+                categoria_id=p.categoria_id, receta_id=p.receta_id,
+                disponible=p.disponible,
+                tiempo_preparacion_min=p.tiempo_preparacion_min,
+                descripcion=p.descripcion,
+            )
+            for p in PlatoModel.activos.all()
+        ]
+
     def listar_disponibles(self) -> List[Plato]:
         return [
             Plato(id=p.id, nombre=p.nombre, precio=p.precio,
@@ -47,6 +59,18 @@ class PlatoRepository:
                   tiempo_preparacion_min=p.tiempo_preparacion_min,
                   descripcion=p.descripcion)
             for p in PlatoModel.activos.filter(disponible=True)
+        ]
+
+    def listar_por_ids(self, ids: list) -> List[Plato]:
+        return [
+            Plato(
+                id=p.id, nombre=p.nombre, precio=p.precio,
+                categoria_id=p.categoria_id, receta_id=p.receta_id,
+                disponible=p.disponible,
+                tiempo_preparacion_min=p.tiempo_preparacion_min,
+                descripcion=p.descripcion,
+            )
+            for p in PlatoModel.activos.filter(id__in=ids)
         ]
 
     def eliminar(self, plato_id: int) -> None:
