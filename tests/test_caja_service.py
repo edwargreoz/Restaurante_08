@@ -156,5 +156,6 @@ class ReporteServiceTest(TestCase):
         self.assertEqual(resultado.count(), 0)
 
     def test_top_platos_vacio(self):
-        resultado = ReporteService.top_platos()
+        svc = ReporteService(linea_comanda_repo=get_container().linea_comanda_repo)
+        resultado = svc.top_platos()
         self.assertEqual(len(list(resultado)), 0)

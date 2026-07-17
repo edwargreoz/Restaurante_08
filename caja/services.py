@@ -141,9 +141,10 @@ class PagoService:
         }
 class ReporteService:
     def __init__(self, pago_service: PagoService = None,
-                 insumo_repo=None):
+                 insumo_repo=None, linea_comanda_repo=None):
         self.pago_service = pago_service
         self.insumo_repo = insumo_repo
+        self.linea_comanda_repo = linea_comanda_repo
 
     def ventas_del_dia(self):
         hoy = timezone.now().date()
@@ -152,6 +153,14 @@ class ReporteService:
     def stock_critico(self):
         return self.insumo_repo.listar_criticos()
 
-    @staticmethod
-    def top_platos(limite: int = 5):
-        return []
+    def top_platos(self, limite: int = 5):
+        from collections import defaultdict
+        from dominio.puertos.repositorios import IPlatoRepository
+        lineas = self.linea_comanda_repo.listar()
+        vendidos = defaultdict(lambda: {'cantidad': 0, 'plato_id': None})
+        for linea in lineas:
+            plato_id = linea.plato_id
+            vendidos[plato_id]['cantidad'] += linea.cantidad
+            vendidos[plato_id]['plato_id'] = plato_id
+        ranking = sorted(vendidos.values(), key=lambda x: x['cantidad'], reverse=True)[:limite]
+        return ranking
