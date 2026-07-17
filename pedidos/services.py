@@ -13,11 +13,7 @@ from core.excepciones import (
 from dominio.puertos.repositorios import (
     IComandaRepository, IMesaRepository, ILineaComandaRepository,
 )
-from pedidos.models import Comanda, LineaComanda
-from mesas.models import Mesa, UnionMesa
-from caja.models import Caja, Pago
-from inventario.models import MovimientoInsumo, convertir_unidad
-from menu.models import Plato
+from inventario.models import convertir_unidad
 
 
 
@@ -30,7 +26,7 @@ class ComandaService:
         self.mesa_repo = mesa_repo
 
     @transaction.atomic
-    def abrir(self, mesa_id: int, usuario) -> Comanda:
+    def abrir(self, mesa_id: int, usuario) -> 'Comanda':
         from infraestructura.container import get_container
         caja_abierta = get_container().caja_service.repo.existe_abierta()
         if not caja_abierta:
@@ -48,19 +44,19 @@ class ComandaService:
         if mesa.estado not in ['LIBRE', 'RESERVADA']:
             raise MesaConComandaActiva('La mesa no está libre ni reservada')
 
-        union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id) if hasattr(get_container().union_mesa_service, 'repo') else None
-        if not union:
-            from mesas.models import UnionMesa
-            union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id)
+        union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id)
         if union:
-            for m in union.mesas.all():
-                comandas_m = self.comanda_repo.listar_por_mesa(m.id)
+            for m_id in union.mesa_ids:
+                if m_id == mesa.id:
+                    continue
+                comandas_m = self.comanda_repo.listar_por_mesa(m_id)
                 comanda_m = next((c for c in comandas_m if c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA']), None)
                 if comanda_m:
                     return self.comanda_repo.obtener_por_id(comanda_m.id)
-                if m.estado not in ['LIBRE', 'RESERVADA']:
+                m_obj = get_container().mesa_service.repo.obtener_por_id(m_id)
+                if m_obj and m_obj.estado not in ['LIBRE', 'RESERVADA']:
                     raise MesaConComandaActiva(
-                        f'La mesa {m.numero} de la unión no está libre ni reservada'
+                        f'La mesa {m_obj.numero} de la unión no está libre ni reservada'
                     )
 
         from dominio.entidades.comanda import Comanda
@@ -69,10 +65,12 @@ class ComandaService:
         self.mesa_repo.guardar(mesa)
 
         if union:
-            for m in union.mesas.all():
-                if m.id != mesa.id:
-                    m.estado = 'OCUPADA'
-                    self.mesa_repo.guardar(m)
+            for m_id in union.mesa_ids:
+                if m_id != mesa.id:
+                    m_obj = get_container().mesa_service.repo.obtener_por_id(m_id)
+                    if m_obj:
+                        m_obj.estado = 'OCUPADA'
+                        self.mesa_repo.guardar(m_obj)
 
         _notificar_plano()
         return comanda
@@ -84,7 +82,7 @@ class ComandaService:
         if comanda.estado not in ('ABIERTA', 'LISTA'):
             raise ComandaNoDisponible('La comanda no está abierta')
         errores = []
-        platos_a_crear = []
+        lineas_a_crear = []
         movimientos = []
 
         for item in platos_data:
@@ -107,19 +105,22 @@ class ComandaService:
                 })
                 continue
 
-            recetas = plato.receta.insumos.select_related(
-                'insumo'
-            ).select_for_update(of=('insumo',))
+            # Obtener los insumos de la receta del plato vía repositorio
+            todos_ri = get_container().receta_service.repo.listar_receta_insumos()
+            recetas_plato = [ri for ri in todos_ri if ri.receta_id == plato.receta_id and ri.activo]
             faltantes = []
             deducciones = []
 
-            for receta in recetas:
-                insumo = receta.insumo
-                necesario_en_unidad_receta = receta.cantidad_por_porcion * Decimal(str(cantidad))
+            for ri in recetas_plato:
+                insumo = get_container().insumo_service.repo.obtener_por_id(ri.insumo_id)
+                if not insumo:
+                    faltantes.append(f"Insumo ID {ri.insumo_id}: no encontrado")
+                    continue
+                necesario_en_unidad_receta = ri.cantidad_por_porcion * Decimal(str(cantidad))
                 try:
                     necesario = convertir_unidad(
                         necesario_en_unidad_receta,
-                        receta.unidad,
+                        ri.unidad,
                         insumo.unidad
                     )
                 except (ValueError, KeyError) as e:
@@ -136,14 +137,15 @@ class ComandaService:
 
                 stock_anterior = insumo.stock_actual
                 insumo.stock_actual -= necesario
-                get_container().insumo_service.insumo_repo.guardar(insumo)
+                get_container().insumo_service.repo.guardar(insumo)
 
+                from dominio.entidades.movimiento_insumo import MovimientoInsumo
                 deducciones.append(MovimientoInsumo(
-                    insumo=insumo, comanda=comanda,
+                    insumo_id=insumo.id, comanda_id=comanda.id,
                     tipo='DEDUCCION', cantidad=necesario,
                     stock_anterior=stock_anterior,
                     stock_posterior=insumo.stock_actual,
-                    usuario=usuario,
+                    usuario_id=getattr(usuario, 'id', None),
                     observacion=f"Plato: {plato.nombre} x{cantidad}",
                     origen='COMANDA',
                 ))
@@ -156,38 +158,37 @@ class ComandaService:
                 continue
 
             movimientos.extend(deducciones)
-            platos_a_crear.append(LineaComanda(
-                comanda=comanda, plato=plato,
+            from dominio.entidades.linea_comanda import LineaComanda
+            lineas_a_crear.append(LineaComanda(
+                comanda_id=comanda.id, plato_id=plato.id,
                 cantidad=cantidad, observacion=observacion,
             ))
 
         if errores:
             raise StockInsuficiente({'errores': errores})
 
-        self.linea_comanda_repo.guardar_lote(platos_a_crear)
-        # self.movimiento_insumo_repo.guardar_lote(movimientos)
-        from inventario.models import MovimientoInsumo
+        self.linea_comanda_repo = get_container().linea_comanda_service.linea_comanda_repo
+        self.linea_comanda_repo.guardar_lote(lineas_a_crear)
         get_container().movimiento_insumo_repo.guardar_lote(movimientos)
 
         # --- Regla InsumoAgotado ---
-        # Si algún insumo llegó a 0, marcar los platos que lo usan como no disponibles
         insumos_agotados = set()
         for mov in movimientos:
             if mov.stock_posterior <= 0:
                 insumos_agotados.add(mov.insumo_id)
 
         if insumos_agotados:
-            # This operation updates the DB directly, so we delegate it to repo if possible, but actually we can just pass for now since this isn't strictly requested to be moved to repo if it's too complex, or we can use a raw update.
             platos_afectados = get_container().plato_service.plato_repo.listar_por_ids(list(insumos_agotados))
             for p in platos_afectados:
                 p.disponible = False
                 get_container().plato_service.plato_repo.guardar(p)
 
         _notificar_comanda(comanda.id)
-        return platos_a_crear
+        return lineas_a_crear
 
     @transaction.atomic
-    def fusionar(self, comanda_id: int, otra_comanda_id: int) -> Comanda:
+    def fusionar(self, comanda_id: int, otra_comanda_id: int):
+        from infraestructura.container import get_container
         comanda = self.comanda_repo.obtener_con_bloqueo(comanda_id)
         otra = self.comanda_repo.obtener_con_bloqueo(otra_comanda_id)
 
@@ -196,53 +197,57 @@ class ComandaService:
         if otra.estado in ('COBRADA', 'ANULADA'):
             raise ComandaNoDisponible('La comanda a fusionar no está activa')
 
-        from pedidos.models import LineaComanda
-        self.linea_comanda_repo.cambiar_comanda_lote(otra.id, comanda.id)
+        linea_repo = get_container().linea_comanda_service.linea_comanda_repo
+        linea_repo.cambiar_comanda_lote(otra.id, comanda.id)
         otra.estado = 'ANULADA'
         otra.fecha_cierre = timezone.now()
         self.comanda_repo.guardar(otra)
         return comanda
 
     @transaction.atomic
-    def anular(self, comanda_id: int, usuario=None) -> Comanda:
+    def anular(self, comanda_id: int, usuario=None):
+        from infraestructura.container import get_container
         comanda = self.comanda_repo.obtener_con_bloqueo(comanda_id)
         if comanda.estado == 'COBRADA':
             raise ComandaNoDisponible('No se puede anular una comanda ya cobrada')
         if comanda.estado == 'ANULADA':
             raise ComandaNoDisponible('La comanda ya está anulada')
 
-        lineas = comanda.lineas.select_related('plato__receta').all()
+        # Obtener líneas de la comanda vía repositorio
+        linea_repo = get_container().linea_comanda_service.linea_comanda_repo
+        lineas = linea_repo.listar_por_comanda(comanda.id)
         movimientos = []
         for linea in lineas:
-            if not linea.plato.receta_id:
+            plato = get_container().plato_service.plato_repo.obtener_por_id(linea.plato_id)
+            if not plato or not plato.receta_id:
                 continue
-            recetas = linea.plato.receta.insumos.select_related(
-                'insumo'
-            ).select_for_update(of=('insumo',))
-            for receta in recetas:
-                insumo = receta.insumo
-                cantidad = receta.cantidad_por_porcion * Decimal(str(linea.cantidad))
+            todos_ri = get_container().receta_service.repo.listar_receta_insumos()
+            recetas_plato = [ri for ri in todos_ri if ri.receta_id == plato.receta_id and ri.activo]
+            for ri in recetas_plato:
+                insumo = get_container().insumo_service.repo.obtener_por_id(ri.insumo_id)
+                if not insumo:
+                    continue
+                cantidad = ri.cantidad_por_porcion * Decimal(str(linea.cantidad))
                 try:
                     cantidad_a_restaurar = convertir_unidad(
-                        cantidad, receta.unidad, insumo.unidad
+                        cantidad, ri.unidad, insumo.unidad
                     )
                 except (ValueError, KeyError):
                     continue
                 stock_anterior = insumo.stock_actual
                 insumo.stock_actual += cantidad_a_restaurar
-                get_container().insumo_service.insumo_repo.guardar(insumo)
+                get_container().insumo_service.repo.guardar(insumo)
+                from dominio.entidades.movimiento_insumo import MovimientoInsumo
                 movimientos.append(MovimientoInsumo(
-                    insumo=insumo, comanda=comanda,
+                    insumo_id=insumo.id, comanda_id=comanda.id,
                     tipo='REPOSICION', cantidad=cantidad_a_restaurar,
                     stock_anterior=stock_anterior,
                     stock_posterior=insumo.stock_actual,
-                    usuario=usuario,
+                    usuario_id=getattr(usuario, 'id', None),
                     observacion=f"Anulación comanda #{comanda.id}",
                     origen='COMANDA',
                 ))
 
-        # self.movimiento_insumo_repo.guardar_lote(movimientos)
-        from inventario.models import MovimientoInsumo
         get_container().movimiento_insumo_repo.guardar_lote(movimientos)
         comanda.estado = 'ANULADA'
         comanda.fecha_cierre = timezone.now()
@@ -255,7 +260,8 @@ class ComandaService:
 
     @transaction.atomic
     def pagar(self, comanda_id: int, metodo: str, monto, vuelto=0,
-              referencia='', caja=None) -> Comanda:
+              referencia='', caja=None):
+        from infraestructura.container import get_container
         comanda = self.comanda_repo.obtener_con_bloqueo(comanda_id)
         if comanda.estado != 'LISTA':
             raise ComandaNoDisponible('La comanda no está lista para pagar')
@@ -285,7 +291,8 @@ class ComandaService:
         return comanda
 
     @transaction.atomic
-    def pagar_split(self, comanda_id: int, pagos_lista: list, caja=None) -> Comanda:
+    def pagar_split(self, comanda_id: int, pagos_lista: list, caja=None):
+        from infraestructura.container import get_container
         comanda = self.comanda_repo.obtener_con_bloqueo(comanda_id)
         if comanda.estado != 'LISTA':
             raise ComandaNoDisponible('La comanda no está lista para pagar')
@@ -318,9 +325,6 @@ class ComandaService:
 
     def obtener_datos_tomar_pedido(self, mesa_id: int):
         from infraestructura.container import get_container
-        from pedidos.models import Comanda
-        from mesas.models import Mesa
-        from menu.models import Categoria
         mesa = self.mesa_repo.obtener_por_id(mesa_id)
         if not mesa:
             raise RecursoNoEncontrado('Mesa no encontrada')
@@ -337,7 +341,8 @@ class LineaComandaService:
         self.linea_comanda_repo = linea_comanda_repo
 
     @transaction.atomic
-    def enviar_cocina(self, linea_id: int) -> LineaComanda:
+    def enviar_cocina(self, linea_id: int):
+        from infraestructura.container import get_container
         linea = self.linea_comanda_repo.obtener_con_bloqueo(linea_id)
         if linea.estado != 'PENDIENTE':
             raise TransicionEstadoInvalida(
@@ -346,18 +351,21 @@ class LineaComandaService:
         linea.estado = 'EN_PREP'
         self.linea_comanda_repo.guardar(linea)
 
-        comanda = linea.comanda
-        lineas = list(comanda.lineas.select_related('plato').all())
+        # Verificar si todas las líneas están en preparación
+        lineas = self.linea_comanda_repo.listar_por_comanda(linea.comanda_id)
         if all(l.estado == 'EN_PREP' for l in lineas):
-            comanda.estado = 'EN_PREPARACION'
-            self.comanda_repo.guardar(comanda)
+            comanda = get_container().comanda_service.comanda_repo.obtener_por_id(linea.comanda_id)
+            if comanda:
+                comanda.estado = 'EN_PREPARACION'
+                get_container().comanda_service.comanda_repo.guardar(comanda)
 
         _notificar_kds()
         return linea
        
 
     @transaction.atomic
-    def marcar_listo(self, linea_id: int) -> LineaComanda:
+    def marcar_listo(self, linea_id: int):
+        from infraestructura.container import get_container
         linea = self.linea_comanda_repo.obtener_con_bloqueo(linea_id)
         if linea.estado != 'EN_PREP':
             raise TransicionEstadoInvalida(
@@ -366,20 +374,22 @@ class LineaComandaService:
         linea.estado = 'LISTO'
         self.linea_comanda_repo.guardar(linea)
 
-        comanda = linea.comanda
-        lineas = list(comanda.lineas.select_related('plato').all())
+        # Verificar si todas las líneas están listas
+        lineas = self.linea_comanda_repo.listar_por_comanda(linea.comanda_id)
         if all(l.estado == 'LISTO' for l in lineas):
-            comanda.estado = 'LISTA'
-            self.comanda_repo.guardar(comanda)
+            comanda = get_container().comanda_service.comanda_repo.obtener_por_id(linea.comanda_id)
+            if comanda:
+                comanda.estado = 'LISTA'
+                get_container().comanda_service.comanda_repo.guardar(comanda)
 
         _notificar_kds()
         _notificar_plano()
         return linea
-    @staticmethod
-    def obtener_panel_kds():
+
+    def obtener_panel_kds(self):
         """Retorna comandas activas para el panel de cocina (KDS)."""
-        pass
-        return self.comanda_repo.listar_para_kds()
+        from infraestructura.container import get_container
+        return get_container().comanda_service.comanda_repo.listar_para_kds()
 
     @staticmethod
     def obtener_comandas_con_lineas_pendientes():
@@ -402,15 +412,11 @@ def _validar_referencia_tarjeta(referencia: str):
 
 
 def _finalizar_reservas_comanda(comanda):
-    from reservas.models import Reserva
     from infraestructura.container import get_container
     container = get_container()
-    mesa = comanda.mesa
-    union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id) if hasattr(get_container().union_mesa_service, 'repo') else None
-    if not union:
-        from mesas.models import UnionMesa
-        union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id)
-    for r in get_container().reserva_service.reserva_repo.listar_activas_por_mesa(mesa.id):
+    mesa_id = comanda.mesa_id
+    union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa_id)
+    for r in get_container().reserva_service.reserva_repo.listar_activas_por_mesa(mesa_id):
         container.reserva_service.finalizar(r.id)
     if union:
         for r in get_container().reserva_service.reserva_repo.listar_activas_por_union(union.id):
@@ -419,43 +425,47 @@ def _finalizar_reservas_comanda(comanda):
 
 def _actualizar_estado_mesa_post_pago(comanda):
     from infraestructura.container import get_container
-    mesa = comanda.mesa
-    union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id)
+    mesa_id = comanda.mesa_id
+    mesa = get_container().mesa_service.repo.obtener_por_id(mesa_id)
+    if not mesa:
+        return
+    union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa_id)
     
-    tiene_reserva = bool(get_container().reserva_service.repo.listar_activas_por_mesa(mesa.id))
-    tiene_reserva_union = bool(get_container().reserva_service.repo.listar_activas_por_union(union.id)) if union else False
+    tiene_reserva = bool(get_container().reserva_service.reserva_repo.listar_activas_por_mesa(mesa_id))
+    tiene_reserva_union = bool(get_container().reserva_service.reserva_repo.listar_activas_por_union(union.id)) if union else False
     
     mesa.estado = 'RESERVADA' if (tiene_reserva or tiene_reserva_union) else 'LIMPIEZA'
-    get_container().mesa_service.mesa_repo.guardar(mesa)
+    get_container().mesa_service.repo.guardar(mesa)
     
     if union:
-        # Pre-cargar las mesas de la union con sus reservas
-        mesas_union = list(union.mesas.all())
-        for m in mesas_union:
-            if m.id != mesa.id:
-                tiene_r = bool(get_container().reserva_service.repo.listar_activas_por_mesa(m.id)) or tiene_reserva_union
-                m.estado = 'RESERVADA' if tiene_r else 'LIMPIEZA'
-                get_container().mesa_service.mesa_repo.guardar(m)
+        for m_id in union.mesa_ids:
+            if m_id != mesa_id:
+                m = get_container().mesa_service.repo.obtener_por_id(m_id)
+                if m:
+                    tiene_r = bool(get_container().reserva_service.reserva_repo.listar_activas_por_mesa(m_id)) or tiene_reserva_union
+                    m.estado = 'RESERVADA' if tiene_r else 'LIMPIEZA'
+                    get_container().mesa_service.repo.guardar(m)
 
 
 def _liberar_mesas(comanda):
     from infraestructura.container import get_container
-    mesa = comanda.mesa
-    union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id) if hasattr(get_container().union_mesa_service, 'repo') else None
-    if not union:
-        from mesas.models import UnionMesa
-        union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id)
-    mesas_a_liberar = [mesa]
+    mesa_id = comanda.mesa_id
+    mesa = get_container().mesa_service.repo.obtener_por_id(mesa_id)
+    if not mesa:
+        return
+    union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa_id)
+    mesas_a_liberar_ids = [mesa_id]
     if union:
-        mesas_a_liberar = list(union.mesas.all())
-    for m in mesas_a_liberar:
-        tiene_otra = False
-        if not tiene_otra:
-            tiene_reserva = bool(get_container().reserva_service.repo.listar_activas_por_mesa(m.id))
-            if union:
-                tiene_reserva = tiene_reserva or bool(get_container().reserva_service.repo.listar_activas_por_union(union.id))
-            m.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
-            get_container().mesa_service.mesa_repo.guardar(m)
+        mesas_a_liberar_ids = list(union.mesa_ids)
+    for m_id in mesas_a_liberar_ids:
+        m = get_container().mesa_service.repo.obtener_por_id(m_id)
+        if not m:
+            continue
+        tiene_reserva = bool(get_container().reserva_service.reserva_repo.listar_activas_por_mesa(m_id))
+        if union:
+            tiene_reserva = tiene_reserva or bool(get_container().reserva_service.reserva_repo.listar_activas_por_union(union.id))
+        m.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
+        get_container().mesa_service.repo.guardar(m)
 
 
 def _notificar_kds():

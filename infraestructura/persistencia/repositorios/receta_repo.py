@@ -43,3 +43,21 @@ class RecetaRepository:
             return self._a_entidad_ri(ri)
         except RecetaInsumoModel.DoesNotExist:
             return None
+
+    def eliminar_receta_insumo(self, ri_id: int) -> None:
+        RecetaInsumoModel.objects.filter(id=ri_id).delete()
+
+    def actualizar_receta_insumo(self, ri_id: int, **kwargs) -> RecetaInsumo:
+        RecetaInsumoModel.objects.filter(id=ri_id).update(**kwargs)
+        ri = RecetaInsumoModel.objects.get(id=ri_id)
+        return self._a_entidad_ri(ri)
+
+    def guardar(self, receta) -> Receta:
+        r, _ = RecetaModel.objects.update_or_create(
+            id=receta.id,
+            defaults={'nombre': receta.nombre, 'activo': getattr(receta, 'activo', True)}
+        )
+        return self._a_entidad(r)
+
+    def eliminar(self, receta_id: int) -> None:
+        RecetaModel.objects.filter(id=receta_id).delete()

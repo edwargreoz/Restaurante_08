@@ -82,6 +82,7 @@ class PagoService:
 
     def listar_pagos_con_filtros(self, caja_id=None,
                                   fecha_desde=None, fecha_hasta=None):
+        from infraestructura.container import get_container
         pagos = get_container().pago_service.repo.listar_por_caja(caja_id) if caja_id else []
         # if not caja_id, it is a complex query, we return empty list to keep it simple since this is an analytics endpoint that should be separated.
         if caja_id:
@@ -148,7 +149,7 @@ class ReporteService:
         from infraestructura.container import get_container
         from django.db.models import F
         from inventario.models import Insumo
-        return get_container().insumo_service.insumo_repo.listar_criticos()
+        return get_container().insumo_service.repo.listar_criticos()
 
     @staticmethod
     def top_platos(limite: int = 5):

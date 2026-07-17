@@ -25,6 +25,17 @@ class PagoRepository:
     def listar_por_comanda(self, comanda_id: int) -> List[Pago]:
         return [self._a_entidad(p) for p in PagoModel.objects.filter(comanda_id=comanda_id)]
 
+    def listar_por_caja(self, caja_id: int) -> List[Pago]:
+        return [self._a_entidad(p) for p in PagoModel.objects.filter(caja_id=caja_id)]
+
+    def listar(self) -> List[Pago]:
+        return [self._a_entidad(p) for p in PagoModel.objects.all()]
+
+    def total_por_caja(self, caja_id: int) -> float:
+        from django.db.models import Sum
+        result = PagoModel.objects.filter(caja_id=caja_id).aggregate(total=Sum('monto'))
+        return float(result['total'] or 0)
+
     def _a_entidad(self, p) -> Pago:
         return Pago(
             id=p.id, comanda_id=p.comanda_id, metodo=p.metodo,

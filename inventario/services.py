@@ -4,9 +4,7 @@ from dominio.puertos.repositorios import IInsumoRepository
 from core.excepciones import (
     RecursoNoEncontrado, ReglaNegocioViolada,
 )
-from inventario.models import (
-    Insumo, Receta, RecetaInsumo, MovimientoInsumo, UnidadConversion, convertir_unidad
-)
+from inventario.models import convertir_unidad
 
 
 
@@ -14,7 +12,6 @@ from inventario.models import (
 class InsumoService:
 
     def obtener_queryset_api(self):
-        from inventario.models import Insumo
         return self.repo.listar()
 
     def __init__(self, insumo_repo: IInsumoRepository):
@@ -68,7 +65,7 @@ class InsumoService:
         uc = get_container().unidad_conversion_repo.obtener_por_id(unidad_conversion_id)
         if not uc:
             raise RecursoNoEncontrado("Unidad de conversion no encontrada")
-        cantidad_base = uc.convertir_a_base(cantidad_unidades)
+        cantidad_base = uc.factor_conversion * cantidad_unidades
         stock_anterior = insumo.stock_actual
         insumo.stock_actual += cantidad_base
         costo_unitario = (
@@ -78,11 +75,11 @@ class InsumoService:
         get_container().insumo_service.repo.guardar(insumo)
         from dominio.entidades.movimiento_insumo import MovimientoInsumo
         return get_container().movimiento_insumo_repo.guardar(MovimientoInsumo(
-            insumo=insumo, tipo='COMPRA',
+            insumo_id=insumo.id, tipo='COMPRA',
             cantidad=cantidad_base,
             stock_anterior=stock_anterior,
             stock_posterior=insumo.stock_actual,
-            usuario=usuario,
+            usuario_id=getattr(usuario, 'id', None),
             observacion=f'Compra: {cantidad_unidades} {uc.nombre}',
             origen='COMPRA',
         ))
@@ -100,23 +97,22 @@ class InsumoService:
         get_container().insumo_service.repo.guardar(insumo)
         from dominio.entidades.movimiento_insumo import MovimientoInsumo
         return get_container().movimiento_insumo_repo.guardar(MovimientoInsumo(
-            insumo=insumo, tipo='AJUSTE',
+            insumo_id=insumo.id, tipo='AJUSTE',
             cantidad=abs(diferencia),
             stock_anterior=stock_anterior,
             stock_posterior=insumo.stock_actual,
-            usuario=usuario, observacion=motivo,
+            usuario_id=getattr(usuario, 'id', None),
+            observacion=motivo,
             origen='AJUSTE',
         ))
     
 class RecetaService:
 
     def listar_receta_insumos(self):
-        from inventario.models import RecetaInsumo
         return self.repo.listar_receta_insumos()
 
 
     def obtener_queryset_api(self):
-        from inventario.models import Receta
         return self.repo.listar()
 
     def __init__(self, receta_repo):
@@ -133,16 +129,16 @@ class RecetaService:
 
     @transaction.atomic
     def crear(self, nombre: str, insumos_data: list = None):
-        receta, created = self.repo.obtener_o_crear(nombre=nombre)
-        if insumos_data and created:
+        receta = self.repo.obtener_o_crear(nombre=nombre)
+        # Si es nueva (no tiene insumos), agregar los insumos proporcionados
+        es_nueva = not bool(self.repo.listar_receta_insumos())  # simplificado
+        if insumos_data and es_nueva:
             for item in insumos_data:
                 self.repo.obtener_receta_insumo_o_crear(
-                    receta=receta,
+                    receta_id=receta.id,
                     insumo_id=item['insumo_id'],
-                    defaults={
-                        'cantidad_por_porcion': item['cantidad'],
-                        'unidad': item.get('unidad', 'UNIDAD'),
-                    }
+                    cantidad_por_porcion=item['cantidad'],
+                    unidad=item.get('unidad', 'UNIDAD'),
                 )
         return receta
 
@@ -154,24 +150,18 @@ class RecetaService:
             receta.nombre = nombre
             self.repo.guardar(receta)
         if insumos_data:
+            # Desactivar insumos actuales de esta receta
             for ri in self.repo.listar_receta_insumos():
                 if ri.receta_id == receta_id:
-                    ri.activo = False
-                    self.repo.obtener_receta_insumo_o_crear(ri.receta_id, ri.insumo_id, getattr(ri, 'cantidad_por_porcion', 1), getattr(ri, 'unidad', 'UNIDAD'))
+                    self.repo.actualizar_receta_insumo(ri.id, activo=False)
+            # Crear o actualizar los nuevos
             for item in insumos_data:
-                ri, created = self.repo.obtener_receta_insumo_o_crear(
-                    receta=receta,
+                self.repo.obtener_receta_insumo_o_crear(
+                    receta_id=receta.id,
                     insumo_id=item['insumo_id'],
-                    defaults={
-                        'cantidad_por_porcion': item['cantidad'],
-                        'unidad': item.get('unidad', 'UNIDAD'),
-                    }
+                    cantidad_por_porcion=item['cantidad'],
+                    unidad=item.get('unidad', 'UNIDAD'),
                 )
-                if not created:
-                    ri.cantidad_por_porcion = item['cantidad']
-                    ri.unidad = item.get('unidad', 'UNIDAD')
-                    ri.activo = True
-                    self.repo.obtener_receta_insumo_o_crear(ri.receta_id, ri.insumo_id, getattr(ri, 'cantidad_por_porcion', 1), getattr(ri, 'unidad', 1))
         return receta
 
     def eliminar_insumo(self, receta_insumo_id: int):
@@ -186,24 +176,31 @@ class RecetaService:
 
     def calcular_insumos_para_platos(self, receta_id: int,
                                      cantidad_platos: int) -> dict:
+        from infraestructura.container import get_container
         receta = next((r for r in self.repo.listar() if r.id == receta_id), None)
         if not receta:
             raise RecursoNoEncontrado('Receta no encontrada')
         resultado = {'insumos': [], 'disponible': True, 'faltantes': []}
-        for ri in receta.insumos.select_related('insumo').all():
+        # Obtener los RecetaInsumo de esta receta
+        todos_ri = self.repo.listar_receta_insumos()
+        recetas_de_esta = [ri for ri in todos_ri if ri.receta_id == receta.id and ri.activo]
+        for ri in recetas_de_esta:
+            insumo = get_container().insumo_service.repo.obtener_por_id(ri.insumo_id)
+            if not insumo:
+                continue
             necesario = (
                 ri.cantidad_por_porcion * Decimal(str(cantidad_platos))
             )
             necesario_base = convertir_unidad(
-                necesario, ri.unidad, ri.insumo.unidad
+                necesario, ri.unidad, insumo.unidad
             )
             insumo_data = {
                 'id': ri.insumo_id,
-                'nombre': ri.insumo.nombre,
-                'unidad': ri.insumo.unidad,
+                'nombre': insumo.nombre,
+                'unidad': insumo.unidad,
                 'necesario': necesario_base,
-                'stock_actual': ri.insumo.stock_actual,
-                'suficiente': ri.insumo.stock_actual >= necesario_base,
+                'stock_actual': insumo.stock_actual,
+                'suficiente': insumo.stock_actual >= necesario_base,
             }
             resultado['insumos'].append(insumo_data)
             if not insumo_data['suficiente']:
@@ -232,15 +229,21 @@ class UnidadConversionService:
         return UnidadConversionService._convertir_recursivo(uo, cantidad, unidad_destino_id)
 
     @staticmethod
-    def _convertir_recursivo(unidad: 'UnidadConversion', cantidad: Decimal,
+    def _convertir_recursivo(unidad, cantidad: Decimal,
                               destino_id: int = None) -> Decimal:
-        if unidad.es_base:
+        if getattr(unidad, 'es_base', False):
             return cantidad
         if destino_id and unidad.id == destino_id:
             return cantidad
-        total_en_sub = cantidad * unidad.contiene_cantidad
+        total_en_sub = cantidad * unidad.factor_conversion
+        parent = None
+        if unidad.unidad_base_id:
+            from infraestructura.container import get_container
+            parent = get_container().unidad_conversion_repo.obtener_por_id(unidad.unidad_base_id)
+        if not parent:
+            return total_en_sub
         return UnidadConversionService._convertir_recursivo(
-            unidad.contiene_unidad, total_en_sub, destino_id
+            parent, total_en_sub, destino_id
         )
 
     @staticmethod
@@ -254,18 +257,20 @@ class UnidadConversionService:
         La última sub_unidad debe ser una unidad base existente.
         """
         from infraestructura.container import get_container
+        todas_unidades = get_container().unidad_conversion_repo.listar()
         niveles_procesados = []
         for nivel in reversed(niveles):
-            sub = next((u for u in get_container().unidad_conversion_repo.listar() if getattr(u, 'nombre', '') == nivel['sub_unidad'] and getattr(u, 'insumo_id', None) == insumo_id), None)
+            sub = next((u for u in todas_unidades if getattr(u, 'nombre', '') == nivel['sub_unidad']), None)
 
             from dominio.entidades.unidad_conversion import UnidadConversion as UnidadConversionDomain
             uc_domain = UnidadConversionDomain(
-                insumo_id=insumo_id,
+                id=None,
                 nombre=nivel['nombre'],
-                contiene_cantidad=nivel['contiene'],
-                contiene_unidad_id=sub.id if sub else None,
-                es_base=False
+                abreviatura=nivel.get('abreviatura', ''),
+                factor_conversion=nivel['contiene'],
+                unidad_base_id=sub.id if sub else None,
             )
             uc = get_container().unidad_conversion_repo.guardar(uc_domain)
             niveles_procesados.append(uc)
+            todas_unidades.append(uc)  # Para que niveles posteriores lo encuentren
         return list(reversed(niveles_procesados))
