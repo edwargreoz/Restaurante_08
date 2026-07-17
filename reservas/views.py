@@ -96,24 +96,23 @@ def eliminar_reserva(request, reserva_id):
 @login_required
 @user_passes_test(es_mozo)
 def editar_reserva(request, reserva_id):
-    reserva = get_object_or_404(Reserva, id=reserva_id)
+    container = get_container()
+    try:
+        datos_edicion = container.reserva_service.obtener_datos_edicion(reserva_id)
+    except RecursoNoEncontrado as e:
+        messages.error(request, str(e))
+        return redirect('lista_reservas')
+
+    reserva = datos_edicion['reserva']
+    mesas = datos_edicion['mesas']
+    mesas_actuales_ids = datos_edicion['mesas_actuales_ids']
 
     if not reserva.activo:
         messages.error(request, 'No puedes editar una reserva cancelada.')
         return redirect('lista_reservas')
 
-    mesas_actuales_ids = []
-    if reserva.mesa:
-        mesas_actuales_ids.append(reserva.mesa.id)
-    elif reserva.union_mesa:
-        mesas_actuales_ids = [m.id for m in reserva.union_mesa.mesas.all()]
-
-    from django.db.models import Q
-    mesas = Mesa.activos.filter(Q(estado='LIBRE') | Q(id__in=mesas_actuales_ids))
-
     if request.method == 'POST':
         try:
-            container = get_container()
             container.reserva_service.editar(
                 reserva_id=reserva_id,
                 mesas_ids=request.POST.getlist('mesas_ids'),
@@ -152,3 +151,4 @@ def editar_reserva(request, reserva_id):
         'reserva': reserva,
         'mesas_actuales_ids': [str(x) for x in mesas_actuales_ids],
     })
+

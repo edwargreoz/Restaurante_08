@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Optional
+from core.excepciones import StockInsuficiente
 
 
 @dataclass
@@ -19,7 +20,7 @@ class Insumo:
 
     def deducir_stock(self, cantidad: Decimal) -> None:
         if self.stock_actual < cantidad:
-            raise ValueError(f'Stock insuficiente de {self.nombre}')
+            raise StockInsuficiente(f'Stock insuficiente de {self.nombre}')
         self.stock_actual -= cantidad
 
     def reponer_stock(self, cantidad: Decimal) -> None:

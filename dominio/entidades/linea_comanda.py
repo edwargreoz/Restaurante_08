@@ -13,7 +13,7 @@ class LineaComanda:
     estado: str = 'PENDIENTE'
 
     TRANSICIONES = {
-        'PENDIENTE': ['EN_PREP', 'ENTREGADO'],
+        'PENDIENTE': ['EN_PREP'],
         'EN_PREP': ['LISTO'],
         'LISTO': ['ENTREGADO'],
         'ENTREGADO': [],

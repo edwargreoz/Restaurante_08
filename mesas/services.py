@@ -16,23 +16,25 @@ class MesaService:
         container = get_container()
         return container.comanda_service.abrir(mesa_id, usuario)
 
+    @transaction.atomic
     def cambiar_estado(self, mesa_id: int, nuevo_estado: str):
         mesa_domain = self.repo.obtener_por_id(mesa_id)
         if not mesa_domain:
             raise RecursoNoEncontrado('Mesa no encontrada')
         from mesas.models import Mesa
-        mesa_model = Mesa.activos.get(id=mesa_id)
+        mesa_model = Mesa.activos.select_for_update().get(id=mesa_id)
         mesa_model.estado = nuevo_estado
         mesa_model.save(update_fields=['estado'])
         _notificar_plano()
         return mesa_model
 
+    @transaction.atomic
     def marcar_libre(self, mesa_id: int):
         from mesas.models import Mesa, UnionMesa
         mesa_domain = self.repo.obtener_por_id(mesa_id)
         if not mesa_domain:
             raise RecursoNoEncontrado('Mesa no encontrada')
-        mesa_model = Mesa.activos.get(id=mesa_id)
+        mesa_model = Mesa.activos.select_for_update().get(id=mesa_id)
         if mesa_model.estado != 'LIMPIEZA':
             raise ReglaNegocioViolada('Solo se puede marcar libre una mesa en limpieza')
         tiene_reserva = mesa_model.reservas.filter(activo=True).exists()
@@ -140,12 +142,13 @@ class MesaService:
             'union_activa': union_activa,
         }
 
+    @transaction.atomic
     def eliminar(self, mesa_id: int, usuario=None) -> None:
         from mesas.models import Mesa, UnionMesa
         mesa_domain = self.repo.obtener_por_id(mesa_id)
         if not mesa_domain:
             raise RecursoNoEncontrado('Mesa no encontrada')
-        mesa_model = Mesa.activos.get(id=mesa_id)
+        mesa_model = Mesa.activos.select_for_update().get(id=mesa_id)
         if mesa_model.estado != 'LIBRE':
             raise ReglaNegocioViolada('No se puede eliminar una mesa que no está libre')
         mesa_model.eliminar(usuario=usuario)
@@ -181,6 +184,24 @@ class UnionMesaService:
                 u.save(update_fields=['activo', 'actualizado_en'])
                 desactivadas.append(u)
         return uniones.exclude(id__in=[u.id for u in desactivadas])
+
+    def obtener_datos_para_union(self):
+        from mesas.models import Mesa, UnionMesa
+        mesas = Mesa.activos.all()
+        uniones = self.limpiar_uniones_invalidas()
+        union_mesas_ids = set()
+        for u in uniones:
+            for m in u.mesas.all():
+                union_mesas_ids.add(m.id)
+        mesas_disponibles = mesas.exclude(
+            id__in=union_mesas_ids
+        ).exclude(estado='RESERVADA')
+        return {
+            'mesas': mesas,
+            'uniones': uniones,
+            'union_mesas_ids': union_mesas_ids,
+            'mesas_disponibles': mesas_disponibles,
+        }
 
     @transaction.atomic
     def crear(self, mesa_ids: list):

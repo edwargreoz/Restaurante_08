@@ -50,12 +50,16 @@ class Container:
         self.reserva_service = ReservaService(reserva_repo=self.reserva_repo)
         self.pago_service = PagoService(comanda_service=self.comanda_service)
 
+import threading
 
 _container = None
+_lock = threading.Lock()
 
 
 def get_container() -> Container:
     global _container
     if _container is None:
-        _container = Container()
+        with _lock:
+            if _container is None:
+                _container = Container()
     return _container

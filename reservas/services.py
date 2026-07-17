@@ -53,7 +53,7 @@ class ReservaService:
 
     @transaction.atomic
     def cancelar(self, reserva_id: int) -> Reserva:
-        reserva = Reserva.objects.filter(id=reserva_id).first()
+        reserva = Reserva.objects.select_for_update().filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if not reserva.activo:
@@ -85,7 +85,7 @@ class ReservaService:
 
     @transaction.atomic
     def finalizar(self, reserva_id: int) -> Reserva:
-        reserva = Reserva.objects.filter(id=reserva_id).first()
+        reserva = Reserva.objects.select_for_update().filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if not reserva.activo:
@@ -121,7 +121,7 @@ class ReservaService:
                hora_inicio, hora_fin, num_personas: int,
                cliente_nombre: str, cliente_contacto: str = '',
                observacion: str = '', usuario=None) -> Reserva:
-        reserva = Reserva.objects.filter(id=reserva_id).first()
+        reserva = Reserva.objects.select_for_update().filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if not reserva.activo:
@@ -191,7 +191,7 @@ class ReservaService:
 
     @transaction.atomic
     def eliminar_definitivamente(self, reserva_id: int) -> None:
-        reserva = Reserva.objects.filter(id=reserva_id).first()
+        reserva = Reserva.objects.select_for_update().filter(id=reserva_id).first()
         if not reserva:
             raise RecursoNoEncontrado('Reserva no encontrada')
         if reserva.activo:
@@ -286,3 +286,25 @@ class ReservaService:
             'hora_fin': hora_fin, 'observacion': observacion,
         }
 
+    def obtener_datos_edicion(self, reserva_id: int):
+        from django.db.models import Q
+        reserva = Reserva.objects.select_related(
+            'mesa', 'union_mesa'
+        ).filter(id=reserva_id).first()
+        if not reserva:
+            raise RecursoNoEncontrado('Reserva no encontrada')
+
+        mesas_actuales_ids = []
+        if reserva.mesa:
+            mesas_actuales_ids.append(reserva.mesa.id)
+        elif reserva.union_mesa:
+            mesas_actuales_ids = [m.id for m in reserva.union_mesa.mesas.all()]
+
+        mesas = Mesa.activos.filter(
+            Q(estado='LIBRE') | Q(id__in=mesas_actuales_ids)
+        )
+        return {
+            'reserva': reserva,
+            'mesas': mesas,
+            'mesas_actuales_ids': mesas_actuales_ids,
+        }

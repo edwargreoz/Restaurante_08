@@ -46,4 +46,5 @@ class ComandaRepository:
             estado=modelo.estado,
             fecha_apertura=modelo.fecha_apertura,
             fecha_cierre=modelo.fecha_cierre,
+            total=modelo.total,
         )

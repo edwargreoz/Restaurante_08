@@ -402,16 +402,23 @@ def _finalizar_reservas_comanda(comanda):
 
 def _actualizar_estado_mesa_post_pago(comanda):
     mesa = comanda.mesa
-    union = UnionMesa.objects.filter(mesas=mesa, activo=True).first()
+    union = UnionMesa.objects.prefetch_related(
+        'mesas__reservas', 'reservas'
+    ).filter(mesas=mesa, activo=True).first()
+    
     tiene_reserva = mesa.reservas.filter(activo=True).exists()
-    if union:
-        tiene_reserva = tiene_reserva or union.reservas.filter(activo=True).exists()
-    mesa.estado = 'RESERVADA' if tiene_reserva else 'LIMPIEZA'
+    tiene_reserva_union = union.reservas.filter(activo=True).exists() if union else False
+    
+    mesa.estado = 'RESERVADA' if (tiene_reserva or tiene_reserva_union) else 'LIMPIEZA'
     mesa.save(update_fields=['estado'])
+    
     if union:
-        for m in union.mesas.all():
+        # Pre-cargar las mesas de la union con sus reservas
+        mesas_union = list(union.mesas.all())
+        for m in mesas_union:
             if m.id != mesa.id:
-                tiene_r = m.reservas.filter(activo=True).exists() or union.reservas.filter(activo=True).exists()
+                # Usar python en memoria gracias al prefetch_related
+                tiene_r = any(r.activo for r in m.reservas.all()) or tiene_reserva_union
                 m.estado = 'RESERVADA' if tiene_r else 'LIMPIEZA'
                 m.save(update_fields=['estado'])
 

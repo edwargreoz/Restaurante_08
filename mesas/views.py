@@ -93,14 +93,12 @@ def marcar_mesa_libre(request, mesa_id):
 @login_required
 @user_passes_test(es_mozo)
 def unir_mesas(request):
-    mesas = Mesa.activos.all()
     container = get_container()
-    uniones = container.union_mesa_service.limpiar_uniones_invalidas()
+    datos = container.union_mesa_service.obtener_datos_para_union()
     if request.method == 'POST':
         mesa_ids = request.POST.getlist('mesas')
         try:
             mesa_ids_int = [int(x) for x in mesa_ids]
-            container = get_container()
             union = container.union_mesa_service.crear(mesa_ids_int)
             messages.success(request, 'Unión creada')
             primera = union.mesas.first()
@@ -111,17 +109,7 @@ def unir_mesas(request):
         except (ValueError, TypeError):
             messages.error(request, 'Selecciona al menos 2 mesas')
             return redirect('unir_mesas')
-    union_mesas_ids = set()
-    for u in uniones:
-        for m in u.mesas.all():
-            union_mesas_ids.add(m.id)
-    mesas_disponibles = mesas.exclude(id__in=union_mesas_ids).exclude(estado='RESERVADA')
-    return render(request, 'mesas/unir_mesas.html', {
-        'mesas': mesas,
-        'uniones': uniones,
-        'union_mesas_ids': union_mesas_ids,
-        'mesas_disponibles': mesas_disponibles,
-    })
+    return render(request, 'mesas/unir_mesas.html', datos)
 
 
 @login_required
