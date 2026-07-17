@@ -3,6 +3,12 @@ from django.test import TestCase
 from django.contrib.auth.models import User, Group
 from core.services import DashboardService, UsuarioService
 from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
+from infraestructura.persistencia.repositorios.mesa_repo import MesaRepository
+from infraestructura.persistencia.repositorios.comanda_repo import ComandaRepository
+from infraestructura.persistencia.repositorios.insumo_repo import InsumoRepository
+from infraestructura.persistencia.repositorios.caja_repo import CajaRepository
+from infraestructura.persistencia.repositorios.pago_repo import PagoRepository
+from infraestructura.persistencia.repositorios.usuario_repo import UsuarioRepository
 from mesas.models import Mesa
 from caja.models import Caja
 from inventario.models import Insumo
@@ -14,8 +20,16 @@ class DashboardServiceTest(TestCase):
         Mesa.objects.create(numero=1, capacidad=4, estado='LIBRE')
         Mesa.objects.create(numero=2, capacidad=2, estado='OCUPADA')
 
+        self.service = DashboardService(
+            mesa_repo=MesaRepository(),
+            comanda_repo=ComandaRepository(),
+            insumo_repo=InsumoRepository(),
+            caja_repo=CajaRepository(),
+            pago_repo=PagoRepository(),
+        )
+
     def test_datos_mozo(self):
-        datos = DashboardService.datos_mozo()
+        datos = self.service.datos_mozo()
         self.assertEqual(datos['mesas_libres'], 1)
         self.assertEqual(datos['mesas_ocupadas'], 1)
 
@@ -24,7 +38,7 @@ class DashboardServiceTest(TestCase):
             turno='MAÑANA', cajero=self.usuario,
             saldo_inicial=Decimal('100'), estado='ABIERTA',
         )
-        datos = DashboardService.datos_cajero()
+        datos = self.service.datos_cajero()
         self.assertEqual(datos['ventas_hoy'], 0)
         self.assertEqual(datos['caja_actual'].id, caja.id)
 
@@ -35,30 +49,32 @@ class UsuarioServiceTest(TestCase):
         self.usuario = User.objects.create_user(
             username='mozo', password='pass123', first_name='Juan', last_name='Perez'
         )
+        self.service = UsuarioService(usuario_repo=UsuarioRepository())
 
     def test_obtener_por_id(self):
-        user = UsuarioService.obtener_por_id(self.usuario.id)
+        user = self.service.obtener_por_id(self.usuario.id)
         self.assertEqual(user.username, 'mozo')
 
     def test_obtener_por_id_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            UsuarioService.obtener_por_id(999)
+            self.service.obtener_por_id(999)
 
     def test_listar_usuarios(self):
-        usuarios = UsuarioService.listar_usuarios()
-        self.assertEqual(usuarios.count(), 2)
+        usuarios = self.service.listar_usuarios()
+        self.assertEqual(len(usuarios), 2)
 
     def test_crear_usuario(self):
-        user = UsuarioService.crear('nuevo', 'pass123', grupo_nombre='Mozo')
-        self.assertTrue(user.check_password('pass123'))
-        self.assertTrue(user.groups.filter(name='Mozo').exists())
+        user = self.service.crear('nuevo', 'pass123', grupo_nombre='Mozo')
+        self.assertIsNotNone(user.id)
+        self.assertEqual(user.username, 'nuevo')
+        self.assertIn('Mozo', user.grupos)
 
     def test_crear_usuario_sin_grupo(self):
-        user = UsuarioService.crear('simple', 'pass123')
-        self.assertEqual(user.groups.count(), 0)
+        user = self.service.crear('simple', 'pass123')
+        self.assertEqual(user.grupos, [])
 
     def test_actualizar_campos(self):
-        user = UsuarioService.actualizar(
+        user = self.service.actualizar(
             self.usuario.id, self.usuario.id,
             first_name='Pedro', email='pedro@test.com'
         )
@@ -66,49 +82,47 @@ class UsuarioServiceTest(TestCase):
         self.assertEqual(user.email, 'pedro@test.com')
 
     def test_actualizar_password(self):
-        UsuarioService.actualizar(
+        self.service.actualizar(
             self.usuario.id, self.usuario.id, password='nuevapass'
         )
         self.usuario.refresh_from_db()
         self.assertTrue(self.usuario.check_password('nuevapass'))
 
     def test_actualizar_rol_admin(self):
-        user = UsuarioService.actualizar(
+        user = self.service.actualizar(
             self.usuario.id, self.usuario.id, rol='Admin'
         )
-        user.refresh_from_db()
         self.assertTrue(user.is_superuser)
         self.assertTrue(user.is_staff)
 
     def test_actualizar_rol_mozo(self):
-        UsuarioService.actualizar(
+        self.service.actualizar(
             self.usuario.id, self.usuario.id, rol='Admin'
         )
-        user = UsuarioService.actualizar(
+        user = self.service.actualizar(
             self.usuario.id, self.usuario.id, rol='Mozo'
         )
-        user.refresh_from_db()
         self.assertFalse(user.is_superuser)
-        self.assertTrue(user.groups.filter(name='Mozo').exists())
+        self.assertIn('Mozo', user.grupos)
 
     def test_no_puede_desactivar_self(self):
         with self.assertRaises(ReglaNegocioViolada):
-            UsuarioService.actualizar(
+            self.service.actualizar(
                 self.admin.id, self.admin.id, is_active=False
             )
 
     def test_desactivar_usuario(self):
-        user = UsuarioService.desactivar(self.usuario.id, self.admin.id)
+        user = self.service.desactivar(self.usuario.id, self.admin.id)
         self.assertFalse(user.is_active)
 
     def test_desactivar_self(self):
         with self.assertRaises(ReglaNegocioViolada):
-            UsuarioService.desactivar(self.admin.id, self.admin.id)
+            self.service.desactivar(self.admin.id, self.admin.id)
 
     def test_desactivar_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            UsuarioService.desactivar(999, self.admin.id)
+            self.service.desactivar(999, self.admin.id)
 
     def test_actualizar_no_existe(self):
         with self.assertRaises(RecursoNoEncontrado):
-            UsuarioService.actualizar(999, self.admin.id, username='x')
+            self.service.actualizar(999, self.admin.id, username='x')
