@@ -3,7 +3,6 @@ from django.utils import timezone
 from decimal import Decimal
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
-from django.db.models import Q
 
 from core.excepciones import (
     MesaConComandaActiva, CajaNoAbierta, RecursoNoEncontrado,
@@ -167,8 +166,7 @@ class ComandaService:
         if errores:
             raise StockInsuficiente({'errores': errores})
 
-        self.linea_comanda_repo = get_container().linea_comanda_service.linea_comanda_repo
-        self.linea_comanda_repo.guardar_lote(lineas_a_crear)
+        get_container().linea_comanda_service.linea_comanda_repo.guardar_lote(lineas_a_crear)
         get_container().movimiento_insumo_repo.guardar_lote(movimientos)
 
         # --- Regla InsumoAgotado ---
@@ -178,10 +176,17 @@ class ComandaService:
                 insumos_agotados.add(mov.insumo_id)
 
         if insumos_agotados:
-            platos_afectados = get_container().plato_service.plato_repo.listar_por_ids(list(insumos_agotados))
-            for p in platos_afectados:
-                p.disponible = False
-                get_container().plato_service.plato_repo.guardar(p)
+            todos_ri = get_container().receta_service.repo.listar_receta_insumos()
+            recetas_agotadas = {
+                ri.receta_id for ri in todos_ri
+                if ri.insumo_id in insumos_agotados and ri.activo
+            }
+            if recetas_agotadas:
+                for linea in lineas_a_crear:
+                    plato = get_container().plato_service.plato_repo.obtener_por_id(linea.plato_id)
+                    if plato and plato.receta_id in recetas_agotadas:
+                        plato.disponible = False
+                        get_container().plato_service.plato_repo.guardar(plato)
 
         _notificar_comanda(comanda.id)
         return lineas_a_crear
@@ -328,7 +333,7 @@ class ComandaService:
         mesa = self.mesa_repo.obtener_por_id(mesa_id)
         if not mesa:
             raise RecursoNoEncontrado('Mesa no encontrada')
-        comandas = get_container().comanda_service.comanda_repo.listar_por_mesa(mesa.id)
+        comandas = self.comanda_repo.listar_por_mesa(mesa.id)
         comanda = next((c for c in comandas if c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA']), None)
         categorias = get_container().categoria_service.categoria_repo.listar_con_platos()
         return {'mesa': mesa, 'comanda': comanda, 'categorias': categorias}
