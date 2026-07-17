@@ -31,6 +31,7 @@ class ComandaService:
 
     @transaction.atomic
     def abrir(self, mesa_id: int, usuario) -> Comanda:
+        from infraestructura.container import get_container
         caja_abierta = get_container().caja_service.repo.existe_abierta()
         if not caja_abierta:
             raise CajaNoAbierta('No hay un turno de caja abierto. Abre caja primero.')
@@ -48,8 +49,9 @@ class ComandaService:
             raise MesaConComandaActiva('La mesa no está libre ni reservada')
 
         union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id) if hasattr(get_container().union_mesa_service, 'repo') else None
-        from mesas.models import UnionMesa
-        union = UnionMesa.objects.filter(mesas=mesa.id, activo=True).first()
+        if not union:
+            from mesas.models import UnionMesa
+            union = UnionMesa.objects.filter(mesas=mesa.id, activo=True).first()
         if union:
             for m in union.mesas.all():
                 comandas_m = self.comanda_repo.listar_por_mesa(m.id)
@@ -77,6 +79,7 @@ class ComandaService:
 
     @transaction.atomic
     def agregar_platos(self, comanda_id: int, platos_data: list, usuario=None) -> list:
+        from infraestructura.container import get_container
         comanda = self.comanda_repo.obtener_con_bloqueo(comanda_id)
         if comanda.estado not in ('ABIERTA', 'LISTA'):
             raise ComandaNoDisponible('La comanda no está abierta')
@@ -301,7 +304,7 @@ class ComandaService:
             if pd.get('metodo') == 'TARJETA':
                 _validar_referencia_tarjeta(pd.get('referencia', ''))
             from caja.models import Pago
-        Pago.objects.create(
+            Pago.objects.create(
                 comanda=comanda, metodo=pd['metodo'],
                 monto=pd['monto'], vuelto=pd.get('vuelto', 0),
                 referencia=pd.get('referencia', ''), caja=caja
@@ -318,6 +321,7 @@ class ComandaService:
         return comanda
 
     def obtener_datos_tomar_pedido(self, mesa_id: int):
+        from infraestructura.container import get_container
         from pedidos.models import Comanda
         from mesas.models import Mesa
         from menu.models import Categoria
@@ -379,7 +383,9 @@ class LineaComandaService:
     @staticmethod
     def obtener_panel_kds():
         """Retorna comandas activas para el panel de cocina (KDS)."""
-        pass
+        comanda_ids = LineaComanda.objects.filter(
+            estado__in=['PENDIENTE', 'EN_PREP']
+        ).values_list('comanda_id', flat=True).distinct()
         return Comanda.objects.filter(
             Q(estado='EN_PREPARACION') | Q(id__in=comanda_ids)
         ).prefetch_related('lineas__plato', 'mozo', 'mesa').order_by('fecha_apertura')
@@ -412,6 +418,7 @@ def _finalizar_reservas_comanda(comanda):
     container = get_container()
     mesa = comanda.mesa
     union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id) if hasattr(get_container().union_mesa_service, 'repo') else None
+    if not union:
         from mesas.models import UnionMesa
         union = UnionMesa.objects.filter(mesas=mesa.id, activo=True).first()
     for r in Reserva.objects.filter(mesa=mesa, activo=True):
@@ -445,8 +452,10 @@ def _actualizar_estado_mesa_post_pago(comanda):
 
 
 def _liberar_mesas(comanda):
+    from infraestructura.container import get_container
     mesa = comanda.mesa
     union = get_container().union_mesa_service.repo.obtener_por_mesa(mesa.id) if hasattr(get_container().union_mesa_service, 'repo') else None
+    if not union:
         from mesas.models import UnionMesa
         union = UnionMesa.objects.filter(mesas=mesa.id, activo=True).first()
     mesas_a_liberar = [mesa]

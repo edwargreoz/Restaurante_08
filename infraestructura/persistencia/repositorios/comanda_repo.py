@@ -31,7 +31,7 @@ class ComandaRepository:
             ).prefetch_related('lineas__plato').get(
                 id=comanda_id, activo=True
             )
-            return modelo
+            return self._modelo_a_entidad(modelo)
         except ComandaModel.DoesNotExist:
             return None
 

@@ -24,7 +24,7 @@ class MesaRepository:
             m = MesaModel.activos.prefetch_related(
                 'uniones_mesa'
             ).select_related().get(id=mesa_id)
-            return m
+            return self._a_entidad(m)
         except MesaModel.DoesNotExist:
             return None
 

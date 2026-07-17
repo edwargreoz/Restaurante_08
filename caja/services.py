@@ -25,7 +25,6 @@ class CajaService:
         caja_existente = self.repo.obtener_abierta()
         if caja_existente:
             raise ReglaNegocioViolada('Ya hay un turno de caja abierto')
-        return from caja.models import Caja
         return Caja.objects.create(
             turno=turno_nombre, cajero=usuario,
             saldo_inicial=saldo_inicial,

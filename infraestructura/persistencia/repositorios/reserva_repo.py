@@ -14,7 +14,7 @@ class ReservaRepository:
 
     def obtener_por_id(self, reserva_id: int) -> Optional[Reserva]:
         try:
-            r = ReservaModel.objects.select_related(
+            r = ReservaModel.activos.select_related(
                 'mesa', 'union_mesa', 'creado_por'
             ).get(id=reserva_id)
             return self._a_entidad(r)
