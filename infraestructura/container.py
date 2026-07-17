@@ -48,8 +48,16 @@ class Container:
             categoria_repo=self.categoria_repo,
             receta_repo=self.receta_repo,
         )
-        self.mesa_service = MesaService(mesa_repo=self.mesa_repo)
-        self.union_mesa_service = UnionMesaService(mesa_repo=self.mesa_repo)
+        self.mesa_service = MesaService(
+            mesa_repo=self.mesa_repo,
+            comanda_repo=self.comanda_repo,
+            reserva_repo=self.reserva_repo,
+            union_mesa_repo=self.union_mesa_repo,
+        )
+        self.union_mesa_service = UnionMesaService(
+            mesa_repo=self.mesa_repo,
+            comanda_repo=self.comanda_repo,
+        )
         self.union_mesa_service.repo = self.union_mesa_repo
 
         self.insumo_service = InsumoService(

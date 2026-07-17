@@ -5,18 +5,26 @@ from core.excepciones import (
 )
 from dominio.entidades.mesa import Mesa as MesaDomain
 from dominio.entidades.union_mesa import UnionMesa
-from dominio.puertos.repositorios import IMesaRepository
+from dominio.puertos.repositorios import (
+    IMesaRepository, IComandaRepository,
+    IReservaRepository, IUnionMesaRepository,
+)
 
 
 class MesaService:
-    def __init__(self, mesa_repo: IMesaRepository):
+    def __init__(self, mesa_repo: IMesaRepository,
+                 comanda_repo: IComandaRepository = None,
+                 reserva_repo: IReservaRepository = None,
+                 union_mesa_repo: IUnionMesaRepository = None):
         self.repo = mesa_repo
+        self.comanda_repo = comanda_repo
+        self.reserva_repo = reserva_repo
+        self.union_mesa_repo = union_mesa_repo
 
     @transaction.atomic
-    def obtener_o_crear_comanda_activa(self, mesa_id: int, usuario):
-        from infraestructura.container import get_container
-        container = get_container()
-        return container.comanda_service.abrir(mesa_id, usuario)
+    def obtener_o_crear_comanda_activa(self, mesa_id: int, usuario,
+                                       comanda_service=None):
+        return comanda_service.abrir(mesa_id, usuario)
 
     @transaction.atomic
     def cambiar_estado(self, mesa_id: int, nuevo_estado: str):
@@ -31,26 +39,24 @@ class MesaService:
 
     @transaction.atomic
     def marcar_libre(self, mesa_id: int):
-        from infraestructura.container import get_container
         mesa_domain = self.repo.obtener_por_id(mesa_id)
         if not mesa_domain:
             raise RecursoNoEncontrado('Mesa no encontrada')
         mesa_model = self.repo.obtener_con_bloqueo(mesa_id)
         if mesa_model.estado != 'LIMPIEZA':
             raise ReglaNegocioViolada('Solo se puede marcar libre una mesa en limpieza')
-        tiene_reserva = bool(get_container().reserva_service.reserva_repo.listar_activas_por_mesa(mesa_model.id))
-        union = get_container().union_mesa_service.repo.obtener_activa_por_mesa(mesa_model.id)
+        tiene_reserva = bool(self.reserva_repo.listar_activas_por_mesa(mesa_model.id))
+        union = self.union_mesa_repo.obtener_activa_por_mesa(mesa_model.id)
         if union:
-            tiene_reserva = tiene_reserva or bool(get_container().reserva_service.reserva_repo.listar_activas_por_union(union.id))
+            tiene_reserva = tiene_reserva or bool(self.reserva_repo.listar_activas_por_union(union.id))
         mesa_model.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
         self.repo.guardar(mesa_model)
         _notificar_plano()
         return mesa_model
 
     def obtener_plano(self):
-        from infraestructura.container import get_container
         mesas = self.repo.listar_activas()
-        uniones = get_container().union_mesa_service.repo.listar_activas()
+        uniones = self.union_mesa_repo.listar_activas()
 
         union_mesas_ids = set()
         union_labels = {}
@@ -59,10 +65,10 @@ class MesaService:
         items = []
 
         for union in uniones:
-            miembros = [m for m in get_container().mesa_service.repo.listar_activas_por_ids(union.mesa_ids) if m.activo]
+            miembros = [m for m in self.repo.listar_activas_por_ids(union.mesa_ids) if m.activo]
             if len(miembros) < 2:
                 union.activo = False
-                get_container().union_mesa_service.repo.guardar(union)
+                self.union_mesa_repo.guardar(union)
                 continue
             nums = sorted([m.numero for m in miembros])
             label = ' + '.join([f'Mesa {x}' for x in nums])
@@ -107,28 +113,26 @@ class MesaService:
             'union_ids': union_ids,
         }
 
-    def obtener_detalle(self, mesa_id: int, usuario=None):
-        from infraestructura.container import get_container
-
+    def obtener_detalle(self, mesa_id: int, usuario=None,
+                        comanda_service=None, categoria_service=None):
         mesa = self.repo.obtener_por_id(mesa_id)
 
-        comandas_mesa = get_container().comanda_service.comanda_repo.listar_por_mesa(mesa.id)
+        comandas_mesa = self.comanda_repo.listar_por_mesa(mesa.id)
         comanda = next((c for c in comandas_mesa if c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA']), None)
 
         if comanda and mesa.estado == 'LIBRE':
             try:
-                container = get_container()
-                container.comanda_service.anular(comanda.id, usuario=usuario)
+                comanda_service.anular(comanda.id, usuario=usuario)
             except AppError:
                 pass
             comanda = None
 
-        union_activa = get_container().union_mesa_service.repo.obtener_activa_por_mesa(mesa.id)
+        union_activa = self.union_mesa_repo.obtener_activa_por_mesa(mesa.id)
         if not comanda and union_activa:
-            comandas_mesa2 = get_container().comanda_service.comanda_repo.listar_por_mesa(mesa.id)
+            comandas_mesa2 = self.comanda_repo.listar_por_mesa(mesa.id)
             comanda = next((c for c in comandas_mesa2 if c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA']), None)
 
-        categorias = get_container().categoria_service.categoria_repo.listar_con_platos()
+        categorias = categoria_service.listar_con_platos()
 
         return {
             'mesa': mesa,
@@ -139,7 +143,6 @@ class MesaService:
 
     @transaction.atomic
     def eliminar(self, mesa_id: int, usuario=None) -> None:
-        from infraestructura.container import get_container
         mesa_domain = self.repo.obtener_por_id(mesa_id)
         if not mesa_domain:
             raise RecursoNoEncontrado('Mesa no encontrada')
@@ -149,12 +152,12 @@ class MesaService:
         # Soft delete: marcar como inactiva
         mesa_model.activo = False
         self.repo.guardar(mesa_model)
-        union = get_container().union_mesa_service.repo.obtener_activa_por_mesa(mesa_model.id)
+        union = self.union_mesa_repo.obtener_activa_por_mesa(mesa_model.id)
         if union:
-            mesas_activas = [m for m in get_container().mesa_service.repo.listar_activas_por_ids(union.mesa_ids) if m.activo]
+            mesas_activas = [m for m in self.repo.listar_activas_por_ids(union.mesa_ids) if m.activo]
             if len(mesas_activas) < 2:
                 union.activo = False
-                get_container().union_mesa_service.repo.guardar(union)
+                self.union_mesa_repo.guardar(union)
 
     def validar_editable(self, mesa_id: int):
         mesa = self.repo.obtener_por_id(mesa_id)
@@ -191,29 +194,29 @@ class UnionMesaService:
     def listar(self):
         return self.repo.listar_activas()
 
-    def __init__(self, mesa_repo: IMesaRepository):
+    def __init__(self, mesa_repo: IMesaRepository,
+                 comanda_repo: IComandaRepository = None):
         self.mesa_repo = mesa_repo
+        self.comanda_repo = comanda_repo
 
     def limpiar_uniones_invalidas(self):
-        from infraestructura.container import get_container
-        uniones = get_container().union_mesa_service.repo.listar_activas()
+        uniones = self.repo.listar_activas()
         desactivadas = []
         for u in uniones:
-            activos = [m for m in get_container().mesa_service.repo.listar_activas_por_ids(u.mesa_ids) if m.activo]
+            activos = [m for m in self.mesa_repo.listar_activas_por_ids(u.mesa_ids) if m.activo]
             if len(activos) < 2:
                 u.activo = False
-                get_container().union_mesa_service.repo.guardar(u)
+                self.repo.guardar(u)
                 desactivadas.append(u)
         desactivadas_ids = {u.id for u in desactivadas}
         return [u for u in uniones if u.id not in desactivadas_ids]
 
     def obtener_datos_para_union(self):
-        from infraestructura.container import get_container
-        mesas = get_container().mesa_service.repo.listar_activas()
+        mesas = self.mesa_repo.listar_activas()
         uniones = self.limpiar_uniones_invalidas()
         union_mesas_ids = set()
         for u in uniones:
-            for m in get_container().mesa_service.repo.listar_activas_por_ids(u.mesa_ids):
+            for m in self.mesa_repo.listar_activas_por_ids(u.mesa_ids):
                 union_mesas_ids.add(m.id)
         mesas_disponibles = [m for m in mesas if m.id not in union_mesas_ids and m.estado != 'RESERVADA']
         return {
@@ -224,13 +227,11 @@ class UnionMesaService:
         }
 
     @transaction.atomic
-    def crear(self, mesa_ids: list):
-        from infraestructura.container import get_container
-
+    def crear(self, mesa_ids: list, comanda_service=None):
         if len(mesa_ids) < 2:
             raise UnionInvalida('Selecciona al menos 2 mesas')
 
-        mesas = get_container().mesa_service.repo.listar_activas_por_ids(mesa_ids)
+        mesas = self.mesa_repo.listar_activas_por_ids(mesa_ids)
         if len(mesas) < 2:
             raise UnionInvalida('Las mesas seleccionadas no existen')
 
@@ -242,37 +243,35 @@ class UnionMesaService:
             raise UnionInvalida('No puedes unir mesas de diferentes zonas')
 
         selected_ids = set(m.id for m in mesas)
-        uniones_activas = get_container().union_mesa_service.repo.listar_activas()
+        uniones_activas = self.repo.listar_activas()
         for u in uniones_activas:
             if set(u.mesa_ids) == selected_ids:
                 raise UnionInvalida('Ya existe una unión activa con esas mesas')
 
-        union = get_container().union_mesa_service.repo.guardar(UnionMesa(id=None, mesa_ids=[m.id for m in mesas], activo=True))
+        union = self.repo.guardar(UnionMesa(id=None, mesa_ids=[m.id for m in mesas], activo=True))
 
-        todas_comandas = get_container().comanda_service.comanda_repo.listar()
+        todas_comandas = self.comanda_repo.listar()
         comandas_activas = [c for c in todas_comandas if c.mesa_id in mesa_ids and c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA']]
         if comandas_activas:
             for m in mesas:
                 if m.estado == 'LIBRE':
                     m.estado = 'OCUPADA'
-                    get_container().mesa_service.repo.guardar(m)
+                    self.mesa_repo.guardar(m)
         if len(comandas_activas) >= 2:
-            container = get_container()
             principal = comandas_activas[0]
             for otras in comandas_activas[1:]:
-                container.comanda_service.fusionar(principal.id, otras.id)
+                comanda_service.fusionar(principal.id, otras.id)
 
         _notificar_plano()
         return union
 
     @transaction.atomic
-    def agregar_mesa(self, union_id: int, mesa_id: int, usuario):
-        from infraestructura.container import get_container
-
-        union = get_container().union_mesa_service.repo.obtener_por_id(union_id)
+    def agregar_mesa(self, union_id: int, mesa_id: int, usuario,
+                     comanda_service=None, caja_service=None):
+        union = self.repo.obtener_por_id(union_id)
         if not union:
             raise RecursoNoEncontrado('Unión no encontrada')
-        mesa_model = get_container().mesa_service.repo.obtener_por_id(mesa_id)
+        mesa_model = self.mesa_repo.obtener_por_id(mesa_id)
         if not mesa_model:
             raise RecursoNoEncontrado('Mesa no encontrada')
 
@@ -281,55 +280,51 @@ class UnionMesaService:
         if mesa_model.estado == 'RESERVADA':
             raise UnionInvalida('No puedes agregar una mesa reservada')
 
-        zona_union = get_container().mesa_service.repo.obtener_por_id(union.mesa_ids[0]).zona if union.mesa_ids else ''
+        zona_union = self.mesa_repo.obtener_por_id(union.mesa_ids[0]).zona if union.mesa_ids else ''
         if mesa_model.zona != zona_union:
             raise UnionInvalida('Las mesas deben ser de la misma zona')
 
         union.mesa_ids.append(mesa_model.id)
-        get_container().union_mesa_service.repo.guardar(union)
-        todas_comandas = get_container().comanda_service.comanda_repo.listar()
+        self.repo.guardar(union)
+        todas_comandas = self.comanda_repo.listar()
         comandas_activas_union = [c for c in todas_comandas if c.mesa_id in union.mesa_ids and c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA'] and c.mesa_id != mesa_model.id]
         comanda_union = comandas_activas_union[0] if comandas_activas_union else None
 
         if comanda_union:
-            if not get_container().caja_service.repo.obtener_abierta() is not None:
+            if not caja_service.repo.obtener_abierta() is not None:
                 raise CajaNoAbierta('No hay un turno de caja abierto')
             mesa_model.estado = 'OCUPADA'
-            get_container().mesa_service.repo.guardar(mesa_model)
-            container = get_container()
-            comanda_nueva = container.comanda_service.abrir(mesa_model.id, usuario)
-            container.comanda_service.fusionar(comanda_union.id, comanda_nueva.id)
+            self.mesa_repo.guardar(mesa_model)
+            comanda_nueva = comanda_service.abrir(mesa_model.id, usuario)
+            comanda_service.fusionar(comanda_union.id, comanda_nueva.id)
 
         _notificar_plano()
         return union
 
     @transaction.atomic
-    def deshacer(self, union_id: int, usuario) -> None:
-        from infraestructura.container import get_container
-
-        union = get_container().union_mesa_service.repo.obtener_por_id(union_id)
+    def deshacer(self, union_id: int, usuario, comanda_service=None) -> None:
+        union = self.repo.obtener_por_id(union_id)
         if not union:
             raise RecursoNoEncontrado('Unión no encontrada')
 
         mesa_ids = union.mesa_ids
-        todas_comandas = get_container().comanda_service.comanda_repo.listar()
+        todas_comandas = self.comanda_repo.listar()
         comandas_activas = [c for c in todas_comandas if c.mesa_id in mesa_ids and c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA']]
         errores = []
-        container = get_container()
         for comanda in comandas_activas:
             try:
-                container.comanda_service.anular(comanda.id, usuario=usuario)
+                comanda_service.anular(comanda.id, usuario=usuario)
             except AppError as e:
                 errores.append(str(e))
 
         if errores:
             raise UnionInvalida('; '.join(errores))
 
-        for mesa in get_container().mesa_service.repo.listar_activas_por_ids(union.mesa_ids):
+        for mesa in self.mesa_repo.listar_activas_por_ids(union.mesa_ids):
             mesa.estado = 'LIBRE'
-            get_container().mesa_service.repo.guardar(mesa)
+            self.mesa_repo.guardar(mesa)
         union.activo = False
-        get_container().union_mesa_service.repo.guardar(union)
+        self.repo.guardar(union)
         _notificar_plano()
 
 def _notificar_plano():

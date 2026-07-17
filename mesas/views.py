@@ -25,7 +25,11 @@ def plano_mesas(request):
 @user_passes_test(es_mozo)
 def detalle_mesa(request, mesa_id):
     container = get_container()
-    data = container.mesa_service.obtener_detalle(mesa_id, usuario=request.user)
+    data = container.mesa_service.obtener_detalle(
+        mesa_id, usuario=request.user,
+        comanda_service=container.comanda_service,
+        categoria_service=container.categoria_service,
+    )
     return render(request, 'mesas/detalle_mesa.html', data)
 
 
@@ -35,7 +39,10 @@ def abrir_comanda(request, mesa_id):
     if request.method == 'POST':
         try:
             container = get_container()
-            container.mesa_service.obtener_o_crear_comanda_activa(mesa_id, request.user)
+            container.mesa_service.obtener_o_crear_comanda_activa(
+                mesa_id, request.user,
+                comanda_service=container.comanda_service,
+            )
             messages.success(request, 'Comanda abierta')
         except AppError as e:
             messages.error(request, str(e))
@@ -106,7 +113,10 @@ def unir_mesas(request):
         mesa_ids = request.POST.getlist('mesas')
         try:
             mesa_ids_int = [int(x) for x in mesa_ids]
-            union = container.union_mesa_service.crear(mesa_ids_int)
+            union = container.union_mesa_service.crear(
+                mesa_ids_int,
+                comanda_service=container.comanda_service,
+            )
             messages.success(request, 'Unión creada')
             primera = union.mesas.first()
             return redirect('detalle_mesa', mesa_id=primera.id)
@@ -127,7 +137,11 @@ def agregar_mesa_union(request, union_id):
         if mesa_id:
             try:
                 container = get_container()
-                container.union_mesa_service.agregar_mesa(union_id, int(mesa_id), request.user)
+                container.union_mesa_service.agregar_mesa(
+                    union_id, int(mesa_id), request.user,
+                    comanda_service=container.comanda_service,
+                    caja_service=container.caja_service,
+                )
                 messages.success(request, 'Mesa agregada a la unión')
             except (RecursoNoEncontrado, UnionInvalida, CajaNoAbierta) as e:
                 messages.error(request, str(e))
@@ -141,7 +155,10 @@ def deshacer_union(request, union_id):
     if request.method == 'POST':
         try:
             container = get_container()
-            container.union_mesa_service.deshacer(union_id, request.user)
+            container.union_mesa_service.deshacer(
+                union_id, request.user,
+                comanda_service=container.comanda_service,
+            )
             messages.success(request, 'Unión deshecha, comandas anuladas, mesas liberadas')
         except (RecursoNoEncontrado, UnionInvalida) as e:
             messages.error(request, str(e))
