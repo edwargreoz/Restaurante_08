@@ -11,6 +11,7 @@ class TestMesaServiceConMock:
         service = MesaService(mesa_repo=repo)
         assert service.repo == repo
 
+    @pytest.mark.django_db
     def test_cambiar_estado_mesa_no_encontrada(self):
         repo = MagicMock()
         repo.obtener_por_id.return_value = None
@@ -18,6 +19,7 @@ class TestMesaServiceConMock:
         with pytest.raises(RecursoNoEncontrado):
             service.cambiar_estado(mesa_id=999, nuevo_estado='OCUPADA')
 
+    @pytest.mark.django_db
     def test_marcar_libre_mesa_no_encontrada(self):
         repo = MagicMock()
         repo.obtener_por_id.return_value = None

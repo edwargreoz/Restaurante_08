@@ -176,9 +176,10 @@ class InsumoDominioTest(unittest.TestCase):
 
     def test_deducir_stock_insuficiente(self):
         from dominio.entidades.insumo import Insumo
+        from core.excepciones import StockInsuficiente
         i = Insumo(id=1, nombre='Arroz', unidad='KG',
                     stock_actual=Decimal('2'))
-        with self.assertRaises(ValueError):
+        with self.assertRaises(StockInsuficiente):
             i.deducir_stock(Decimal('5'))
 
     def test_reponer_stock(self):
