@@ -13,6 +13,7 @@ from mesas.services import MesaService, UnionMesaService
 from pedidos.services import ComandaService, LineaComandaService
 from inventario.services import InsumoService, RecetaService
 from caja.services import CajaService
+from reservas.services import ReservaService
 
 
 class Container:
@@ -46,6 +47,7 @@ class Container:
         self.insumo_service = InsumoService(insumo_repo=self.insumo_repo)
         self.receta_service = RecetaService(insumo_repo=self.insumo_repo)
         self.caja_service = CajaService(caja_repo=self.caja_repo)
+        self.reserva_service = ReservaService(reserva_repo=self.reserva_repo)
 
 
 _container = None

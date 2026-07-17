@@ -65,8 +65,8 @@ class ReservaViewSet(viewsets.ModelViewSet):
     serializer_class = ReservaSerializer
 
     def perform_destroy(self, instance):
-        from reservas.services import ReservaService
-        ReservaService.cancelar(instance.id)
+        container = get_container()
+        container.reserva_service.cancelar(instance.id)
 
 class MesaViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar mesas y su estado actual en tiempo real."""

@@ -7,7 +7,7 @@ from core.excepciones import (
 )
 from mesas.models import Mesa
 from .models import Reserva
-from .services import ReservaService
+from infraestructura.container import get_container
 
 
 @login_required
@@ -26,7 +26,8 @@ def crear_reserva(request):
 
     if request.method == 'POST':
         try:
-            reserva = ReservaService.crear(
+            container = get_container()
+            reserva = container.reserva_service.crear(
                 mesas_ids=request.POST.getlist('mesas_ids'),
                 fecha=request.POST.get('fecha'),
                 hora_inicio=request.POST.get('hora_inicio'),
@@ -58,7 +59,8 @@ def crear_reserva(request):
 def cancelar_reserva(request, reserva_id):
     if request.method == 'POST':
         try:
-            ReservaService.cancelar(reserva_id)
+            container = get_container()
+            container.reserva_service.cancelar(reserva_id)
             messages.success(request, 'Reserva cancelada correctamente')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
@@ -70,7 +72,8 @@ def cancelar_reserva(request, reserva_id):
 def finalizar_reserva(request, reserva_id):
     if request.method == 'POST':
         try:
-            ReservaService.finalizar(reserva_id)
+            container = get_container()
+            container.reserva_service.finalizar(reserva_id)
             messages.success(request, 'Reserva finalizada correctamente')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
@@ -82,7 +85,8 @@ def finalizar_reserva(request, reserva_id):
 def eliminar_reserva(request, reserva_id):
     if request.method == 'POST':
         try:
-            ReservaService.eliminar_definitivamente(reserva_id)
+            container = get_container()
+            container.reserva_service.eliminar_definitivamente(reserva_id)
             messages.success(request, 'Reserva eliminada permanentemente')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
@@ -109,7 +113,8 @@ def editar_reserva(request, reserva_id):
 
     if request.method == 'POST':
         try:
-            ReservaService.editar(
+            container = get_container()
+            container.reserva_service.editar(
                 reserva_id=reserva_id,
                 mesas_ids=request.POST.getlist('mesas_ids'),
                 fecha=request.POST.get('fecha'),
