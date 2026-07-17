@@ -156,10 +156,31 @@ class MesaService:
                 union.activo = False
                 union.save(update_fields=['activo', 'actualizado_en'])
 
+    def validar_editable(self, mesa_id: int):
+        from mesas.models import Mesa
+        mesa = Mesa.activos.get(id=mesa_id)
+        if mesa.estado == 'RESERVADA':
+            raise ReglaNegocioViolada(
+                'No puedes editar una mesa que actualmente se encuentra RESERVADA.'
+            )
+        return mesa
+
 
 class UnionMesaService:
     def __init__(self, mesa_repo: IMesaRepository):
         self.mesa_repo = mesa_repo
+
+    def limpiar_uniones_invalidas(self):
+        from mesas.models import Mesa, UnionMesa
+        uniones = UnionMesa.activos.prefetch_related('mesas')
+        desactivadas = []
+        for u in uniones:
+            activos = [m for m in u.mesas.all() if m.activo]
+            if len(activos) < 2:
+                u.activo = False
+                u.save(update_fields=['activo', 'actualizado_en'])
+                desactivadas.append(u)
+        return uniones.exclude(id__in=[u.id for u in desactivadas])
 
     @transaction.atomic
     def crear(self, mesa_ids: list):

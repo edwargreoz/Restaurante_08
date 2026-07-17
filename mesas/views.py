@@ -94,16 +94,8 @@ def marcar_mesa_libre(request, mesa_id):
 @user_passes_test(es_mozo)
 def unir_mesas(request):
     mesas = Mesa.activos.all()
-    uniones = UnionMesa.activos.prefetch_related('mesas')
-    uniones_to_deactivate = []
-    for u in uniones:
-        activos = [m for m in u.mesas.all() if m.activo]
-        if len(activos) < 2:
-            uniones_to_deactivate.append(u)
-    for u in uniones_to_deactivate:
-        u.activo = False
-        u.save(update_fields=['activo', 'actualizado_en'])
-    uniones = uniones.exclude(id__in=[u.id for u in uniones_to_deactivate])
+    container = get_container()
+    uniones = container.union_mesa_service.limpiar_uniones_invalidas()
     if request.method == 'POST':
         mesa_ids = request.POST.getlist('mesas')
         try:
@@ -197,9 +189,11 @@ def crear_mesa(request):
 @login_required
 @user_passes_test(es_admin)
 def editar_mesa(request, mesa_id):
-    mesa = get_object_or_404(Mesa.activos, id=mesa_id)
-    if mesa.estado == 'RESERVADA':
-        messages.error(request, 'No puedes editar una mesa que actualmente se encuentra RESERVADA.')
+    container = get_container()
+    try:
+        mesa = container.mesa_service.validar_editable(mesa_id)
+    except ReglaNegocioViolada as e:
+        messages.error(request, str(e))
         return redirect('lista_mesas_admin')
 
     if request.method == 'POST':
