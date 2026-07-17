@@ -1,5 +1,3 @@
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
 from django.db import transaction
 from core.excepciones import (
     RecursoNoEncontrado, UnionInvalida,
@@ -11,17 +9,20 @@ from dominio.puertos.repositorios import (
     IMesaRepository, IComandaRepository,
     IReservaRepository, IUnionMesaRepository,
 )
+from dominio.puertos.notificador import INotificadorPlano
 
 
 class MesaService:
     def __init__(self, mesa_repo: IMesaRepository,
                  comanda_repo: IComandaRepository = None,
                  reserva_repo: IReservaRepository = None,
-                 union_mesa_repo: IUnionMesaRepository = None):
+                 union_mesa_repo: IUnionMesaRepository = None,
+                 notificador_plano: INotificadorPlano = None):
         self.repo = mesa_repo
         self.comanda_repo = comanda_repo
         self.reserva_repo = reserva_repo
         self.union_mesa_repo = union_mesa_repo
+        self.notificador_plano = notificador_plano
 
     @transaction.atomic
     def obtener_o_crear_comanda_activa(self, mesa_id: int, usuario,
@@ -36,7 +37,8 @@ class MesaService:
         mesa_model = self.repo.obtener_con_bloqueo(mesa_id)
         mesa_model.estado = nuevo_estado
         self.repo.guardar(mesa_model)
-        _notificar_plano()
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
         return mesa_model
 
     @transaction.atomic
@@ -53,7 +55,8 @@ class MesaService:
             tiene_reserva = tiene_reserva or bool(self.reserva_repo.listar_activas_por_union(union.id))
         mesa_model.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
         self.repo.guardar(mesa_model)
-        _notificar_plano()
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
         return mesa_model
 
     def obtener_plano(self):
@@ -198,10 +201,12 @@ class UnionMesaService:
 
     def __init__(self, mesa_repo: IMesaRepository,
                  comanda_repo: IComandaRepository = None,
-                 union_mesa_repo: IUnionMesaRepository = None):
+                 union_mesa_repo: IUnionMesaRepository = None,
+                 notificador_plano: INotificadorPlano = None):
         self.mesa_repo = mesa_repo
         self.comanda_repo = comanda_repo
         self.repo = union_mesa_repo
+        self.notificador_plano = notificador_plano
 
     def limpiar_uniones_invalidas(self):
         uniones = self.repo.listar_activas()
@@ -266,7 +271,8 @@ class UnionMesaService:
             for otras in comandas_activas[1:]:
                 comanda_service.fusionar(principal.id, otras.id)
 
-        _notificar_plano()
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
         return union
 
     @transaction.atomic
@@ -302,7 +308,8 @@ class UnionMesaService:
             comanda_nueva = comanda_service.abrir(mesa_model.id, usuario)
             comanda_service.fusionar(comanda_union.id, comanda_nueva.id)
 
-        _notificar_plano()
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
         return union
 
     @transaction.atomic
@@ -329,13 +336,5 @@ class UnionMesaService:
             self.mesa_repo.guardar(mesa)
         union.activo = False
         self.repo.guardar(union)
-        _notificar_plano()
-
-def _notificar_plano():
-    try:
-        channel_layer = get_channel_layer()
-        async_to_safe(channel_layer.group_send)(
-            'plano', {'type': 'plano_update', 'data': {'action': 'refresh'}}
-        )
-    except Exception:
-        pass
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()

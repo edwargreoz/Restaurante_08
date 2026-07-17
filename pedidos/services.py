@@ -1,8 +1,6 @@
 from django.db import transaction
 from django.utils import timezone
 from decimal import Decimal
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
 
 from core.excepciones import (
     MesaConComandaActiva, CajaNoAbierta, RecursoNoEncontrado,
@@ -19,8 +17,10 @@ from dominio.puertos.repositorios import (
     IRecetaRepository, IInsumoRepository, IMovimientoInsumoRepository,
     IPagoRepository,
 )
+from dominio.puertos.notificador import (
+    INotificadorPlano, INotificadorKDS, INotificadorComanda,
+)
 from inventario.models import convertir_unidad
-from mesas.services import _notificar_plano as _notificar_plano_mesa
 
 
 
@@ -34,7 +34,10 @@ class ComandaService:
                  linea_comanda_repo=None, pago_repo=None,
                  plato_repo=None, receta_repo=None,
                  insumo_repo=None, movimiento_insumo_repo=None,
-                 categoria_repo=None):
+                 categoria_repo=None,
+                 notificador_plano: INotificadorPlano = None,
+                 notificador_kds: INotificadorKDS = None,
+                 notificador_comanda: INotificadorComanda = None):
         self.comanda_repo = comanda_repo
         self.mesa_repo = mesa_repo
         self.caja_repo = caja_repo
@@ -48,6 +51,9 @@ class ComandaService:
         self.insumo_repo = insumo_repo
         self.movimiento_insumo_repo = movimiento_insumo_repo
         self.categoria_repo = categoria_repo
+        self.notificador_plano = notificador_plano
+        self.notificador_kds = notificador_kds
+        self.notificador_comanda = notificador_comanda
 
     @transaction.atomic
     def abrir(self, mesa_id: int, usuario) -> 'Comanda':
@@ -94,7 +100,8 @@ class ComandaService:
                         m_obj.estado = 'OCUPADA'
                         self.mesa_repo.guardar(m_obj)
 
-        _notificar_plano()
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
         return comanda
 
     @transaction.atomic
@@ -207,7 +214,8 @@ class ComandaService:
                         plato.disponible = False
                         self.plato_repo.guardar(plato)
 
-        _notificar_comanda(comanda.id)
+        if self.notificador_comanda:
+            self.notificador_comanda.notificar_comanda(comanda.id)
         return lineas_a_crear
 
     @transaction.atomic
@@ -275,8 +283,10 @@ class ComandaService:
                         mesa_repo=self.mesa_repo,
                         union_mesa_repo=self.union_mesa_repo,
                         reserva_repo=self.reserva_repo)
-        _notificar_plano()
-        _notificar_comanda(comanda.id)
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
+        if self.notificador_comanda:
+            self.notificador_comanda.notificar_comanda(comanda.id)
         return comanda
 
     @transaction.atomic
@@ -311,8 +321,10 @@ class ComandaService:
                                           mesa_repo=self.mesa_repo,
                                           union_mesa_repo=self.union_mesa_repo,
                                           reserva_repo=self.reserva_repo)
-        _notificar_plano()
-        _notificar_comanda(comanda.id)
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
+        if self.notificador_comanda:
+            self.notificador_comanda.notificar_comanda(comanda.id)
         return comanda
 
     @transaction.atomic
@@ -348,8 +360,10 @@ class ComandaService:
                                           mesa_repo=self.mesa_repo,
                                           union_mesa_repo=self.union_mesa_repo,
                                           reserva_repo=self.reserva_repo)
-        _notificar_plano()
-        _notificar_comanda(comanda.id)
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
+        if self.notificador_comanda:
+            self.notificador_comanda.notificar_comanda(comanda.id)
         return comanda
 
     def obtener_datos_tomar_pedido(self, mesa_id: int):
@@ -366,9 +380,13 @@ class LineaComandaService:
     """Lógica de líneas de comanda (KDS)."""
 
     def __init__(self, linea_comanda_repo: ILineaComandaRepository,
-                 comanda_repo: IComandaRepository = None):
+                 comanda_repo: IComandaRepository = None,
+                 notificador_plano: INotificadorPlano = None,
+                 notificador_kds: INotificadorKDS = None):
         self.linea_comanda_repo = linea_comanda_repo
         self.comanda_repo = comanda_repo
+        self.notificador_plano = notificador_plano
+        self.notificador_kds = notificador_kds
 
     @transaction.atomic
     def enviar_cocina(self, linea_id: int):
@@ -388,7 +406,8 @@ class LineaComandaService:
                 comanda.estado = 'EN_PREPARACION'
                 self.comanda_repo.guardar(comanda)
 
-        _notificar_kds()
+        if self.notificador_kds:
+            self.notificador_kds.notificar_refresh()
         return linea
        
 
@@ -410,8 +429,10 @@ class LineaComandaService:
                 comanda.estado = 'LISTA'
                 self.comanda_repo.guardar(comanda)
 
-        _notificar_kds()
-        _notificar_plano()
+        if self.notificador_kds:
+            self.notificador_kds.notificar_refresh()
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
         return linea
 
     def obtener_panel_kds(self):
@@ -493,27 +514,3 @@ def _liberar_mesas(comanda, mesa_repo=None, union_mesa_repo=None,
             tiene_reserva = tiene_reserva or bool(reserva_repo.listar_activas_por_union(union.id))
         m.estado = 'RESERVADA' if tiene_reserva else 'LIBRE'
         mesa_repo.guardar(m)
-
-
-def _notificar_kds():
-    try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            'kds', {'type': 'kds_update', 'data': {'action': 'refresh'}}
-        )
-    except (ConnectionError, OSError, TimeoutError):
-        pass
-
-def _notificar_comanda(comanda_id: int):
-    """Notifica al WebSocket de una comanda específica."""
-    try:
-        channel_layer = get_channel_layer()
-        async_to_sync(channel_layer.group_send)(
-            f'comanda_{comanda_id}',
-            {'type': 'comanda_update', 'data': {'action': 'refresh', 'comanda_id': comanda_id}}
-        )
-    except (ConnectionError, OSError, TimeoutError):
-        pass
-
-def _notificar_plano():
-    _notificar_plano_mesa()

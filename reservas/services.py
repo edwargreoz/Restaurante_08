@@ -9,8 +9,8 @@ from dominio.entidades.union_mesa import UnionMesa
 from dominio.puertos.repositorios import (
     IReservaRepository, IMesaRepository, IUnionMesaRepository,
 )
+from dominio.puertos.notificador import INotificadorPlano
 from typing import Optional
-from mesas.services import _notificar_plano
 
 
 class ReservaService:
@@ -19,10 +19,12 @@ class ReservaService:
 
     def __init__(self, reserva_repo: Optional[IReservaRepository] = None,
                  mesa_repo: Optional[IMesaRepository] = None,
-                 union_mesa_repo: Optional[IUnionMesaRepository] = None):
+                 union_mesa_repo: Optional[IUnionMesaRepository] = None,
+                 notificador_plano: INotificadorPlano = None):
         self.reserva_repo = reserva_repo
         self.mesa_repo = mesa_repo
         self.union_mesa_repo = union_mesa_repo
+        self.notificador_plano = notificador_plano
 
     def listar(self):
         return self.reserva_repo.listar()
@@ -86,7 +88,8 @@ class ReservaService:
                     union.activo = False
                     self.union_mesa_repo.guardar(union)
 
-        _notificar_plano()
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
         return reserva
 
     @transaction.atomic
@@ -119,7 +122,8 @@ class ReservaService:
                     union.activo = False
                     self.union_mesa_repo.guardar(union)
 
-        _notificar_plano()
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
         return reserva
 
     @transaction.atomic
@@ -193,7 +197,8 @@ class ReservaService:
             m.estado = 'RESERVADA'
             self.mesa_repo.guardar(m)
 
-        _notificar_plano()
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
         return reserva
 
     @transaction.atomic
@@ -222,7 +227,8 @@ class ReservaService:
                     union.activo = False
                     self.union_mesa_repo.guardar(union)
         self.reserva_repo.eliminar(reserva.id)
-        _notificar_plano()
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
 
     def _validar_datos(self, mesas_ids, fecha, hora_inicio, hora_fin,
                        num_personas, cliente_nombre, cliente_contacto,

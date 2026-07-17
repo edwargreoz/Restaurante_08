@@ -13,6 +13,10 @@ from infraestructura.persistencia.repositorios.unidad_conversion_repo import Uni
 from infraestructura.persistencia.repositorios.receta_repo import RecetaRepository
 from infraestructura.persistencia.repositorios.usuario_repo import UsuarioRepository
 
+from infraestructura.notificador import (
+    ChannelsNotificadorPlano, ChannelsNotificadorKDS, ChannelsNotificadorComanda,
+)
+
 
 from menu.services import CategoriaService, PlatoService
 from mesas.services import MesaService, UnionMesaService
@@ -40,6 +44,10 @@ class Container:
         self.receta_repo = RecetaRepository()
         self.usuario_repo = UsuarioRepository()
 
+        self.notificador_plano = ChannelsNotificadorPlano()
+        self.notificador_kds = ChannelsNotificadorKDS()
+        self.notificador_comanda = ChannelsNotificadorComanda()
+
         self.categoria_service = CategoriaService(
             categoria_repo=self.categoria_repo
         )
@@ -53,11 +61,13 @@ class Container:
             comanda_repo=self.comanda_repo,
             reserva_repo=self.reserva_repo,
             union_mesa_repo=self.union_mesa_repo,
+            notificador_plano=self.notificador_plano,
         )
         self.union_mesa_service = UnionMesaService(
             mesa_repo=self.mesa_repo,
             comanda_repo=self.comanda_repo,
             union_mesa_repo=self.union_mesa_repo,
+            notificador_plano=self.notificador_plano,
         )
 
         self.insumo_service = InsumoService(
@@ -78,6 +88,7 @@ class Container:
             reserva_repo=self.reserva_repo,
             mesa_repo=self.mesa_repo,
             union_mesa_repo=self.union_mesa_repo,
+            notificador_plano=self.notificador_plano,
         )
 
         self.comanda_service = ComandaService(
@@ -94,11 +105,16 @@ class Container:
             insumo_repo=self.insumo_repo,
             movimiento_insumo_repo=self.movimiento_insumo_repo,
             categoria_repo=self.categoria_repo,
+            notificador_plano=self.notificador_plano,
+            notificador_kds=self.notificador_kds,
+            notificador_comanda=self.notificador_comanda,
         )
 
         self.linea_comanda_service = LineaComandaService(
             linea_comanda_repo=self.linea_comanda_repo,
             comanda_repo=self.comanda_repo,
+            notificador_plano=self.notificador_plano,
+            notificador_kds=self.notificador_kds,
         )
         self.caja_service = CajaService(
             caja_repo=self.caja_repo,
