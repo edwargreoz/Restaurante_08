@@ -30,7 +30,7 @@ class CajaService:
         if caja_existente:
             raise ReglaNegocioViolada('Ya hay un turno de caja abierto')
         return self.repo.guardar(Caja(
-            turno=turno_nombre, cajero_id=usuario.id,
+            id=None, turno=turno_nombre, cajero_id=usuario.id,
             saldo_inicial=saldo_inicial, estado='ABIERTA'
         ))
 

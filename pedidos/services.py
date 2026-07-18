@@ -173,7 +173,7 @@ class ComandaService:
                 self.insumo_repo.guardar(insumo)
 
                 deducciones.append(MovimientoInsumo(
-                    insumo_id=insumo.id, comanda_id=comanda.id,
+                    id=None, insumo_id=insumo.id, comanda_id=comanda.id,
                     tipo='DEDUCCION', cantidad=necesario,
                     stock_anterior=stock_anterior,
                     stock_posterior=insumo.stock_actual,
@@ -191,7 +191,7 @@ class ComandaService:
 
             movimientos.extend(deducciones)
             lineas_a_crear.append(LineaComanda(
-                comanda_id=comanda.id, plato_id=plato.id,
+                id=None, comanda_id=comanda.id, plato_id=plato.id,
                 cantidad=cantidad, observacion=observacion,
             ))
 
@@ -309,7 +309,7 @@ class ComandaService:
             _validar_referencia_tarjeta(referencia)
 
         self.pago_repo.guardar(Pago(
-            comanda_id=comanda.id, metodo=metodo,
+            id=None, comanda_id=comanda.id, metodo=metodo,
             monto=monto, vuelto=vuelto, referencia=referencia, caja_id=caja.id
         ))
         comanda.estado = 'COBRADA'
@@ -348,7 +348,7 @@ class ComandaService:
         for pd in pagos_lista:
             if pd.get('metodo') == 'TARJETA':
                 _validar_referencia_tarjeta(pd.get('referencia', ''))
-            self.pago_repo.guardar(Pago(comanda_id=comanda.id, metodo=pd['metodo'], monto=pd['monto'], vuelto=pd.get('vuelto', 0), referencia=pd.get('referencia', ''), caja_id=caja.id))
+            self.pago_repo.guardar(Pago(id=None, comanda_id=comanda.id, metodo=pd['metodo'], monto=pd['monto'], vuelto=pd.get('vuelto', 0), referencia=pd.get('referencia', ''), caja_id=caja.id))
 
         comanda.estado = 'COBRADA'
         comanda.fecha_cierre = datetime.now(timezone.utc)

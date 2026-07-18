@@ -89,7 +89,7 @@
                 <span class="metodo-cantidad-valor">{{ item.cantidad }}</span>
             </div>
             <div class="metodo-bar">
-                <div class="metodo-bar-fill" style="width:{{ item.porcentaje }}%"></div>
+                <div class="metodo-bar-fill" data-width="{{ item.porcentaje }}%"></div>
             </div>
         </div>
     </div>
@@ -145,4 +145,14 @@
     <a href="{% url 'reportes_turno' %}" class="btn btn-primary" style="width:auto;padding:0.7rem 1.5rem;margin-top:0.5rem;">Limpiar filtros</a>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        document.querySelectorAll('.metodo-bar-fill').forEach(function(el) {
+            el.style.width = el.getAttribute('data-width');
+        });
+    });
+</script>
 {% endblock %}
