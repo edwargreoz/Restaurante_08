@@ -201,7 +201,9 @@ def lista_mesas_admin(request):
 
     mesas = container.mesa_service.listar_activas()
     mesas = sorted(mesas, key=lambda m: m.numero)
-    return render(request, 'mesas/lista_mesas_admin.html', {'mesas': mesas, 'form': form})
+    next_numero = max((m.numero for m in mesas), default=0) + 1
+    form = MesaForm(initial={'numero': next_numero, 'capacidad': 2, 'zona': 'GENERAL', 'estado': 'LIBRE'}, mesa_service=container.mesa_service)
+    return render(request, 'mesas/lista_mesas_admin.html', {'mesas': mesas, 'form': form, 'next_numero': next_numero})
 
 
 @login_required
