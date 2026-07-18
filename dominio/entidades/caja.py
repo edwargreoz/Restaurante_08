@@ -15,6 +15,7 @@ class Caja:
     estado: str = 'ABIERTA'
     fecha_apertura: Optional[datetime] = None
     fecha_cierre: Optional[datetime] = None
+    nombre_cajero: str = ''
 
     ESTADOS_VALIDOS = ('ABIERTA', 'CERRADA')
 

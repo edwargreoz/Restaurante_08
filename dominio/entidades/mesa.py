@@ -10,6 +10,7 @@ class Mesa:
     capacidad: int
     zona: str = 'SALON'
     estado: str = 'LIBRE'
+    activo: bool = True
 
     ZONAS_VALIDAS = ('SALON', 'TERRAZA', 'VIP')
     ESTADOS_VALIDOS = ('LIBRE', 'OCUPADA', 'RESERVADA', 'LIMPIEZA')
