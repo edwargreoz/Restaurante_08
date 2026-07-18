@@ -2,6 +2,7 @@ from typing import Optional, List
 from django.db.models import Q
 from pedidos.models import Comanda as ComandaModel
 from dominio.entidades.comanda import Comanda
+from dominio.entidades.pago import Pago
 
 
 class ComandaRepository:
@@ -28,7 +29,7 @@ class ComandaRepository:
         try:
             modelo = ComandaModel.objects.select_related(
                 'mesa', 'mozo'
-            ).prefetch_related('lineas__plato').get(
+            ).prefetch_related('lineas__plato', 'pagos').get(
                 id=comanda_id, activo=True
             )
             return self._modelo_a_entidad(modelo)
@@ -138,4 +139,10 @@ class ComandaRepository:
             numero_mesa=modelo.mesa.numero if hasattr(modelo, 'mesa') and modelo.mesa else None,
             nombre_mozo=mozo_nombre,
             lineas=lineas or [],
+            pagos=[
+                Pago(id=p.id, comanda_id=p.comanda_id, metodo=p.metodo,
+                     monto=p.monto, vuelto=p.vuelto, referencia=p.referencia,
+                     caja_id=p.caja_id)
+                for p in modelo.pagos.all()
+            ] if hasattr(modelo, 'pagos') else [],
         )

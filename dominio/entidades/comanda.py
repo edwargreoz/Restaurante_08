@@ -17,6 +17,7 @@ class Comanda:
     numero_mesa: Optional[int] = None
     nombre_mozo: Optional[str] = None
     lineas: List = field(default_factory=list)
+    pagos: List = field(default_factory=list)
 
     TRANSICIONES = {
         'ABIERTA': ['EN_PREPARACION', 'ANULADA'],
