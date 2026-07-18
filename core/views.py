@@ -41,6 +41,9 @@ def dashboard_view(request):
     es_mozo_grupo = request.user.is_superuser or request.user.groups.filter(name='Mozo').exists()
     es_cajero_grupo = request.user.is_superuser or request.user.groups.filter(name='Cajero').exists()
 
+    if not (es_mozo_grupo or es_cajero_grupo or request.user.is_superuser):
+        return render(request, 'core/dashboard.html', {'error': 'No tienes permisos para ver el dashboard'})
+
     context = {}
 
     if es_mozo_grupo:

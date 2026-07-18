@@ -23,7 +23,7 @@
                 <strong>Nueva Presentacion</strong>
             </div>
             <div class="card-body gestion-form">
-                <p class="help-text">Crea las presentaciones que usas para comprar insumos. Ej: "Saco 25kg", "Caja 12u", "Botella 5LT". Estas se reutilizan al crear o comprar insumos.</p>
+
                 <form method="POST">
                     {% csrf_token %}
                     <div class="form-group">
@@ -42,12 +42,12 @@
                             <option value="{{ key }}">{{ label }}</option>
                             {% endfor %}
                         </select>
-                        <small class="text-muted">Debe ser de la misma familia que el insumo al que se vincule (peso: KG/GR, volumen: LT/ML, cantidad: UNIDAD).</small>
+
                     </div>
                     <div class="form-group">
                         <label for="costo_compra">Costo de referencia (S/)</label>
                         <input type="number" name="costo_compra" id="costo_compra" step="0.01" min="0" value="0" class="form-control">
-                        <small class="text-muted">Costo aproximado por paquete. Se puede cambiar al momento de comprar.</small>
+
                     </div>
                     <button type="submit" class="btn btn-primary">Crear Presentacion</button>
                 </form>

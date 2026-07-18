@@ -38,7 +38,7 @@ class PlatoViewSet(viewsets.ReadOnlyModelViewSet):
 
 class InsumoViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar insumos del inventario (solo admin)."""
-    permission_classes = [EsAdmin]
+    permission_classes = [EsCocinero]
     serializer_class = InsumoSerializer
 
     def get_queryset(self):
@@ -47,7 +47,7 @@ class InsumoViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RecetaViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar recetas asociadas a platos."""
-    permission_classes = [EsAdmin]
+    permission_classes = [EsCocinero]
     serializer_class = RecetaSerializer
 
     def get_queryset(self):
@@ -56,7 +56,7 @@ class RecetaViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RecetaInsumoViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet de solo lectura para consultar los ingredientes de cada receta."""
-    permission_classes = [EsAdmin]
+    permission_classes = [EsCocinero]
     serializer_class = RecetaInsumoSerializer
 
     def get_queryset(self):
@@ -146,6 +146,13 @@ class ComandaViewSet(viewsets.ModelViewSet):
     permission_classes = [EsMozo | EsCajero | EsAdmin]
     serializer_class = ComandaSerializer
     filterset_class = ComandaFilter
+
+    def get_permissions(self):
+        if self.action in ['abrir', 'anular', 'agregar_platos', 'agregar_mesa']:
+            return [EsMozo()]
+        elif self.action in ['pagar', 'pagar_split']:
+            return [EsCajero()]
+        return [(EsMozo | EsCajero | EsAdmin)()]
 
     def get_queryset(self):
         return get_container().comanda_service.listar()
@@ -288,6 +295,13 @@ class LineaComandaViewSet(viewsets.ModelViewSet):
     serializer_class = LineaComandaSerializer
     filterset_fields = ['estado', 'comanda', 'plato']
     search_fields = ['plato__nombre', 'observacion']
+
+    def get_permissions(self):
+        if self.action == 'enviar_cocina':
+            return [(EsMozo | EsCocinero)()]
+        elif self.action == 'marcar_listo':
+            return [EsCocinero()]
+        return [(EsMozo | EsCocinero | EsAdmin)()]
 
     def get_queryset(self):
         return get_container().linea_comanda_service.listar()

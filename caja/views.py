@@ -2,14 +2,14 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
-from core.rol_utils import es_mozo_o_cajero, es_cajero_o_admin
+from core.rol_utils import es_mozo_o_cajero, es_cajero
 from core.excepciones import CajaNoAbierta, RecursoNoEncontrado, ReglaNegocioViolada
 from caja.models import Pago
 from infraestructura.container import get_container
 
 
 @login_required
-@user_passes_test(es_mozo_o_cajero)
+@user_passes_test(es_cajero)
 def cobrar_comanda(request, comanda_id):
     try:
         container = get_container()
@@ -64,7 +64,7 @@ def cobrar_comanda(request, comanda_id):
     })
 
 @login_required
-@user_passes_test(es_cajero_o_admin)
+@user_passes_test(es_cajero)
 def lista_comandas_cobro(request):
     container = get_container()
     comandas = container.pago_service.listar_comandas_para_cobro()
@@ -79,7 +79,7 @@ def lista_comandas_cobro(request):
     })
 
 @login_required
-@user_passes_test(es_cajero_o_admin)
+@user_passes_test(es_cajero)
 def apertura_turno(request):
     try:
         container = get_container()
@@ -108,7 +108,7 @@ def apertura_turno(request):
     return render(request, 'caja/apertura_turno.html', {'caja': caja_abierta})
 
 @login_required
-@user_passes_test(es_cajero_o_admin)
+@user_passes_test(es_cajero)
 def reportes_turno(request):
     caja_id = request.GET.get('caja_id')
     fecha_desde = request.GET.get('fecha_desde')

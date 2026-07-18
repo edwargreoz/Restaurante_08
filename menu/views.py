@@ -2,12 +2,13 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
-from core.rol_utils import es_admin
+from core.rol_utils import es_admin, es_cualquier_rol
 from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
 from infraestructura.container import get_container
 
 
 @login_required
+@user_passes_test(es_cualquier_rol)
 def catalogo_platos(request):
     container = get_container()
     categorias = container.categoria_service.listar_categorias()
