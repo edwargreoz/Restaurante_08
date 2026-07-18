@@ -283,7 +283,8 @@ class PresentacionInsumo(ModeloBase):
     insumo = models.ForeignKey(
         Insumo, on_delete=models.CASCADE,
         related_name='presentaciones',
-        verbose_name='Insumo'
+        verbose_name='Insumo',
+        null=True, blank=True,
     )
     nombre = models.CharField(max_length=200, verbose_name='Nombre de la presentación')
     cantidad = models.DecimalField(

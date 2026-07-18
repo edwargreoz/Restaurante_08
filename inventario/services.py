@@ -281,6 +281,25 @@ class PresentacionInsumoService:
     def listar_por_insumo(self, insumo_id: int):
         return self.repo.listar_por_insumo(insumo_id)
 
+    def listar_catalogo(self):
+        return self.repo.listar_catalogo()
+
+    def vincular_a_insumo(self, presentacion_id: int, insumo_id: int):
+        p = self.repo.obtener_por_id(presentacion_id)
+        if not p:
+            raise RecursoNoEncontrado('Presentación no encontrada')
+        insumo = self.insumo_repo.obtener_por_id(insumo_id)
+        if not insumo:
+            raise RecursoNoEncontrado('Insumo no encontrado')
+        from dominio.entidades.presentacion_insumo import unidades_compatibles
+        if not unidades_compatibles(p.unidad_medida, insumo.unidad):
+            raise ReglaNegocioViolada(
+                f'La presentación "{p.nombre}" ({p.unidad_medida}) '
+                f'no es compatible con el insumo ({insumo.unidad}).'
+            )
+        p.insumo_id = insumo_id
+        return self.repo.guardar(p)
+
     def obtener_por_id(self, presentacion_id: int):
         p = self.repo.obtener_por_id(presentacion_id)
         if not p:
@@ -290,7 +309,20 @@ class PresentacionInsumoService:
     def crear(self, insumo_id: int, nombre: str, cantidad,
               unidad_medida: str, costo_compra=Decimal('0'),
               es_principal=False):
-        from dominio.entidades.presentacion_insumo import PresentacionInsumo
+        from dominio.entidades.presentacion_insumo import (
+            PresentacionInsumo, unidades_compatibles,
+        )
+        if insumo_id:
+            insumo = self.insumo_repo.obtener_por_id(insumo_id)
+            if not insumo:
+                raise RecursoNoEncontrado('Insumo no encontrado')
+            if not unidades_compatibles(unidad_medida, insumo.unidad):
+                raise ReglaNegocioViolada(
+                    f'La unidad "{unidad_medida}" no es compatible con '
+                    f'la unidad del insumo "{insumo.unidad}". '
+                    f'Use unidades de la misma familia '
+                    f'(peso: KG/GR, volumen: LT/ML, cantidad: UNIDAD).'
+                )
         p = PresentacionInsumo(
             id=None, insumo_id=insumo_id, nombre=nombre,
             cantidad=Decimal(str(cantidad)), unidad_medida=unidad_medida,
@@ -307,17 +339,27 @@ class PresentacionInsumoService:
     def registrar_compra(self, presentacion_id: int,
                          cantidad_paquetes: int, costo_total: Decimal,
                          usuario=None):
+        from dominio.entidades.presentacion_insumo import unidades_compatibles
         p = self.repo.obtener_por_id(presentacion_id)
         if not p:
             raise RecursoNoEncontrado('Presentación no encontrada')
         insumo = self.insumo_repo.obtener_por_id(p.insumo_id)
         if not insumo:
             raise RecursoNoEncontrado('Insumo no encontrado')
+        if not unidades_compatibles(p.unidad_medida, insumo.unidad):
+            raise ReglaNegocioViolada(
+                f'La presentación "{p.nombre}" ({p.unidad_medida}) '
+                f'no es compatible con el insumo ({insumo.unidad}).'
+            )
         stock_anterior = insumo.stock_actual
         cantidad_base = p.calcular_stock_base(cantidad_paquetes)
+        costo_total = Decimal(str(costo_total))
+        stock_anterior_costo = insumo.stock_actual
+        stock_anterior_costo_total = stock_anterior_costo * insumo.costo_unitario
         insumo.stock_actual += cantidad_base
-        if cantidad_base > 0:
-            insumo.costo_unitario = Decimal(str(costo_total)) / cantidad_base
+        nuevo_total_valor = stock_anterior_costo_total + costo_total
+        if insumo.stock_actual > 0:
+            insumo.costo_unitario = nuevo_total_valor / insumo.stock_actual
         self.insumo_repo.guardar(insumo)
         if self.movimiento_insumo_repo:
             from dominio.entidades.movimiento_insumo import MovimientoInsumo

@@ -11,11 +11,27 @@ UNIDADES_MEDIDA = (
     ('ML', 'Mililitro'),
 )
 
+FAMILIAS_UNIDADES = {
+    'UNIDAD': 'UNIDAD',
+    'KG': 'PESO',
+    'GR': 'PESO',
+    'LT': 'VOLUMEN',
+    'ML': 'VOLUMEN',
+}
+
+
+def unidades_compatibles(unidad_a: str, unidad_b: str) -> bool:
+    familia_a = FAMILIAS_UNIDADES.get(unidad_a)
+    familia_b = FAMILIAS_UNIDADES.get(unidad_b)
+    if not familia_a or not familia_b:
+        return False
+    return familia_a == familia_b
+
 
 @dataclass
 class PresentacionInsumo:
     id: Optional[int]
-    insumo_id: int
+    insumo_id: Optional[int]
     nombre: str
     cantidad: Decimal
     unidad_medida: str

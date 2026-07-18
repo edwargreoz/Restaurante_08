@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load role_tags %}
+{% block title %}Catalogo de Presentaciones{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/inventario/gestion_insumos.css' %}">
+<style>
+    .help-text { font-size: 0.82rem; color: #888; margin-bottom: 1rem; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Catalogo de Presentaciones</h1>
+    <div>
+        <a href="{% url 'gestion_insumos' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Volver a Insumos</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header">
+                <strong>Nueva Presentacion</strong>
+            </div>
+            <div class="card-body gestion-form">
+                <p class="help-text">Crea las presentaciones que usas para comprar insumos. Ej: "Saco 25kg", "Caja 12u", "Botella 5LT". Estas se reutilizan al crear o comprar insumos.</p>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="nombre">Nombre</label>
+                        <input type="text" name="nombre" id="nombre" placeholder="Ej: Saco 25kg, Caja 12u..." required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="cantidad">Cantidad contenida</label>
+                        <input type="number" name="cantidad" id="cantidad" step="0.01" min="0.01" placeholder="Ej: 25" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="unidad_medida">Unidad de medida</label>
+                        <select name="unidad_medida" id="unidad_medida" class="form-control" required>
+                            <option value="">--- Seleccionar ---</option>
+                            {% for key, label in unidades %}
+                            <option value="{{ key }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Debe ser de la misma familia que el insumo al que se vincule (peso: KG/GR, volumen: LT/ML, cantidad: UNIDAD).</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="costo_compra">Costo de referencia (S/)</label>
+                        <input type="number" name="costo_compra" id="costo_compra" step="0.01" min="0" value="0" class="form-control">
+                        <small class="text-muted">Costo aproximado por paquete. Se puede cambiar al momento de comprar.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Crear Presentacion</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr><th>Nombre</th><th>Cantidad</th><th>Unidad</th><th>Costo Ref.</th><th>Acciones</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in presentaciones %}
+                    <tr>
+                        <td><strong>{{ p.nombre }}</strong></td>
+                        <td>{{ p.cantidad|floatformat:2 }}</td>
+                        <td>{{ p.unidad_medida }}</td>
+                        <td>S/ {{ p.costo_compra|floatformat:2 }}</td>
+                        <td>
+                            <form method="POST" action="{% url 'eliminar_presentacion_catalogo' p.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn-eliminar"
+                                        onclick="return confirm('Eliminar {{ p.nombre }} del catalogo?')">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="empty-row">No hay presentaciones en el catalogo. Crea una para empezar.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

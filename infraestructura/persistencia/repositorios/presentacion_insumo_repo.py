@@ -32,6 +32,12 @@ class PresentacionInsumoRepository:
             for m in PresentacionModel.objects.filter(insumo_id=insumo_id)
         ]
 
+    def listar_catalogo(self) -> List[PresentacionInsumo]:
+        return [
+            self._a_entidad(m)
+            for m in PresentacionModel.objects.filter(insumo_id__isnull=True)
+        ]
+
     def eliminar(self, presentacion_id: int) -> None:
         PresentacionModel.objects.filter(id=presentacion_id).delete()
 

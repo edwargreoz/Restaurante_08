@@ -2,6 +2,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
+from decimal import Decimal
 from core.rol_utils import es_admin, es_mozo
 from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
 from .models import Insumo
@@ -23,7 +24,11 @@ def lista_insumos(request):
 def gestion_insumos(request):
     container = get_container()
     insumos = container.insumo_service.listar_insumos()
-    return render(request, 'inventario/gestion_insumos.html', {'insumos': insumos})
+    presentaciones = container.presentacion_insumo_service.listar_catalogo()
+    return render(request, 'inventario/gestion_insumos.html', {
+        'insumos': insumos,
+        'presentaciones': presentaciones,
+    })
 
 @login_required
 @user_passes_test(es_admin)
@@ -31,14 +36,33 @@ def crear_insumo(request):
     if request.method == 'POST':
         try:
             container = get_container()
-            container.insumo_service.crear(
+            insumo = container.insumo_service.crear(
                 nombre=request.POST.get('nombre'),
                 unidad=request.POST.get('unidad'),
                 stock_actual=request.POST.get('stock_actual', 0),
                 stock_minimo=request.POST.get('stock_minimo', 0),
                 costo_unitario=request.POST.get('costo_unitario', 0),
             )
-            messages.success(request, 'Insumo creado')
+            presentacion_id = request.POST.get('presentacion_id')
+            cantidad_paquetes = request.POST.get('cantidad_paquetes', 0)
+            costo_total = request.POST.get('costo_compra', 0)
+            if presentacion_id and int(cantidad_paquetes) > 0:
+                from dominio.entidades.presentacion_insumo import PresentacionInsumo
+                p_domain = container.presentacion_insumo_service.obtener_por_id(int(presentacion_id))
+                container.presentacion_insumo_service.vincular_a_insumo(
+                    presentacion_id=int(presentacion_id),
+                    insumo_id=insumo.id,
+                )
+                from dominio.entidades.presentacion_insumo import PresentacionInsumo as PIDomain
+                container.presentacion_insumo_service.registrar_compra(
+                    presentacion_id=int(presentacion_id),
+                    cantidad_paquetes=int(cantidad_paquetes),
+                    costo_total=Decimal(str(costo_total)),
+                    usuario=request.user,
+                )
+                messages.success(request, f'Insumo creado con {cantidad_paquetes} x {p_domain.nombre} al stock')
+            else:
+                messages.success(request, 'Insumo creado')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
     return redirect('gestion_insumos')
@@ -335,3 +359,40 @@ def eliminar_unidad_cocina(request, unidad_id):
     except RecursoNoEncontrado:
         messages.error(request, 'Unidad no encontrada')
     return redirect('unidades_cocina')
+
+
+@login_required
+@user_passes_test(es_admin)
+def catalogo_presentaciones(request):
+    container = get_container()
+    presentaciones = container.presentacion_insumo_service.listar_catalogo()
+    if request.method == 'POST':
+        try:
+            container.presentacion_insumo_service.crear(
+                insumo_id=None,
+                nombre=request.POST.get('nombre'),
+                cantidad=request.POST.get('cantidad'),
+                unidad_medida=request.POST.get('unidad_medida'),
+                costo_compra=request.POST.get('costo_compra', 0),
+                es_principal=False,
+            )
+            messages.success(request, 'Presentacion agregada al catalogo')
+        except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
+            messages.error(request, str(e))
+        return redirect('catalogo_presentaciones')
+    return render(request, 'inventario/catalogo_presentaciones.html', {
+        'presentaciones': presentaciones,
+        'unidades': Insumo.UNIDADES,
+    })
+
+
+@login_required
+@user_passes_test(es_admin)
+def eliminar_presentacion_catalogo(request, presentacion_id):
+    container = get_container()
+    try:
+        container.presentacion_insumo_service.eliminar(presentacion_id)
+        messages.success(request, 'Presentacion eliminada del catalogo')
+    except RecursoNoEncontrado:
+        messages.error(request, 'Presentacion no encontrada')
+    return redirect('catalogo_presentaciones')
