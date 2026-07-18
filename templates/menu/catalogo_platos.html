@@ -2,38 +2,37 @@
 {% load static %}
 {% block title %}Catalogo de Platos{% endblock %}
 {% block content %}
-<div class="page-header">
+<div class="catalog-header">
     <div>
         <div class="eyebrow">Carta</div>
-        <h1>Catálogo de Platos</h1>
+        <h1 style="font-family:'Cormorant Garamond',serif; font-size:28px; font-weight:700; margin:8px 0 0;">Catálogo de Platos</h1>
     </div>
     {% if user.is_superuser %}
-    <a href="{% url 'gestion_menu' %}" class="btn btn-primary btn-sm">Gestionar Menú</a>
+    <a href="{% url 'gestion_menu' %}" class="manage-menu-button">Gestionar Menú</a>
     {% endif %}
 </div>
 
 {% for categoria in categorias %}
-<section>
-    <h2 style="font-size:22px; margin-bottom:16px;">{{ categoria.nombre }}</h2>
-    <div class="dish-grid">
+<section class="catalog-category">
+    <h2 class="catalog-category__title">{{ categoria.nombre }}</h2>
+    <div class="catalog-grid">
         {% for plato in categoria.platos %}
-        <div class="dish-card">
-            <div class="dish-img">
-                {% if plato.imagen %}
-                <img src="{{ plato.imagen.url }}" alt="{{ plato.nombre }}" style="width:100%;height:100%;object-fit:cover;position:relative;">
+        <div class="product-card">
+            <div class="product-card__image-container">
+                {% if plato.imagen_url %}
+                <img src="{{ plato.imagen_url }}" alt="{{ plato.nombre }}" class="product-card__image" onerror="this.onerror=null; this.src='{% static 'icons/orden.png' %}';">
                 {% else %}
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8Z"/><path d="M6 1v3M10 1v3M14 1v3"/></svg>
+                <img src="{% static 'icons/orden.png' %}" alt="{{ plato.nombre }}" class="product-card__image">
                 {% endif %}
             </div>
-            <div class="dish-body">
-                <h3>{{ plato.nombre }}</h3>
-                <p style="color:var(--text-muted); font-size:13px; margin:0;">{{ plato.descripcion|truncatewords:12 }}</p>
-                <div class="dish-meta">
-                    <span class="price">S/ {{ plato.precio }}</span>
+            <div class="product-card__content">
+                <h3 class="product-card__name">{{ plato.nombre }}</h3>
+                <div class="product-card__footer">
+                    <p class="product-card__price">S/ {{ plato.precio }}</p>
                     {% if plato.disponible %}
-                    <span class="badge badge-info">Disponible</span>
+                    <span class="product-card__status">Disponible</span>
                     {% else %}
-                    <span class="badge badge-occupied">No disponible</span>
+                    <span class="product-card__status product-card__status--unavailable">No disponible</span>
                     {% endif %}
                 </div>
             </div>

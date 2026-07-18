@@ -234,13 +234,14 @@ a { color: inherit; text-decoration: none; }
 }
 .card-link {
     display: inline-block;
-    margin-top: 1.2rem;
+    margin-top: auto;
     color: var(--gold-dark);
     font-size: 0.85rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     transition: color 0.2s;
+    z-index: 1;
 }
 .card-link:hover { color: var(--gold); }
 .card-img-top { height: 200px; object-fit: cover; }
@@ -265,6 +266,72 @@ a { color: inherit; text-decoration: none; }
 .card-dark .card-label { color: #a0aec0; }
 .card-dark .card-number { color: #fff; }
 .card-dark .card-link { color: var(--gold-light); }
+
+/* === Dashboard Cards === */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+.dashboard-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 220px;
+    padding: 24px;
+    box-sizing: border-box;
+    border-radius: var(--r-md);
+}
+.dashboard-card .card-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 14px;
+    flex-shrink: 0;
+}
+.dashboard-card .card-label {
+    font-size: 1rem;
+    line-height: 1.3;
+}
+.dashboard-card .card-number {
+    margin: auto 0;
+    font-size: 2.4rem;
+    line-height: 1;
+}
+.dashboard-card .card-link {
+    font-size: 0.9rem;
+    margin-top: auto;
+}
+.dashboard-card.stretched-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+}
+@media (max-width: 1024px) {
+    .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    .dashboard-card {
+        min-height: 180px;
+        padding: 18px;
+    }
+    .dashboard-card .card-number { font-size: 2rem; }
+}
+
+/* === Operation Section (Dashboard) === */
+.operation-section {
+    margin-top: 40px;
+}
+.operation-section h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
 
 /* === Eyebrow === */
 .eyebrow {
@@ -597,51 +664,144 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* === Dish Grid (Catálogo de platos) === */
-.dish-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 22px;
+.catalog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 30px;
+    margin-bottom: 36px;
 }
-.dish-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--r-md);
+.manage-menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 24px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f1cf61, #bc861e);
+    color: #111;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity .2s;
+}
+.manage-menu-button:hover { opacity: .88; color: #111; }
+
+.catalog-category { margin-bottom: 55px; }
+.catalog-category__title {
+    margin: 0 0 22px;
+    font-size: 27px;
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--dark);
+}
+
+.catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 28px;
+    width: 100%;
+    align-items: stretch;
+}
+
+.product-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 305px;
     overflow: hidden;
+    background: #ffffff;
+    border: 1px solid #e7e2da;
+    border-radius: 16px;
+    box-sizing: border-box;
     transition: .3s;
 }
-.dish-card:hover {
+.product-card:hover {
     box-shadow: var(--shadow-card-hover);
     transform: translateY(-4px);
     border-color: #e8dfc4;
 }
-.dish-img {
-    height: 140px;
-    background: linear-gradient(150deg, #20252d, #111418 70%);
-    position: relative;
+
+.product-card__image-container {
+    width: 100%;
+    height: 175px;
+    overflow: hidden;
+    background: #15191e;
+    flex-shrink: 0;
+}
+.product-card__image {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+
+.product-card__content {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    flex: 1;
+    padding: 22px 24px;
+    box-sizing: border-box;
 }
-.dish-img::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(115deg, transparent 45%, rgba(212,175,55,.10) 55%, transparent 65%);
+.product-card__name {
+    margin: 0 0 22px;
+    min-height: 30px;
+    font-size: 20px;
+    line-height: 1.35;
+    font-weight: 600;
+    color: #111;
 }
-.dish-img svg { width: 36px; height: 36px; color: var(--gold-light); position: relative; }
-.dish-body { padding: 18px; }
-.dish-body h3 { font-size: 18px; margin-bottom: 5px; }
-.dish-meta {
+.product-card__footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 14px;
+    gap: 16px;
+    margin-top: auto;
 }
-.price {
+.product-card__price {
+    margin: 0;
     font-family: 'Cormorant Garamond', serif;
+    font-size: 23px;
+    line-height: 1;
     font-weight: 700;
-    font-size: 21px;
     color: var(--gold-dark);
+}
+.product-card__status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 120px;
+    padding: 7px 14px;
+    border-radius: 999px;
+    background: #e7f3ff;
+    color: #1976b8;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.product-card__status--unavailable {
+    background: #fde8e8;
+    color: #c62828;
+}
+
+@media (max-width: 1200px) {
+    .catalog-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 900px) {
+    .catalog-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+    .catalog-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .manage-menu-button { width: 100%; }
+    .catalog-grid { grid-template-columns: 1fr; }
+    .product-card__image-container { height: 200px; }
 }
 
 /* === Steps (guiados) === */

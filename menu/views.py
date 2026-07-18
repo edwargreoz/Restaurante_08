@@ -5,6 +5,8 @@ from django.contrib import messages
 from core.rol_utils import es_admin, es_cualquier_rol
 from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
 from infraestructura.container import get_container
+from menu.models import Plato as PlatoModel
+
 
 
 @login_required
@@ -60,8 +62,13 @@ def crear_plato(request):
                 receta_id=receta_id,
                 descripcion=request.POST.get('descripcion', ''),
                 disponible=request.POST.get('disponible') == 'on',
-                imagen=request.FILES.get('imagen'),
             )
+            imagen = request.FILES.get('imagen')
+            if imagen:
+                plato_creado = PlatoModel.objects.order_by('-id').first()
+                if plato_creado:
+                    plato_creado.imagen = imagen
+                    plato_creado.save(update_fields=['imagen'])
             messages.success(request, 'Plato creado')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
@@ -85,9 +92,12 @@ def editar_plato(request, plato_id):
                 precio=request.POST.get('precio', plato.precio),
                 descripcion=request.POST.get('descripcion', ''),
                 disponible=request.POST.get('disponible') == 'on',
-                categoria_id=request.POST.get('categoria'),
-                imagen=request.FILES.get('imagen'),
-            )
+                categoria_id=request.POST.get('categoria'),            )
+            imagen = request.FILES.get('imagen')
+            if imagen:
+                p = PlatoModel.objects.get(id=plato_id)
+                p.imagen = imagen
+                p.save(update_fields=['imagen'])
             messages.success(request, 'Plato actualizado')
             return redirect('gestion_menu')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:

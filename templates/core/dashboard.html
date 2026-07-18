@@ -11,27 +11,27 @@
     <span class="page-user">{{ request.user.get_full_name|default:request.user.username }}</span>
 </div>
 
-<div class="card-grid">
+<div class="dashboard-grid">
     {% if user|has_group:'Mozo' %}
-    <div class="card card-green">
+    <div class="card dashboard-card card-green">
         <img src="{% static 'icons/MesasLibres.png' %}" class="card-icon" alt="">
         <p class="card-label">Mesas libres</p>
         <p class="card-number">{{ mesas_libres }}</p>
         <a href="{% url 'plano_mesas' %}" class="card-link stretched-link">Ver plano →</a>
     </div>
-    <div class="card card-red">
+    <div class="card dashboard-card card-red">
         <img src="{% static 'icons/MesasOcupadas.png' %}" class="card-icon" alt="">
         <p class="card-label">Mesas ocupadas</p>
         <p class="card-number">{{ mesas_ocupadas }}</p>
         <a href="{% url 'plano_mesas' %}" class="card-link stretched-link">Ver plano →</a>
     </div>
-    <div class="card card-orange">
+    <div class="card dashboard-card card-orange">
         <img src="{% static 'icons/comandaActiva.png' %}" class="card-icon" alt="">
         <p class="card-label">Comandas activas</p>
         <p class="card-number">{{ comandas_activas }}</p>
         <a href="{% url 'plano_mesas' %}" class="card-link stretched-link">Ver pedidos →</a>
     </div>
-    <div class="card card-blue">
+    <div class="card dashboard-card card-blue">
         <img src="{% static 'icons/Alertastock.png' %}" class="card-icon" alt="">
         <p class="card-label">Alertas de stock</p>
         <p class="card-number">{{ alertas_stock }}</p>
@@ -39,16 +39,16 @@
     </div>
     {% endif %}
     {% if user|has_group:'Cajero' %}
-    <div class="card card-purple">
+    <div class="card dashboard-card card-purple">
         <img src="{% static 'icons/ventasHoy.png' %}" class="card-icon" alt="">
         <p class="card-label">Ventas hoy</p>
         <p class="card-number">S/ {{ ventas_hoy|floatformat:2 }}</p>
         <a href="{% url 'reportes_turno' %}" class="card-link stretched-link">Ver reportes →</a>
     </div>
-    <div class="card {% if caja_actual and caja_actual.estado == 'ABIERTA' %}card-green{% else %}card-dark{% endif %}">
+    <div class="card dashboard-card {% if caja_actual and caja_actual.estado == 'ABIERTA' %}card-green{% else %}card-dark{% endif %}">
         <img src="{% static 'icons/caja.png' %}" class="card-icon" alt="">
         <p class="card-label">Caja — {{ caja_actual.turno|default:"Sin turno" }}</p>
-        <p class="card-number" style="font-size: 1.8rem;">
+        <p class="card-number">
             {% if caja_actual %}
                 {{ caja_actual.estado|estado_display }}
             {% else %}
@@ -61,9 +61,9 @@
 </div>
 
 {% if user|has_group:'Mozo' %}
-<section>
+<section class="operation-section">
     <div class="eyebrow">Operación en curso</div>
-    <h2 style="font-size:22px; margin-bottom:16px;">Últimas comandas activas</h2>
+    <h2>Últimas comandas activas</h2>
     <div class="table-wrapper">
         <table class="table">
             <thead>
@@ -94,9 +94,9 @@
     </div>
 </section>
 
-<section>
+<section class="operation-section">
     <div class="eyebrow">Stock</div>
-    <h2 style="font-size:22px; margin-bottom:16px;">Alertas de stock</h2>
+    <h2>Alertas de stock</h2>
     <div class="alert-list">
         {% for insumo in alertas_detalle %}
         <div class="alert-item {% if insumo.stock_actual == 0 %}alert-item-danger{% else %}alert-item-warning{% endif %}">
