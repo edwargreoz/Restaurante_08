@@ -123,6 +123,8 @@ class MesaService:
     def obtener_detalle(self, mesa_id: int, usuario=None,
                         comanda_service=None, categoria_service=None):
         mesa = self.repo.obtener_por_id(mesa_id)
+        if not mesa:
+            raise RecursoNoEncontrado('Mesa no encontrada')
 
         comandas_mesa = self.comanda_repo.listar_por_mesa(mesa.id)
         comanda = next((c for c in comandas_mesa if c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA']), None)
