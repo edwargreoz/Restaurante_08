@@ -8,6 +8,7 @@ class UnionMesa:
     id: Optional[int]
     mesa_ids: list[int] = field(default_factory=list)
     activo: bool = True
+    capacidad_total: int = 0
 
     def validar_minimo_mesas(self) -> None:
         if len(self.mesa_ids) < 2:

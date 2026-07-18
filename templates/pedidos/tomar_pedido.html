@@ -18,7 +18,7 @@
             <div class="card-header">Información de Mesa</div>
             <div class="card-body">
                 <p><strong>Número:</strong> {{ mesa.numero }}</p>
-                <p><strong>Capacidad:</strong> {{ mesa.capacidad }} personas</p>
+                <p><strong>Capacidad:</strong> {% if mesas_union %}{{ capacidad_total_union }} personas (unión de {{ mesas_union|length }} mesas){% else %}{{ mesa.capacidad }} personas{% endif %}</p>
                 <p><strong>Zona:</strong> {{ mesa.zona|zona_display }}</p>
                 <p><strong>Estado:</strong>
                     <span class="badge

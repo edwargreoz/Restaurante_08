@@ -42,7 +42,7 @@ class UnionMesaSerializer(serializers.Serializer):
     capacidad_total = serializers.SerializerMethodField()
 
     def get_capacidad_total(self, obj):
-        return getattr(obj, 'capacidad_total', lambda: 0)()
+        return getattr(obj, 'capacidad_total', 0)
 
 
 class CategoriaSerializer(serializers.Serializer):

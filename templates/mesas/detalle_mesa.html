@@ -50,7 +50,11 @@
                         </div>
                         <div class="mesa-info-item">
                             <span class="mesa-info-label">Capacidad</span>
-                            <span class="mesa-info-value">{{ mesa.capacidad }} <small>personas</small></span>
+                            <span class="mesa-info-value">
+                                {% if union_activa %}{{ capacidad_total_union }}{% else %}{{ mesa.capacidad }}{% endif %}
+                                <small>personas</small>
+                                {% if union_activa %}<small class="text-muted d-block">({{ mesas_union|length }} mesas unidas)</small>{% endif %}
+                            </span>
                         </div>
                         <div class="mesa-info-item">
                             <span class="mesa-info-label">Zona</span>

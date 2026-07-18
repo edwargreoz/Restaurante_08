@@ -29,8 +29,12 @@ class UnionMesaRepository:
         return [self._a_entidad(u) for u in UnionMesaModel.objects.filter(activo=True)]
 
     def _a_entidad(self, u) -> UnionMesa:
+        mesas_qs = u.mesas.all()
+        mesa_ids = [m.id for m in mesas_qs] if u.id else []
+        capacidad_total = sum(m.capacidad for m in mesas_qs) if u.id else 0
         return UnionMesa(
             id=u.id,
-            mesa_ids=[m.id for m in u.mesas.all()] if u.id else [],
+            mesa_ids=mesa_ids,
             activo=u.activo,
+            capacidad_total=capacidad_total,
         )

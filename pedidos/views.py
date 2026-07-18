@@ -17,6 +17,11 @@ def tomar_pedido(request, mesa_id):
         data = container.comanda_service.obtener_datos_tomar_pedido(mesa_id)
     except AppError:
         raise Http404()
+    union = container.union_mesa_repo.obtener_activa_por_mesa(mesa_id)
+    if union:
+        mesas_union = container.mesa_repo.listar_activas_por_ids(union.mesa_ids)
+        data['mesas_union'] = mesas_union
+        data['capacidad_total_union'] = sum(m.capacidad for m in mesas_union)
     return render(request, 'pedidos/tomar_pedido.html', data)
 
 

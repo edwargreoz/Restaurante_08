@@ -31,6 +31,7 @@ def detalle_mesa(request, mesa_id):
     if data.get('union_activa'):
         mesas_union = container.mesa_repo.listar_activas_por_ids(data['union_activa'].mesa_ids)
         data['mesas_union'] = mesas_union
+        data['capacidad_total_union'] = sum(m.capacidad for m in mesas_union)
     return render(request, 'mesas/detalle_mesa.html', data)
 
 
