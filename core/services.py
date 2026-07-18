@@ -1,7 +1,5 @@
 from decimal import Decimal
-from django.db import transaction
-from django.utils import timezone
-from datetime import timedelta
+from datetime import datetime, timezone, timedelta
 from core.excepciones import RecursoNoEncontrado, ReglaNegocioViolada
 from dominio.puertos.repositorios import (
     IMesaRepository, IComandaRepository, IInsumoRepository,
@@ -41,7 +39,7 @@ class DashboardService:
         }
 
     def datos_cajero(self) -> dict:
-        hoy = timezone.now().date()
+        hoy = datetime.now(timezone.utc).date()
         pagos_hoy = self.pago_repo.listar_por_rango_fecha(
             hoy, hoy + timedelta(days=1)
         )
@@ -68,7 +66,6 @@ class UsuarioService:
     def listar_usuarios(self):
         return self.repo.listar()
 
-    @transaction.atomic
     def crear(self, username: str, password: str,
               grupo_nombre: str = None, **extra):
         return self.repo.crear(
@@ -76,7 +73,6 @@ class UsuarioService:
             grupo_nombre=grupo_nombre, **extra
         )
 
-    @transaction.atomic
     def actualizar(self, user_id: int, solicitante_id: int, **campos):
         user = self.repo.obtener_por_id(user_id)
         if not user:
@@ -127,6 +123,3 @@ class UsuarioService:
         if 'Cocinero' in user.grupos and not user.is_superuser:
             return 'kds_panel'
         return 'dashboard'
-
-    def obtener_usuario_orm(self, user_id: int):
-        return self.repo.obtener_usuario_orm(user_id)

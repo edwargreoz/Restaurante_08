@@ -1,6 +1,5 @@
 from datetime import time as time_obj, datetime
 import re
-from django.db import transaction
 from core.excepciones import (
     RecursoNoEncontrado, CapacidadExcedida, ReglaNegocioViolada,
 )
@@ -29,7 +28,6 @@ class ReservaService:
     def listar(self):
         return self.reserva_repo.listar()
 
-    @transaction.atomic
     def crear(self, mesas_ids: list, fecha, hora_inicio, hora_fin,
               num_personas: int, cliente_nombre: str,
               cliente_contacto: str = '', observacion: str = '',
@@ -59,7 +57,6 @@ class ReservaService:
         reserva = self.reserva_repo.guardar(reserva_domain)
         return reserva
 
-    @transaction.atomic
     def cancelar(self, reserva_id: int):
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
@@ -92,7 +89,6 @@ class ReservaService:
             self.notificador_plano.notificar_refresh()
         return reserva
 
-    @transaction.atomic
     def finalizar(self, reserva_id: int):
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
@@ -126,7 +122,6 @@ class ReservaService:
             self.notificador_plano.notificar_refresh()
         return reserva
 
-    @transaction.atomic
     def editar(self, reserva_id: int, mesas_ids: list, fecha,
                hora_inicio, hora_fin, num_personas: int,
                cliente_nombre: str, cliente_contacto: str = '',
@@ -201,7 +196,6 @@ class ReservaService:
             self.notificador_plano.notificar_refresh()
         return reserva
 
-    @transaction.atomic
     def eliminar_definitivamente(self, reserva_id: int) -> None:
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:

@@ -1,5 +1,4 @@
 from decimal import Decimal
-from django.db import transaction
 from dominio.entidades.insumo import Insumo as InsumoDomain
 from dominio.entidades.movimiento_insumo import MovimientoInsumo
 from dominio.entidades.unidad_conversion import UnidadConversion as UnidadConversionDomain
@@ -10,7 +9,7 @@ from dominio.puertos.repositorios import (
 from core.excepciones import (
     RecursoNoEncontrado, ReglaNegocioViolada,
 )
-from inventario.models import convertir_unidad
+from dominio.entidades.unidad_conversion import convertir_unidad
 
 
 class InsumoService:
@@ -60,7 +59,6 @@ class InsumoService:
             raise RecursoNoEncontrado('Insumo no encontrado')
         self.repo.eliminar(insumo_id)
 
-    @transaction.atomic
     def registrar_compra(self, insumo_id: int, unidad_conversion_id: int,
                          cantidad_unidades: int, costo_total: Decimal,
                          usuario=None):
@@ -88,7 +86,6 @@ class InsumoService:
             origen='COMPRA',
         ))
 
-    @transaction.atomic
     def ajustar_stock(self, insumo_id: int, nueva_cantidad: Decimal,
                       motivo: str, usuario=None):
         insumo = self.repo.obtener_por_id(insumo_id)
@@ -130,7 +127,6 @@ class RecetaService:
             raise RecursoNoEncontrado('Receta no encontrada')
         return receta
 
-    @transaction.atomic
     def crear(self, nombre: str, insumos_data: list = None):
         receta = self.repo.obtener_o_crear(nombre=nombre)
         # Si es nueva (no tiene insumos), agregar los insumos proporcionados
@@ -145,7 +141,6 @@ class RecetaService:
                 )
         return receta
 
-    @transaction.atomic
     def actualizar(self, receta_id: int, nombre: str = None,
                    insumos_data: list = None):
         receta = self.obtener_por_id(receta_id)
@@ -247,7 +242,6 @@ class UnidadConversionService:
             parent, total_en_sub, destino_id
         )
 
-    @transaction.atomic
     def crear_cadena(self, insumo_id: int, niveles: list) -> list:
         """Crea una cadena de unidades de conversión de abajo hacia arriba.
         niveles = [

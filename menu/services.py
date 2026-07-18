@@ -1,5 +1,4 @@
 
-from django.db import transaction
 from core.excepciones import RecursoNoEncontrado
 from dominio.puertos.repositorios import (
     ICategoriaRepository, IPlatoRepository, IRecetaRepository,
@@ -38,13 +37,15 @@ class PlatoService:
         self.categoria_repo = categoria_repo
         self.receta_repo = receta_repo
 
+    def listar(self):
+        return self.plato_repo.listar()
+
     def obtener_por_id(self, plato_id: int):
         plato = self.plato_repo.obtener_por_id(plato_id)
         if not plato:
             raise RecursoNoEncontrado('Plato no encontrado')
         return plato
 
-    @transaction.atomic
     def crear(self, nombre: str, precio, categoria_id: int,
               receta_id: int, descripcion: str = '',
               tiempo_preparacion: int = 15,
@@ -73,7 +74,6 @@ class PlatoService:
             raise RecursoNoEncontrado('Plato no encontrado')
         return plato.disponible
 
-    @transaction.atomic
     def actualizar(self, plato_id: int, **kwargs):
         plato = self.plato_repo.obtener_por_id(plato_id)
         if not plato:

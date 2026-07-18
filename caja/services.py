@@ -1,8 +1,7 @@
 
 from collections import defaultdict
 from decimal import Decimal
-from django.db import transaction
-from django.utils import timezone
+from datetime import datetime, timezone
 from dominio.entidades.caja import Caja
 from dominio.puertos.repositorios import (
     ICajaRepository, IComandaRepository, IPagoRepository,
@@ -25,7 +24,6 @@ class CajaService:
         self.comanda_repo = comanda_repo
         self.pago_repo = pago_repo
 
-    @transaction.atomic
     def abrir_turno(self, turno_nombre: str, usuario,
                     saldo_inicial: Decimal = Decimal('0')):
         caja_existente = self.repo.obtener_abierta()
@@ -45,7 +43,6 @@ class CajaService:
     def listar_todas(self):
         return self.repo.listar()
 
-    @transaction.atomic
     def cerrar_turno(self, caja_id: int) -> dict:
         caja = self.repo.obtener_abierta()
         if not caja:
@@ -56,7 +53,7 @@ class CajaService:
                 'Hay comandas activas. Ciérralas antes de cerrar turno.'
             )
         caja.estado = 'CERRADA'
-        caja.fecha_cierre = timezone.now()
+        caja.fecha_cierre = datetime.now(timezone.utc)
         self.repo.guardar(caja)
         return {
             'caja': caja,
@@ -146,7 +143,7 @@ class ReporteService:
         self.linea_comanda_repo = linea_comanda_repo
 
     def ventas_del_dia(self):
-        hoy = timezone.now().date()
+        hoy = datetime.now(timezone.utc).date()
         return self.pago_service.reporte_ventas(fecha_desde=hoy, fecha_hasta=hoy)
 
     def stock_critico(self):

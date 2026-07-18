@@ -1,5 +1,4 @@
-from django.db import transaction
-from django.utils import timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from core.excepciones import (
@@ -20,7 +19,7 @@ from dominio.puertos.repositorios import (
 from dominio.puertos.notificador import (
     INotificadorPlano, INotificadorKDS, INotificadorComanda,
 )
-from inventario.models import convertir_unidad
+from dominio.entidades.unidad_conversion import convertir_unidad
 
 
 
@@ -55,7 +54,15 @@ class ComandaService:
         self.notificador_kds = notificador_kds
         self.notificador_comanda = notificador_comanda
 
-    @transaction.atomic
+    def obtener_por_id(self, comanda_id: int):
+        return self.comanda_repo.obtener_por_id(comanda_id)
+
+    def listar(self):
+        return self.comanda_repo.listar()
+
+    def listar_para_kds(self):
+        return self.comanda_repo.listar_para_kds()
+
     def abrir(self, mesa_id: int, usuario) -> 'Comanda':
         caja_abierta = self.caja_repo.existe_abierta()
         if not caja_abierta:
@@ -104,7 +111,6 @@ class ComandaService:
             self.notificador_plano.notificar_refresh()
         return comanda
 
-    @transaction.atomic
     def agregar_platos(self, comanda_id: int, platos_data: list, usuario=None) -> list:
         comanda = self.comanda_repo.obtener_con_bloqueo(comanda_id)
         if comanda.estado not in ('ABIERTA', 'LISTA'):
@@ -218,7 +224,6 @@ class ComandaService:
             self.notificador_comanda.notificar_comanda(comanda.id)
         return lineas_a_crear
 
-    @transaction.atomic
     def fusionar(self, comanda_id: int, otra_comanda_id: int):
         comanda = self.comanda_repo.obtener_con_bloqueo(comanda_id)
         otra = self.comanda_repo.obtener_con_bloqueo(otra_comanda_id)
@@ -230,11 +235,10 @@ class ComandaService:
 
         self.linea_comanda_repo.cambiar_comanda_lote(otra.id, comanda.id)
         otra.estado = 'ANULADA'
-        otra.fecha_cierre = timezone.now()
+        otra.fecha_cierre = datetime.now(timezone.utc)
         self.comanda_repo.guardar(otra)
         return comanda
 
-    @transaction.atomic
     def anular(self, comanda_id: int, usuario=None):
         comanda = self.comanda_repo.obtener_con_bloqueo(comanda_id)
         if comanda.estado == 'COBRADA':
@@ -276,7 +280,7 @@ class ComandaService:
 
         self.movimiento_insumo_repo.guardar_lote(movimientos)
         comanda.estado = 'ANULADA'
-        comanda.fecha_cierre = timezone.now()
+        comanda.fecha_cierre = datetime.now(timezone.utc)
         self.comanda_repo.guardar(comanda)
 
         _liberar_mesas(comanda,
@@ -289,7 +293,6 @@ class ComandaService:
             self.notificador_comanda.notificar_comanda(comanda.id)
         return comanda
 
-    @transaction.atomic
     def pagar(self, comanda_id: int, metodo: str, monto, vuelto=0,
               referencia='', caja=None):
         comanda = self.comanda_repo.obtener_con_bloqueo(comanda_id)
@@ -310,7 +313,7 @@ class ComandaService:
             monto=monto, vuelto=vuelto, referencia=referencia, caja_id=caja.id
         ))
         comanda.estado = 'COBRADA'
-        comanda.fecha_cierre = timezone.now()
+        comanda.fecha_cierre = datetime.now(timezone.utc)
         self.comanda_repo.guardar(comanda)
 
         _finalizar_reservas_comanda(comanda,
@@ -327,7 +330,6 @@ class ComandaService:
             self.notificador_comanda.notificar_comanda(comanda.id)
         return comanda
 
-    @transaction.atomic
     def pagar_split(self, comanda_id: int, pagos_lista: list, caja=None):
         comanda = self.comanda_repo.obtener_con_bloqueo(comanda_id)
         if comanda.estado != 'LISTA':
@@ -349,7 +351,7 @@ class ComandaService:
             self.pago_repo.guardar(Pago(comanda_id=comanda.id, metodo=pd['metodo'], monto=pd['monto'], vuelto=pd.get('vuelto', 0), referencia=pd.get('referencia', ''), caja_id=caja.id))
 
         comanda.estado = 'COBRADA'
-        comanda.fecha_cierre = timezone.now()
+        comanda.fecha_cierre = datetime.now(timezone.utc)
         self.comanda_repo.guardar(comanda)
 
         _finalizar_reservas_comanda(comanda,
@@ -388,7 +390,12 @@ class LineaComandaService:
         self.notificador_plano = notificador_plano
         self.notificador_kds = notificador_kds
 
-    @transaction.atomic
+    def listar(self):
+        return self.linea_comanda_repo.listar()
+
+    def obtener_por_id(self, linea_id: int):
+        return self.linea_comanda_repo.obtener_por_id(linea_id)
+
     def enviar_cocina(self, linea_id: int):
         linea = self.linea_comanda_repo.obtener_con_bloqueo(linea_id)
         if linea.estado != 'PENDIENTE':
@@ -411,7 +418,6 @@ class LineaComandaService:
         return linea
        
 
-    @transaction.atomic
     def marcar_listo(self, linea_id: int):
         linea = self.linea_comanda_repo.obtener_con_bloqueo(linea_id)
         if linea.estado != 'EN_PREP':

@@ -1,4 +1,3 @@
-from django.db import transaction
 from core.excepciones import (
     RecursoNoEncontrado, UnionInvalida,
     CajaNoAbierta, ReglaNegocioViolada, AppError,
@@ -24,12 +23,16 @@ class MesaService:
         self.union_mesa_repo = union_mesa_repo
         self.notificador_plano = notificador_plano
 
-    @transaction.atomic
+    def listar_activas(self):
+        return self.repo.listar_activas()
+
+    def obtener_por_id(self, mesa_id: int):
+        return self.repo.obtener_por_id(mesa_id)
+
     def obtener_o_crear_comanda_activa(self, mesa_id: int, usuario,
                                        comanda_service=None):
         return comanda_service.abrir(mesa_id, usuario)
 
-    @transaction.atomic
     def cambiar_estado(self, mesa_id: int, nuevo_estado: str):
         mesa_domain = self.repo.obtener_por_id(mesa_id)
         if not mesa_domain:
@@ -41,7 +44,6 @@ class MesaService:
             self.notificador_plano.notificar_refresh()
         return mesa_model
 
-    @transaction.atomic
     def marcar_libre(self, mesa_id: int):
         mesa_domain = self.repo.obtener_por_id(mesa_id)
         if not mesa_domain:
@@ -146,7 +148,6 @@ class MesaService:
             'union_activa': union_activa,
         }
 
-    @transaction.atomic
     def eliminar(self, mesa_id: int, usuario=None) -> None:
         mesa_domain = self.repo.obtener_por_id(mesa_id)
         if not mesa_domain:
@@ -175,7 +176,7 @@ class MesaService:
         return mesa
 
     def obtener_modelo(self, mesa_id: int):
-        return self.repo.obtener_por_id(mesa_id)
+        return self.obtener_por_id(mesa_id)
 
     def crear(self, numero: int, capacidad: int, zona: str, estado: str):
         mesa = MesaDomain(id=None, numero=numero, capacidad=capacidad,
@@ -202,10 +203,12 @@ class UnionMesaService:
     def __init__(self, mesa_repo: IMesaRepository,
                  comanda_repo: IComandaRepository = None,
                  union_mesa_repo: IUnionMesaRepository = None,
+                 caja_repo=None,
                  notificador_plano: INotificadorPlano = None):
         self.mesa_repo = mesa_repo
         self.comanda_repo = comanda_repo
         self.repo = union_mesa_repo
+        self.caja_repo = caja_repo
         self.notificador_plano = notificador_plano
 
     def limpiar_uniones_invalidas(self):
@@ -235,7 +238,6 @@ class UnionMesaService:
             'mesas_disponibles': mesas_disponibles,
         }
 
-    @transaction.atomic
     def crear(self, mesa_ids: list, comanda_service=None):
         if len(mesa_ids) < 2:
             raise UnionInvalida('Selecciona al menos 2 mesas')
@@ -275,7 +277,6 @@ class UnionMesaService:
             self.notificador_plano.notificar_refresh()
         return union
 
-    @transaction.atomic
     def agregar_mesa(self, union_id: int, mesa_id: int, usuario,
                      comanda_service=None, caja_service=None):
         union = self.repo.obtener_por_id(union_id)
@@ -301,7 +302,7 @@ class UnionMesaService:
         comanda_union = comandas_activas_union[0] if comandas_activas_union else None
 
         if comanda_union:
-            if not caja_service.repo.obtener_abierta() is not None:
+            if self.caja_repo and not self.caja_repo.obtener_abierta() is not None:
                 raise CajaNoAbierta('No hay un turno de caja abierto')
             mesa_model.estado = 'OCUPADA'
             self.mesa_repo.guardar(mesa_model)
@@ -312,7 +313,6 @@ class UnionMesaService:
             self.notificador_plano.notificar_refresh()
         return union
 
-    @transaction.atomic
     def deshacer(self, union_id: int, usuario, comanda_service=None) -> None:
         union = self.repo.obtener_por_id(union_id)
         if not union:
