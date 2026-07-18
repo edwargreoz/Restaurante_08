@@ -51,6 +51,7 @@ class CategoriaRepository:
                     disponible=p.disponible,
                     tiempo_preparacion_min=p.tiempo_preparacion_min,
                     descripcion=p.descripcion or '',
+                    receta_nombre=p.receta.nombre if p.receta else None,
                 )
                 for p in c.platos.all()
             ]

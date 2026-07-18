@@ -15,6 +15,7 @@ class Plato:
     disponible: bool = True
     tiempo_preparacion_min: int = 15
     descripcion: str = ''
+    receta_nombre: Optional[str] = None
 
     def marcar_no_disponible(self) -> None:
         self.disponible = False

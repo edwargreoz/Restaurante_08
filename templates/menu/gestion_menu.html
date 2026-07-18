@@ -102,7 +102,7 @@
               <tr>
                 <td>{{ plato.nombre }}</td>
                 <td>S/ {{ plato.precio }}</td>
-                <td>{{ plato.receta.nombre|default:"—" }}</td>
+                <td>{{ plato.receta_nombre|default:"—" }}</td>
                 <td class="d-flex gap-2 border-0">
                   <a href="{% url 'editar_plato' plato.id %}" class="btn btn-sm btn-outline-success rounded-pill px-3 shadow-sm" style="font-size: 0.85rem; font-weight: 500;">Editar</a>
                   <form method="post" action="{% url 'eliminar_plato' plato.id %}" class="m-0 p-0">
