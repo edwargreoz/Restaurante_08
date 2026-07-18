@@ -7,12 +7,12 @@
 <style>
     .gestion-acciones { white-space: nowrap; }
     .gestion-acciones .btn-comprar,
-    .gestion-acciones .btn-vinculadas,
-    .gestion-acciones .btn-eliminar-inline { display: inline-block; margin-right: 3px; margin-bottom: 2px; font-size: 0.75rem; padding: 0.2rem 0.5rem; }
+    .gestion-acciones .btn-editar-inline,
+    .gestion-acciones .btn-eliminar-inline { display: inline-block; margin-right: 3px; margin-bottom: 2px; font-size: 0.75rem; padding: 0.25rem 0.6rem; }
     .btn-comprar { background: #198754; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
     .btn-comprar:hover { background: #157347; }
-    .btn-vinculadas { background: #0d6efd; color: #fff; border: none; border-radius: 4px; text-decoration: none; }
-    .btn-vinculadas:hover { background: #0b5ed7; color: #fff; }
+    .btn-editar-inline { background: #6c757d; color: #fff; border: none; border-radius: 4px; text-decoration: none; }
+    .btn-editar-inline:hover { background: #5a6268; color: #fff; }
     .btn-eliminar-inline { background: #dc3545; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
     .btn-eliminar-inline:hover { background: #bb2d3b; }
     .compra-modal-preview { background: #e9f7ef; border: 1px solid #b7e4c7; border-radius: 6px; padding: 0.6rem; margin-top: 0.5rem; font-size: 0.85rem; display: none; }
@@ -101,8 +101,7 @@
                                     data-insumo-nombre="{{ insumo.nombre }}"
                                     data-insumo-unidad="{{ insumo.unidad }}"
                                     onclick="abrirModalCompra(this)">Comprar</button>
-                            <a href="{% url 'presentaciones_insumo' insumo.id %}" class="btn-vinculadas">Presentaciones</a>
-                            <a href="{% url 'editar_insumo' insumo.id %}" class="btn-vinculadas" style="background:#6c757d;">Editar</a>
+                            <a href="{% url 'editar_insumo' insumo.id %}" class="btn-editar-inline">Editar</a>
                             <form method="POST" action="{% url 'eliminar_insumo' insumo.id %}" style="display:inline;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-eliminar-inline"
