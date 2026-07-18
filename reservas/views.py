@@ -70,6 +70,20 @@ def cancelar_reserva(request, reserva_id):
 
 @login_required
 @user_passes_test(es_mozo)
+def activar_reserva(request, reserva_id):
+    if request.method == 'POST':
+        try:
+            container = get_container()
+            reserva = container.reserva_service.activar(reserva_id)
+            msg = f'Reserva de {reserva.cliente_nombre} activada. Mesas en OCUPADA.'
+            messages.success(request, msg)
+        except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
+            messages.error(request, str(e))
+    return redirect('lista_reservas')
+
+
+@login_required
+@user_passes_test(es_mozo)
 def finalizar_reserva(request, reserva_id):
     if request.method == 'POST':
         try:

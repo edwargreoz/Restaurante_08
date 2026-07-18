@@ -59,6 +59,13 @@ class ReservaService:
             num_personas=datos['num_personas']
         )
         reserva = self.reserva_repo.guardar(reserva_domain)
+
+        for m in ms:
+            m.estado = 'RESERVADA'
+            self.mesa_repo.guardar(m)
+
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
         return reserva
 
     @transaction.atomic
@@ -123,6 +130,47 @@ class ReservaService:
                         self.mesa_repo.guardar(m)
                     union.activo = False
                     self.union_mesa_repo.guardar(union)
+
+        if self.notificador_plano:
+            self.notificador_plano.notificar_refresh()
+        return reserva
+
+    @transaction.atomic
+    def activar(self, reserva_id: int):
+        reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
+        if not reserva:
+            raise RecursoNoEncontrado('Reserva no encontrada')
+        if not reserva.activo:
+            raise ReglaNegocioViolada('Esta reserva no está activa')
+        if reserva.finalizada:
+            raise ReglaNegocioViolada('Esta reserva ya fue finalizada')
+
+        mesas_ids = []
+        if reserva.mesa_id:
+            mesas_ids = [reserva.mesa_id]
+        elif reserva.union_mesa_id:
+            union = self.union_mesa_repo.obtener_por_id(reserva.union_mesa_id)
+            if union:
+                mesas_ids = list(union.mesa_ids)
+
+        if not mesas_ids:
+            raise ReglaNegocioViolada('La reserva no tiene mesas asociadas')
+
+        mesas = self.mesa_repo.listar_activas_por_ids(mesas_ids)
+
+        if len(mesas) > 1 and reserva.union_mesa_id:
+            union = self.union_mesa_repo.obtener_por_id(reserva.union_mesa_id)
+            if not union or not union.activo:
+                union = self.union_mesa_repo.guardar(
+                    UnionMesa(id=None, mesa_ids=mesas_ids, activo=True)
+                )
+                reserva.union_mesa_id = union.id
+                reserva.mesa_id = None
+                self.reserva_repo.guardar(reserva)
+
+        for m in mesas:
+            m.estado = 'OCUPADA'
+            self.mesa_repo.guardar(m)
 
         if self.notificador_plano:
             self.notificador_plano.notificar_refresh()
@@ -203,6 +251,7 @@ class ReservaService:
             self.notificador_plano.notificar_refresh()
         return reserva
 
+    @transaction.atomic
     def eliminar_definitivamente(self, reserva_id: int) -> None:
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
