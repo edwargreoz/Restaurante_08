@@ -1,3 +1,19 @@
 .receta-form {
     max-width: 100%;
 }
+
+.receta-form .table-wrapper {
+    overflow: visible;
+}
+
+.receta-form .table select,
+.receta-form .table input[type="number"],
+.receta-form .table input[type="text"] {
+    width: 100%;
+    padding: 10px 14px;
+}
+
+.receta-form .table td {
+    vertical-align: middle;
+    padding: 10px 8px;
+}
