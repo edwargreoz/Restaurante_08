@@ -10,6 +10,7 @@ from dominio.puertos.repositorios import (
 )
 from dominio.puertos.notificador import INotificadorPlano
 from typing import Optional
+from django.db import transaction
 
 
 class ReservaService:
@@ -28,6 +29,7 @@ class ReservaService:
     def listar(self):
         return self.reserva_repo.listar()
 
+    @transaction.atomic
     def crear(self, mesas_ids: list, fecha, hora_inicio, hora_fin,
               num_personas: int, cliente_nombre: str,
               cliente_contacto: str = '', observacion: str = '',
@@ -49,6 +51,8 @@ class ReservaService:
             mesa_id=mesa_obj.id if mesa_obj else None,
             union_mesa_id=union_mesa_obj.id if union_mesa_obj else None,
             cliente_nombre=datos['cliente_nombre'],
+            cliente_contacto=datos['cliente_contacto'],
+            observacion=datos['observacion'],
             fecha=datos['fecha'],
             hora_inicio=datos['hora_inicio'],
             hora_fin=datos['hora_fin'],
@@ -57,6 +61,7 @@ class ReservaService:
         reserva = self.reserva_repo.guardar(reserva_domain)
         return reserva
 
+    @transaction.atomic
     def cancelar(self, reserva_id: int):
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
@@ -89,6 +94,7 @@ class ReservaService:
             self.notificador_plano.notificar_refresh()
         return reserva
 
+    @transaction.atomic
     def finalizar(self, reserva_id: int):
         reserva = self.reserva_repo.obtener_con_bloqueo(reserva_id)
         if not reserva:
@@ -122,6 +128,7 @@ class ReservaService:
             self.notificador_plano.notificar_refresh()
         return reserva
 
+    @transaction.atomic
     def editar(self, reserva_id: int, mesas_ids: list, fecha,
                hora_inicio, hora_fin, num_personas: int,
                cliente_nombre: str, cliente_contacto: str = '',

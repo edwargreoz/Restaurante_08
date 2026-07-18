@@ -33,8 +33,8 @@
             {% for reserva in reservas %}
             <tr>
                 <td>
-                    {% if reserva.union_mesa %}
-                        <strong>Unión: {{ reserva.union_mesa }}</strong>
+                    {% if reserva.union_mesa_id %}
+                        <strong>Unión: {{ reserva.union_mesa_nombre }}</strong>
                     {% else %}
                         <strong>Mesa {{ reserva.mesa_numero }}</strong>
                     {% endif %}

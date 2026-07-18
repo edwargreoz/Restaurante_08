@@ -40,10 +40,10 @@ def crear_reserva(request):
                 usuario=request.user,
             )
             msg = f'Reserva creada para {reserva.cliente_nombre}'
-            if reserva.union_mesa:
+            if reserva.es_para_union():
                 msg += ' en Unión de Mesas'
-            elif reserva.mesa:
-                msg += f' en Mesa {reserva.mesa.numero}'
+            elif reserva.es_para_mesa_individual():
+                msg += f' en Mesa {reserva.mesa_numero}'
             messages.success(request, msg)
             return redirect('lista_reservas')
         except (ReglaNegocioViolada, CapacidadExcedida, ValueError, TypeError) as e:

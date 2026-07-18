@@ -30,6 +30,8 @@ class ReservaRepository:
                 'hora_inicio': reserva.hora_inicio, 'hora_fin': reserva.hora_fin,
                 'num_personas': reserva.num_personas, 'activo': reserva.activo,
                 'finalizada': reserva.finalizada,
+                'cliente_contacto': reserva.cliente_contacto,
+                'observacion': reserva.observacion,
             }
         )
         return self._a_entidad(r)
