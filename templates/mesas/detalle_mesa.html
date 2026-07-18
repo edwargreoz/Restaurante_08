@@ -236,7 +236,7 @@
                                     <option value="">Seleccionar...</option>
                                     {% for categoria in categorias %}
                                     <optgroup label="{{ categoria.nombre }}">
-                                        {% for plato in categoria.platos.all %}
+                                        {% for plato in categoria.platos %}
                                         <option value="{{ plato.id }}" {% if not plato.disponible %}disabled{% endif %}>
                                             {{ plato.nombre }} - S/ {{ plato.precio }}
                                         </option>
