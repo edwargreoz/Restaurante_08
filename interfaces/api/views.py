@@ -103,6 +103,40 @@ class UnionMesaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return get_container().union_mesa_service.listar()
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        mesas_ids = serializer.validated_data.get('mesa_ids', [])
+        try:
+            container = get_container()
+            union = container.union_mesa_service.crear(mesas_ids, comanda_service=container.comanda_service)
+        except AppError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            
+        resp_serializer = self.get_serializer(union)
+        return Response(resp_serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], url_path='agregar-mesa')
+    def agregar_mesa(self, request, pk=None):
+        union_id = int(pk) if pk else None
+        mesa_id = request.data.get('mesa_id')
+        if not mesa_id:
+            return Response({'error': 'mesa_id es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            container = get_container()
+            union = container.union_mesa_service.agregar_mesa(
+                union_id, mesa_id, request.user,
+                comanda_service=container.comanda_service,
+                caja_service=container.caja_service
+            )
+        except AppError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = self.get_serializer(union)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 class ComandaViewSet(viewsets.ModelViewSet):
     """
@@ -147,14 +181,14 @@ class ComandaViewSet(viewsets.ModelViewSet):
         Agrega platos a una comanda verificando stock de insumos.
         Body: {"platos": [{"plato_id": 1, "cantidad": 2, "observacion": "sin sal"}]}
         """
-        comanda = self.get_object()
+        comanda_id = int(pk) if pk else None
 
         serializer = AgregarPlatosRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
             container = get_container()
-            container.comanda_service.agregar_platos(comanda.id, serializer.validated_data['platos'], usuario=request.user)
+            container.comanda_service.agregar_platos(comanda_id, serializer.validated_data['platos'], usuario=request.user)
         except AppError as e:
             if hasattr(e, 'args') and e.args and isinstance(e.args[0], dict):
                 error_data = e.args[0]
@@ -164,7 +198,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 error_data,
                 status=status.HTTP_400_BAD_REQUEST
             )
-        comanda = container.comanda_service.obtener_por_id(comanda.id) if comanda.id else comanda
+        comanda = container.comanda_service.obtener_por_id(comanda_id) if comanda_id else None
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -174,16 +208,16 @@ class ComandaViewSet(viewsets.ModelViewSet):
         POST /api/v1/comandas/{id}/anular/
         Anula una comanda y restaura el stock de insumos.
         """
-        comanda = self.get_object()
+        comanda_id = int(pk) if pk else None
         try:
             container = get_container()
-            container.comanda_service.anular(comanda.id, usuario=request.user)
+            container.comanda_service.anular(comanda_id, usuario=request.user)
         except AppError as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        comanda = container.comanda_service.obtener_por_id(comanda.id) if comanda.id else comanda
+        comanda = container.comanda_service.obtener_por_id(comanda_id) if comanda_id else None
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -194,7 +228,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
         Registra el pago de una comanda. La comanda debe estar en estado LISTA.
         Body: {"metodo": "EFECTIVO", "monto": 50.00, "vuelto": 0}
         """
-        comanda = self.get_object()
+        comanda_id = int(pk) if pk else None
         serializer = PagarRequestSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -205,7 +239,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
             container = get_container()
             caja = container.caja_service.obtener_activa()
             container.comanda_service.pagar(
-                comanda.id,
+                comanda_id,
                 metodo=data['metodo'], monto=data['monto'],
                 vuelto=data.get('vuelto', 0),
                 referencia=data.get('referencia', ''),
@@ -216,7 +250,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        comanda = container.comanda_service.obtener_por_id(comanda.id) if comanda.id else comanda
+        comanda = container.comanda_service.obtener_por_id(comanda_id) if comanda_id else None
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -227,7 +261,7 @@ class ComandaViewSet(viewsets.ModelViewSet):
         Registra multiples pagos para una comanda (pago dividido).
         Body: {"pagos": [{"metodo": "EFECTIVO", "monto": 25.00}, {"metodo": "TARJETA", "monto": 25.00, "referencia": "1234"}]}
         """
-        comanda = self.get_object()
+        comanda_id = int(pk) if pk else None
         pagos_data = request.data.get('pagos', [])
         if not pagos_data:
             return Response(
@@ -237,13 +271,13 @@ class ComandaViewSet(viewsets.ModelViewSet):
         try:
             container = get_container()
             caja = container.caja_service.obtener_activa()
-            container.comanda_service.pagar_split(comanda.id, pagos_data, caja=caja)
+            container.comanda_service.pagar_split(comanda_id, pagos_data, caja=caja)
         except AppError as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        comanda = container.comanda_service.obtener_por_id(comanda.id) if comanda.id else comanda
+        comanda = container.comanda_service.obtener_por_id(comanda_id) if comanda_id else None
         serializer = self.get_serializer(comanda)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

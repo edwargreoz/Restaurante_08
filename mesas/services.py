@@ -9,6 +9,7 @@ from dominio.puertos.repositorios import (
     IReservaRepository, IUnionMesaRepository,
 )
 from dominio.puertos.notificador import INotificadorPlano
+from django.db import transaction
 
 
 class MesaService:
@@ -33,6 +34,7 @@ class MesaService:
                                        comanda_service=None):
         return comanda_service.abrir(mesa_id, usuario)
 
+    @transaction.atomic
     def cambiar_estado(self, mesa_id: int, nuevo_estado: str):
         mesa_domain = self.repo.obtener_por_id(mesa_id)
         if not mesa_domain:
@@ -44,6 +46,7 @@ class MesaService:
             self.notificador_plano.notificar_refresh()
         return mesa_model
 
+    @transaction.atomic
     def marcar_libre(self, mesa_id: int):
         mesa_domain = self.repo.obtener_por_id(mesa_id)
         if not mesa_domain:
@@ -150,6 +153,7 @@ class MesaService:
             'union_activa': union_activa,
         }
 
+    @transaction.atomic
     def eliminar(self, mesa_id: int, usuario=None) -> None:
         mesa_domain = self.repo.obtener_por_id(mesa_id)
         if not mesa_domain:
@@ -240,9 +244,12 @@ class UnionMesaService:
             'mesas_disponibles': mesas_disponibles,
         }
 
+    @transaction.atomic
     def crear(self, mesa_ids: list, comanda_service=None):
         if len(mesa_ids) < 2:
             raise UnionInvalida('Selecciona al menos 2 mesas')
+        if len(mesa_ids) > 3:
+            raise UnionInvalida('Una unión puede tener como máximo 3 mesas')
 
         mesas = self.mesa_repo.listar_activas_por_ids(mesa_ids)
         if len(mesas) < 2:
@@ -279,6 +286,7 @@ class UnionMesaService:
             self.notificador_plano.notificar_refresh()
         return union
 
+    @transaction.atomic
     def agregar_mesa(self, union_id: int, mesa_id: int, usuario,
                      comanda_service=None, caja_service=None):
         union = self.repo.obtener_por_id(union_id)
@@ -290,6 +298,8 @@ class UnionMesaService:
 
         if mesa_id in union.mesa_ids:
             raise UnionInvalida(f'Mesa {mesa_model.numero} ya está en la unión')
+        if len(union.mesa_ids) >= 3:
+            raise UnionInvalida('Una unión puede tener como máximo 3 mesas')
         if mesa_model.estado == 'RESERVADA':
             raise UnionInvalida('No puedes agregar una mesa reservada')
 
@@ -315,6 +325,7 @@ class UnionMesaService:
             self.notificador_plano.notificar_refresh()
         return union
 
+    @transaction.atomic
     def deshacer(self, union_id: int, usuario, comanda_service=None) -> None:
         union = self.repo.obtener_por_id(union_id)
         if not union:

@@ -37,8 +37,8 @@ class ComandaSerializer(serializers.Serializer):
 
 class UnionMesaSerializer(serializers.Serializer):
     id = serializers.IntegerField(read_only=True)
-    mesas_ids = serializers.ListField(child=serializers.IntegerField())
-    activo = serializers.BooleanField()
+    mesas_ids = serializers.ListField(child=serializers.IntegerField(), source='mesa_ids')
+    activo = serializers.BooleanField(required=False, default=True)
     capacidad_total = serializers.SerializerMethodField()
 
     def get_capacidad_total(self, obj):

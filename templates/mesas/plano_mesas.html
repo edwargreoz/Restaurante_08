@@ -37,7 +37,7 @@
                      data-union-id="{{ item.union_id }}"
                      data-mesa-numero="{{ item.nums.0 }}"
                      data-mesa-zona="{{ item.zona }}">
-                    <a href="{% url 'detalle_mesa' item.mesas.0.id %}" class="card-link-mesa d-block text-decoration-none text-dark">
+                    <a href="{% url 'detalle_mesa' item.mesas.0.id %}" class="card-link-mesa d-block text-decoration-none text-dark" draggable="false">
                         <div class="card-body text-center">
                             <div class="union-card-icon">
                                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#b77a2f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -78,7 +78,7 @@
                      data-mesa-id="{{ item.mesa.id }}"
                      data-mesa-numero="{{ item.mesa.numero }}"
                      data-mesa-zona="{{ item.mesa.zona }}">
-                    <a href="{% url 'detalle_mesa' item.mesa.id %}" class="card-link-mesa d-block text-decoration-none text-dark">
+                    <a href="{% url 'detalle_mesa' item.mesa.id %}" class="card-link-mesa d-block text-decoration-none text-dark" draggable="false">
                         <div class="card-body text-center">
                             <h5 class="card-title">Mesa {{ item.mesa.numero }}</h5>
                             {% if item.mesa.estado == 'RESERVADA' %}
@@ -128,5 +128,5 @@
 {% block extra_js %}
 {% csrf_token %}
 <script src="{% static 'js/mesas/plano_websocket.js' %}"></script>
-<script src="{% static 'js/mesas/drag_drop_unir.js' %}"></script>
+<script src="{% static 'js/mesas/drag_drop_unir.js' %}?v=1.4"></script>
 {% endblock %}
