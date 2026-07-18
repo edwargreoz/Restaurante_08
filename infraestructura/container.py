@@ -12,6 +12,8 @@ from infraestructura.persistencia.repositorios.movimiento_insumo_repo import Mov
 from infraestructura.persistencia.repositorios.unidad_conversion_repo import UnidadConversionRepository
 from infraestructura.persistencia.repositorios.receta_repo import RecetaRepository
 from infraestructura.persistencia.repositorios.usuario_repo import UsuarioRepository
+from infraestructura.persistencia.repositorios.presentacion_insumo_repo import PresentacionInsumoRepository
+from infraestructura.persistencia.repositorios.unidad_cocina_repo import UnidadCocinaRepository
 
 from infraestructura.notificador import (
     ChannelsNotificadorPlano, ChannelsNotificadorKDS, ChannelsNotificadorComanda,
@@ -20,7 +22,7 @@ from infraestructura.notificador import (
 from menu.services import CategoriaService, PlatoService
 from mesas.services import MesaService, UnionMesaService
 from pedidos.services import ComandaService, LineaComandaService
-from inventario.services import InsumoService, RecetaService, UnidadConversionService
+from inventario.services import InsumoService, RecetaService, UnidadConversionService, PresentacionInsumoService, UnidadCocinaService
 from caja.services import CajaService, PagoService, ReporteService
 from reservas.services import ReservaService
 from core.services import DashboardService, UsuarioService
@@ -42,6 +44,8 @@ class Container:
         self.unidad_conversion_repo = UnidadConversionRepository()
         self.receta_repo = RecetaRepository()
         self.usuario_repo = UsuarioRepository()
+        self.presentacion_insumo_repo = PresentacionInsumoRepository()
+        self.unidad_cocina_repo = UnidadCocinaRepository()
 
         self.notificador_plano = ChannelsNotificadorPlano()
         self.notificador_kds = ChannelsNotificadorKDS()
@@ -66,6 +70,14 @@ class Container:
         self.receta_service = RecetaService(
             receta_repo=self.receta_repo,
             insumo_repo=self.insumo_repo,
+        )
+        self.presentacion_insumo_service = PresentacionInsumoService(
+            presentacion_repo=self.presentacion_insumo_repo,
+            insumo_repo=self.insumo_repo,
+            movimiento_insumo_repo=self.movimiento_insumo_repo,
+        )
+        self.unidad_cocina_service = UnidadCocinaService(
+            unidad_cocina_repo=self.unidad_cocina_repo,
         )
 
         self.comanda_service = ComandaService(

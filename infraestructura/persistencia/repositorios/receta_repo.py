@@ -13,7 +13,9 @@ class RecetaRepository:
         return RecetaInsumo(
             id=ri.id, receta_id=ri.receta_id, insumo_id=ri.insumo_id,
             cantidad_por_porcion=ri.cantidad_por_porcion,
-            unidad=ri.unidad, activo=ri.activo,
+            unidad=ri.unidad,
+            unidad_cocina_id=ri.unidad_cocina_id if ri.unidad_cocina_id else None,
+            activo=ri.activo,
         )
 
     def obtener_o_crear(self, nombre: str) -> Receta:
@@ -30,10 +32,17 @@ class RecetaRepository:
         ]
 
     def obtener_receta_insumo_o_crear(self, receta_id: int, insumo_id: int,
-                                      cantidad_por_porcion, unidad: str) -> RecetaInsumo:
+                                      cantidad_por_porcion, unidad: str,
+                                      unidad_cocina_id=None) -> RecetaInsumo:
+        defaults = {
+            'cantidad_por_porcion': cantidad_por_porcion,
+            'unidad': unidad,
+        }
+        if unidad_cocina_id:
+            defaults['unidad_cocina_id'] = unidad_cocina_id
         ri, _ = RecetaInsumoModel.objects.get_or_create(
             receta_id=receta_id, insumo_id=insumo_id,
-            defaults={'cantidad_por_porcion': cantidad_por_porcion, 'unidad': unidad},
+            defaults=defaults,
         )
         return self._a_entidad_ri(ri)
 

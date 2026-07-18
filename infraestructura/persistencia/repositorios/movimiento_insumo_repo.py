@@ -7,14 +7,30 @@ class MovimientoInsumoRepository:
         modelos = [
             MovimientoModel(
                 insumo_id=m.insumo_id, tipo=m.tipo, cantidad=m.cantidad,
-                observacion=m.observacion, usuario_id=m.usuario_id
+                stock_anterior=m.stock_anterior,
+                stock_posterior=m.stock_posterior,
+                observacion=m.observacion, usuario_id=m.usuario_id,
+                origen=m.origen or 'SISTEMA',
             ) for m in movimientos
         ]
         MovimientoModel.objects.bulk_create(modelos)
 
     def guardar(self, movimiento: MovimientoInsumo) -> MovimientoInsumo:
         m = MovimientoModel.objects.create(
-            insumo_id=movimiento.insumo_id, tipo=movimiento.tipo, cantidad=movimiento.cantidad,
-            observacion=movimiento.observacion, usuario_id=movimiento.usuario_id
+            insumo_id=movimiento.insumo_id, tipo=movimiento.tipo,
+            cantidad=movimiento.cantidad,
+            stock_anterior=movimiento.stock_anterior,
+            stock_posterior=movimiento.stock_posterior,
+            observacion=movimiento.observacion,
+            usuario_id=movimiento.usuario_id,
+            origen=movimiento.origen or 'SISTEMA',
         )
-        return MovimientoInsumo(id=m.id, insumo_id=m.insumo_id, tipo=m.tipo, cantidad=m.cantidad, observacion=m.observacion, usuario_id=m.usuario_id, fecha=m.fecha)
+        return MovimientoInsumo(
+            id=m.id, insumo_id=m.insumo_id, tipo=m.tipo,
+            cantidad=m.cantidad,
+            stock_anterior=m.stock_anterior,
+            stock_posterior=m.stock_posterior,
+            observacion=m.observacion,
+            usuario_id=m.usuario_id, fecha=m.fecha,
+            origen=m.origen,
+        )
