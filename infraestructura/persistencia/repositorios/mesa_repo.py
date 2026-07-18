@@ -32,7 +32,8 @@ class MesaRepository:
         m, _ = MesaModel.objects.update_or_create(
             id=mesa.id,
             defaults={'numero': mesa.numero, 'capacidad': mesa.capacidad,
-                      'zona': mesa.zona, 'estado': mesa.estado}
+                      'zona': mesa.zona, 'estado': mesa.estado,
+                      'activo': mesa.activo}
         )
         return self._a_entidad(m)
 
@@ -46,7 +47,7 @@ class MesaRepository:
 
     def _a_entidad(self, m) -> Mesa:
         return Mesa(id=m.id, numero=m.numero, capacidad=m.capacidad,
-                    zona=m.zona, estado=m.estado)
+                    zona=m.zona, estado=m.estado, activo=m.activo)
 
     def listar_activas_por_ids(self, ids: List[int]) -> List[Mesa]:
         return [self._a_entidad(m) for m in MesaModel.activos.filter(id__in=ids).order_by('numero')]
