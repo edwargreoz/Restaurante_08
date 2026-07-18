@@ -8,9 +8,7 @@ from core.excepciones import (
     StockInsuficiente,
 )
 from infraestructura.container import get_container
-from .models import Mesa, UnionMesa
 from .forms import MesaForm
-from pedidos.models import Comanda
 
 
 @login_required
@@ -53,7 +51,7 @@ def abrir_comanda(request, mesa_id):
 @user_passes_test(es_mozo)
 def agregar_plato_comanda(request, comanda_id):
     container = get_container()
-    comanda = container.comanda_service.comanda_repo.obtener_por_id(comanda_id)
+    comanda = container.comanda_service.obtener_por_id(comanda_id)
     if not comanda:
         raise Http404()
     if request.method == 'POST':
@@ -78,7 +76,7 @@ def agregar_plato_comanda(request, comanda_id):
 @user_passes_test(es_mozo)
 def anular_comanda(request, comanda_id):
     container = get_container()
-    comanda = container.comanda_service.comanda_repo.obtener_por_id(comanda_id)
+    comanda = container.comanda_service.obtener_por_id(comanda_id)
     if not comanda:
         raise Http404()
     if request.method == 'POST':
@@ -117,8 +115,8 @@ def unir_mesas(request):
                 mesa_ids_int,
                 comanda_service=container.comanda_service,
             )
-            messages.success(request, 'Unión creada')
-            primera = union.mesas.first()
+            messages.success(request, 'Union creada')
+            primera = container.mesa_service.obtener_por_id(union.mesa_ids[0])
             return redirect('detalle_mesa', mesa_id=primera.id)
         except UnionInvalida as e:
             messages.error(request, str(e))
@@ -140,9 +138,8 @@ def agregar_mesa_union(request, union_id):
                 container.union_mesa_service.agregar_mesa(
                     union_id, int(mesa_id), request.user,
                     comanda_service=container.comanda_service,
-                    caja_service=container.caja_service,
                 )
-                messages.success(request, 'Mesa agregada a la unión')
+                messages.success(request, 'Mesa agregada a la union')
             except (RecursoNoEncontrado, UnionInvalida, CajaNoAbierta) as e:
                 messages.error(request, str(e))
         return redirect('unir_mesas')
@@ -159,7 +156,7 @@ def deshacer_union(request, union_id):
                 union_id, request.user,
                 comanda_service=container.comanda_service,
             )
-            messages.success(request, 'Unión deshecha, comandas anuladas, mesas liberadas')
+            messages.success(request, 'Union deshecha, comandas anuladas, mesas liberadas')
         except (RecursoNoEncontrado, UnionInvalida) as e:
             messages.error(request, str(e))
     return redirect('plano_mesas')
@@ -170,10 +167,10 @@ def deshacer_union(request, union_id):
 @login_required
 @user_passes_test(es_admin)
 def lista_mesas_admin(request):
+    container = get_container()
     if request.method == 'POST':
-        form = MesaForm(request.POST)
+        form = MesaForm(request.POST, mesa_service=container.mesa_service)
         if form.is_valid():
-            container = get_container()
             container.mesa_service.crear(
                 numero=form.cleaned_data['numero'],
                 capacidad=form.cleaned_data['capacidad'],
@@ -183,11 +180,9 @@ def lista_mesas_admin(request):
             messages.success(request, 'Mesa creada exitosamente.')
             return redirect('lista_mesas_admin')
     else:
-        form = MesaForm()
+        form = MesaForm(mesa_service=container.mesa_service)
 
-    container = get_container()
-    mesas = container.mesa_service.mesa_repo.listar_activas() # Asumiendo que el repo tiene este método
-    # Nota: Si el repo no soporta order_by en DB, se asume que las retorna ordenadas o se ordenan en memoria.
+    mesas = container.mesa_service.listar_activas()
     mesas = sorted(mesas, key=lambda m: m.numero)
     return render(request, 'mesas/lista_mesas_admin.html', {'mesas': mesas, 'form': form})
 
@@ -195,10 +190,10 @@ def lista_mesas_admin(request):
 @login_required
 @user_passes_test(es_admin)
 def crear_mesa(request):
+    container = get_container()
     if request.method == 'POST':
-        form = MesaForm(request.POST)
+        form = MesaForm(request.POST, mesa_service=container.mesa_service)
         if form.is_valid():
-            container = get_container()
             container.mesa_service.crear(
                 numero=form.cleaned_data['numero'],
                 capacidad=form.cleaned_data['capacidad'],
@@ -208,7 +203,7 @@ def crear_mesa(request):
             messages.success(request, 'Mesa creada exitosamente.')
             return redirect('lista_mesas_admin')
     else:
-        form = MesaForm()
+        form = MesaForm(mesa_service=container.mesa_service)
 
     return render(request, 'mesas/form_mesa.html', {'form': form, 'titulo': 'Crear Nueva Mesa'})
 
@@ -223,38 +218,46 @@ def editar_mesa(request, mesa_id):
         messages.error(request, str(e))
         return redirect('lista_mesas_admin')
 
-    mesa_model = container.mesa_service.obtener_modelo(mesa_id)
+    mesa = container.mesa_service.obtener_por_id(mesa_id)
 
     if request.method == 'POST':
-        form = MesaForm(request.POST, instance=mesa_model)
+        form = MesaForm(request.POST, mesa_service=container.mesa_service, instance_id=mesa_id)
         if form.is_valid():
             container.mesa_service.editar(
-                mesa_id=mesa_model.id,
+                mesa_id=mesa.id,
                 numero=form.cleaned_data['numero'],
                 capacidad=form.cleaned_data['capacidad'],
                 zona=form.cleaned_data['zona'],
                 estado=form.cleaned_data['estado'],
             )
-            messages.success(request, f'Mesa {mesa_model.numero} actualizada exitosamente.')
+            messages.success(request, f'Mesa {mesa.numero} actualizada exitosamente.')
             return redirect('lista_mesas_admin')
     else:
-        form = MesaForm(instance=mesa_model)
+        form = MesaForm(
+            initial={
+                'numero': mesa.numero,
+                'capacidad': mesa.capacidad,
+                'zona': mesa.zona,
+                'estado': mesa.estado,
+            },
+            mesa_service=container.mesa_service,
+            instance_id=mesa_id,
+        )
 
-    return render(request, 'mesas/form_mesa.html', {'form': form, 'titulo': f'Editar Mesa {mesa_model.numero}'})
+    return render(request, 'mesas/form_mesa.html', {'form': form, 'titulo': f'Editar Mesa {mesa.numero}'})
 
 
 @login_required
 @user_passes_test(es_admin)
 def eliminar_mesa(request, mesa_id):
     container = get_container()
-    mesa = container.mesa_service.mesa_repo.obtener_por_id(mesa_id)
+    mesa = container.mesa_service.obtener_por_id(mesa_id)
     if not mesa:
         raise Http404()
     if request.method == 'POST':
         try:
-            container = get_container()
             container.mesa_service.eliminar(mesa.id, usuario=request.user)
-            messages.success(request, f'Mesa {mesa.numero} eliminada lógicamente.')
+            messages.success(request, f'Mesa {mesa.numero} eliminada logicamente.')
         except AppError as e:
             messages.error(request, str(e))
         return redirect('lista_mesas_admin')

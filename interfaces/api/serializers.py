@@ -1,145 +1,144 @@
 from decimal import Decimal
 from rest_framework import serializers
-from mesas.models import Mesa, UnionMesa
-from pedidos.models import Comanda, LineaComanda
-from menu.models import Categoria, Plato
-from inventario.models import Insumo, Receta, RecetaInsumo
-from caja.models import Pago
-from reservas.models import Reserva
+from dominio.entidades.pago import Pago
 
-class CategoriaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Categoria
-        fields = ['id', 'nombre', 'es_bebida', 'orden_display']
 
-class PlatoSerializer(serializers.ModelSerializer):
-    categoria_nombre = serializers.CharField(source='categoria.nombre', read_only=True)
-    receta_nombre = serializers.CharField(source='receta.nombre', read_only=True)
-    class Meta:
-        model = Plato
-        fields = ['id', 'nombre', 'descripcion', 'precio', 'categoria',
-                  'categoria_nombre', 'receta', 'receta_nombre',
-                  'tiempo_preparacion_min', 'disponible', 'imagen']
+class MesaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    numero = serializers.IntegerField()
+    capacidad = serializers.IntegerField()
+    zona = serializers.CharField()
+    estado = serializers.CharField()
 
-class InsumoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Insumo
-        fields = ['id', 'nombre', 'unidad', 'stock_actual', 'stock_minimo']
 
-class RecetaInsumoSerializer(serializers.ModelSerializer):
-    receta_nombre = serializers.CharField(source='receta.nombre', read_only=True)
-    insumo_nombre = serializers.CharField(source='insumo.nombre', read_only=True)
-    insumo_unidad = serializers.CharField(source='insumo.unidad', read_only=True)
-    class Meta:
-        model = RecetaInsumo
-        fields = ['id', 'receta', 'receta_nombre', 'insumo', 'insumo_nombre',
-                  'insumo_unidad', 'cantidad_por_porcion']
+class LineaComandaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    plato = serializers.IntegerField(source='plato_id')
+    nombre_plato = serializers.CharField(read_only=True)
+    precio_unitario = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    cantidad = serializers.IntegerField()
+    subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    observacion = serializers.CharField(read_only=True, default='')
+    estado = serializers.CharField()
 
-class RecetaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Receta
-        fields = ['id', 'nombre']
 
-class MesaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Mesa
-        fields = '__all__'
-
-class UnionMesaSerializer(serializers.ModelSerializer):
-    mesas = MesaSerializer(many=True, read_only=True)
-    mesas_ids = serializers.PrimaryKeyRelatedField(
-        many=True, write_only=True, queryset=Mesa.activos.all(), source='mesas'
-    )
-    capacidad_total = serializers.SerializerMethodField()
-    class Meta:
-        model = UnionMesa
-        fields = ['id', 'mesas', 'mesas_ids', 'activo', 'creado_en', 'capacidad_total']
-    def get_capacidad_total(self, obj):
-        return obj.capacidad_total()
-class LineaComandaSerializer(serializers.ModelSerializer):
-    """Cada linea de comanda tendra nombre y precio del plato para lectura mas facil."""
-    nombre_plato = serializers.CharField(source='plato.nombre', read_only=True)
-    precio_unitario = serializers.DecimalField(
-        source='plato.precio',
-        max_digits=10,
-        decimal_places=2,
-        read_only=True
-    )
-    subtotal = serializers.SerializerMethodField()
-    class Meta:
-        model = LineaComanda
-        fields = [
-            'id', 'plato', 'nombre_plato', 'precio_unitario',
-            'cantidad', 'subtotal', 'observacion', 'estado'
-        ]
-
-    def get_subtotal(self, obj):
-        return obj.subtotal
-    
-class ComandaSerializer(serializers.ModelSerializer):
-    """Incluye las lineas anidadas y calcula el total general."""
+class ComandaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    mesa = serializers.IntegerField(source='mesa_id')
+    numero_mesa = serializers.IntegerField(read_only=True)
+    mozo = serializers.IntegerField(source='mozo_id')
+    nombre_mozo = serializers.CharField(read_only=True)
+    estado = serializers.CharField()
+    fecha_apertura = serializers.DateTimeField(read_only=True)
+    fecha_cierre = serializers.DateTimeField(read_only=True)
     lineas = LineaComandaSerializer(many=True, read_only=True)
-    total = serializers.SerializerMethodField()
-    numero_mesa = serializers.CharField(source='mesa.numero', read_only=True)
-    nombre_mozo = serializers.CharField(source='mozo.get_full_name', read_only=True)
-    class Meta:
-        model = Comanda
-        fields = [
-            'id', 'mesa', 'numero_mesa', 'mozo',
-            'nombre_mozo', 'estado', 'fecha_apertura',
-            'fecha_cierre', 'lineas', 'total'
-        ]
-    def get_total(self, obj):
-        return obj.total
+    total = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+class UnionMesaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    mesas_ids = serializers.ListField(child=serializers.IntegerField())
+    activo = serializers.BooleanField()
+    capacidad_total = serializers.SerializerMethodField()
+
+    def get_capacidad_total(self, obj):
+        return getattr(obj, 'capacidad_total', lambda: 0)()
+
+
+class CategoriaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    nombre = serializers.CharField()
+    es_bebida = serializers.BooleanField()
+    orden_display = serializers.IntegerField()
+
+
+class PlatoSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    nombre = serializers.CharField()
+    descripcion = serializers.CharField(read_only=True, default='')
+    precio = serializers.DecimalField(max_digits=10, decimal_places=2)
+    categoria = serializers.IntegerField(source='categoria_id')
+    categoria_nombre = serializers.CharField(read_only=True, default='')
+    receta = serializers.IntegerField(source='receta_id', allow_null=True)
+    receta_nombre = serializers.CharField(read_only=True, default='')
+    tiempo_preparacion_min = serializers.IntegerField()
+    disponible = serializers.BooleanField()
+    imagen = serializers.CharField(read_only=True, default='')
+
+
+class InsumoSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    nombre = serializers.CharField()
+    unidad = serializers.CharField()
+    stock_actual = serializers.DecimalField(max_digits=10, decimal_places=2)
+    stock_minimo = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+class RecetaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    nombre = serializers.CharField()
+
+
+class RecetaInsumoSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    receta = serializers.IntegerField(source='receta_id')
+    receta_nombre = serializers.CharField(read_only=True, default='')
+    insumo = serializers.IntegerField(source='insumo_id')
+    insumo_nombre = serializers.CharField(read_only=True, default='')
+    insumo_unidad = serializers.CharField(read_only=True, default='')
+    cantidad_por_porcion = serializers.DecimalField(max_digits=10, decimal_places=2)
+
 
 class AgregarPlatoSerializer(serializers.Serializer):
-    plato_id= serializers.IntegerField()
-    cantidad= serializers.IntegerField(min_value = 1 , default = 1)
+    plato_id = serializers.IntegerField()
+    cantidad = serializers.IntegerField(min_value=1, default=1)
     observacion = serializers.CharField(required=False, allow_blank=True, default='')
 
+
 class AgregarPlatosRequestSerializer(serializers.Serializer):
-    platos= AgregarPlatoSerializer(many= True,allow_empty= False)
+    platos = AgregarPlatoSerializer(many=True, allow_empty=False)
+
 
 class PagarRequestSerializer(serializers.Serializer):
     metodo = serializers.ChoiceField(choices=Pago.METODOS)
     monto = serializers.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal('0.01'))
-    vuelto = serializers.DecimalField(max_digits=10,decimal_places=2,required=False,default=0)
+    vuelto = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, default=0)
     referencia = serializers.CharField(required=False, allow_blank=True, default='')
 
-class CocinaLineaSerializer(serializers.ModelSerializer):
-    nombre_plato = serializers.CharField(source='plato.nombre', read_only=True)
-    tiempo_prep = serializers.IntegerField(source = 'plato.tiempo_preparacion_min',read_only=True)
-    subtotal= serializers.SerializerMethodField()
 
-    class Meta:
-        model = LineaComanda
-        fields = ['id','plato','nombre_plato','cantidad','tiempo_prep','subtotal','observacion','estado']
+class CocinaLineaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    plato = serializers.IntegerField(source='plato_id')
+    nombre_plato = serializers.CharField(read_only=True)
+    cantidad = serializers.IntegerField()
+    tiempo_prep = serializers.IntegerField(source='tiempo_preparacion_min', read_only=True)
+    subtotal = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    observacion = serializers.CharField(read_only=True, default='')
+    estado = serializers.CharField()
 
-    def get_subtotal(self,obj):
-        return obj.cantidad * obj.plato.precio
-    
-class CocinaComandaSerializer(serializers.ModelSerializer):
+
+class CocinaComandaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    numero_mesa = serializers.IntegerField(read_only=True)
+    mozo_nombre = serializers.CharField(read_only=True)
+    estado = serializers.CharField()
+    fecha_apertura = serializers.DateTimeField(read_only=True)
     lineas = CocinaLineaSerializer(many=True, read_only=True)
-    numero_mesa= serializers.CharField(source='mesa.numero', read_only= True)
-    mozo_nombre= serializers.CharField(source ='mozo.get_full_name',read_only=True)
 
-    class Meta:
-        model = Comanda
-        fields= ['id','numero_mesa','mozo_nombre','estado','fecha_apertura','lineas']
 
-class ReservaSerializer(serializers.ModelSerializer):
-    mesa_numero = serializers.IntegerField(source='mesa.numero', read_only=True)
-    union_mesa_nombre = serializers.SerializerMethodField()
-    creado_por_nombre = serializers.CharField(source='creado_por.get_full_name', read_only=True)
-    class Meta:
-        model = Reserva
-        fields = ['id', 'mesa', 'mesa_numero', 'union_mesa', 'union_mesa_nombre',
-                  'cliente_nombre', 'cliente_contacto',
-                  'fecha', 'hora_inicio', 'hora_fin', 'num_personas',
-                  'observacion', 'activo', 'creado_por', 'creado_por_nombre', 'creado_en']
-
-    def get_union_mesa_nombre(self, obj):
-        if obj.union_mesa:
-            mesas = list(obj.union_mesa.mesas.values_list('numero', flat=True))
-            return ' + '.join(f'Mesa {m}' for m in mesas)
-        return None
+class ReservaSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    mesa = serializers.IntegerField(source='mesa_id', allow_null=True)
+    mesa_numero = serializers.IntegerField(read_only=True)
+    union_mesa = serializers.IntegerField(source='union_mesa_id', allow_null=True)
+    union_mesa_nombre = serializers.CharField(read_only=True)
+    cliente_nombre = serializers.CharField()
+    cliente_contacto = serializers.CharField(required=False, default='')
+    fecha = serializers.DateField()
+    hora_inicio = serializers.TimeField()
+    hora_fin = serializers.TimeField()
+    num_personas = serializers.IntegerField()
+    observacion = serializers.CharField(required=False, default='')
+    activo = serializers.BooleanField()
+    creado_por = serializers.IntegerField(source='creado_por_id', read_only=True)
+    creado_por_nombre = serializers.CharField(read_only=True)

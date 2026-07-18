@@ -1,16 +1,13 @@
 
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from core.rol_utils import es_mozo, es_cocinero, es_mozo_o_cocinero
-from pedidos.models import Comanda
-from pedidos.services import LineaComandaService
 from core.excepciones import AppError, StockInsuficiente
 from infraestructura.container import get_container
-from mesas.models import Mesa
-from menu.models import Categoria
 
 from django.http import Http404
+
 
 @login_required
 @user_passes_test(es_mozo)
@@ -21,6 +18,8 @@ def tomar_pedido(request, mesa_id):
     except AppError:
         raise Http404()
     return render(request, 'pedidos/tomar_pedido.html', data)
+
+
 def _procesar_agregar_plato(request, comanda):
     try:
         container = get_container()
@@ -40,18 +39,20 @@ def _procesar_agregar_plato(request, comanda):
         messages.error(request, str(e))
         return False
 
+
 @login_required
 @user_passes_test(es_mozo)
 def agregar_platos_pedido(request, comanda_id):
     container = get_container()
-    comanda = container.comanda_service.comanda_repo.obtener_por_id(comanda_id)
+    comanda = container.comanda_service.obtener_por_id(comanda_id)
     if not comanda:
         raise Http404()
     if request.method == 'POST':
         _procesar_agregar_plato(request, comanda)
     return redirect('tomar_pedido', mesa_id=comanda.mesa_id)
 
-#kds cocina
+
+# kds cocina
 
 @login_required
 @user_passes_test(es_cocinero)
@@ -59,6 +60,8 @@ def kds_panel(request):
     container = get_container()
     comandas = container.linea_comanda_service.obtener_panel_kds()
     return render(request, 'cocina/kds_panel.html', {'comandas': comandas})
+
+
 @login_required
 @user_passes_test(es_mozo_o_cocinero)
 def enviar_cocina(request, linea_id):
@@ -66,10 +69,11 @@ def enviar_cocina(request, linea_id):
         try:
             container = get_container()
             container.linea_comanda_service.enviar_cocina(linea_id)
-            messages.success(request, 'Línea enviada a cocina')
+            messages.success(request, 'Linea enviada a cocina')
         except AppError as e:
             messages.error(request, str(e))
     return redirect('kds_panel')
+
 
 @login_required
 @user_passes_test(es_cocinero)

@@ -64,6 +64,7 @@ def lista_usuarios(request):
     usuarios = container.usuario_service.listar_usuarios()
     return render(request, 'core/usuarios/lista_usuarios.html', {'usuarios': usuarios})
 
+
 @login_required
 @user_passes_test(es_admin)
 def crear_usuario(request):
@@ -88,6 +89,7 @@ def crear_usuario(request):
         'titulo': 'Crear Nuevo Usuario'
     })
 
+
 @login_required
 @user_passes_test(es_admin)
 def editar_usuario(request, user_id):
@@ -98,10 +100,8 @@ def editar_usuario(request, user_id):
         messages.error(request, 'Usuario no encontrado')
         return redirect('lista_usuarios')
 
-    user_orm = container.usuario_service.obtener_usuario_orm(user_id)
-
     if request.method == 'POST':
-        form = UsuarioForm(request.POST, instance=user_orm)
+        form = UsuarioForm(request.POST, usuario=usuario)
         if form.is_valid():
             try:
                 container.usuario_service.actualizar(
@@ -118,13 +118,14 @@ def editar_usuario(request, user_id):
         else:
             messages.error(request, 'Error al actualizar el usuario.')
     else:
-        form = UsuarioForm(instance=user_orm)
+        form = UsuarioForm(usuario=usuario)
 
     return render(request, 'core/usuarios/form_usuario.html', {
         'form': form,
         'titulo': 'Editar Usuario',
         'usuario': usuario
     })
+
 
 @login_required
 @user_passes_test(es_admin)

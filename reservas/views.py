@@ -22,7 +22,7 @@ def lista_reservas(request):
 @user_passes_test(es_mozo)
 def crear_reserva(request):
     container = get_container()
-    todas_mesas = container.mesa_service.mesa_repo.listar_activas()
+    todas_mesas = container.mesa_service.listar_activas()
     mesas = [m for m in todas_mesas if m.estado == 'LIBRE']
 
     if request.method == 'POST':
