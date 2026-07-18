@@ -89,6 +89,17 @@ def eliminar_insumo(request, insumo_id):
 def lista_recetas(request):
     container = get_container()
     recetas = container.receta_service.listar_recetas()
+    receta_insumos = container.receta_service.listar_receta_insumos()
+    insumos = container.insumo_service.listar_insumos()
+    insumos_dict = {i.id: i for i in insumos}
+    ri_por_receta = {}
+    for ri in receta_insumos:
+        if ri.receta_id not in ri_por_receta:
+            ri_por_receta[ri.receta_id] = []
+        ri.insumo_obj = insumos_dict.get(ri.insumo_id)
+        ri_por_receta[ri.receta_id].append(ri)
+    for receta in recetas:
+        receta.insumos = ri_por_receta.get(receta.id, [])
     return render(request, 'inventario/lista_recetas.html', {'recetas': recetas})
 
 @login_required
@@ -163,6 +174,15 @@ def editar_receta(request, receta_id):
             messages.error(request, str(e))
         return redirect('lista_recetas')
     insumos = container.insumo_service.listar_insumos()
+    receta_insumos = container.receta_service.listar_receta_insumos()
+    insumos_dict = {i.id: i for i in insumos}
+    ri_por_receta = {}
+    for ri in receta_insumos:
+        if ri.receta_id not in ri_por_receta:
+            ri_por_receta[ri.receta_id] = []
+        ri.insumo_obj = insumos_dict.get(ri.insumo_id)
+        ri_por_receta[ri.receta_id].append(ri)
+    receta.insumos = ri_por_receta.get(receta.id, [])
     return render(request, 'inventario/crear_receta.html', {
         'editar': receta,
         'insumos': insumos,

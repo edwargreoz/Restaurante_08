@@ -28,6 +28,9 @@ def detalle_mesa(request, mesa_id):
         comanda_service=container.comanda_service,
         categoria_service=container.categoria_service,
     )
+    if data.get('union_activa'):
+        mesas_union = container.mesa_repo.listar_activas_por_ids(data['union_activa'].mesa_ids)
+        data['mesas_union'] = mesas_union
     return render(request, 'mesas/detalle_mesa.html', data)
 
 
@@ -107,6 +110,19 @@ def marcar_mesa_libre(request, mesa_id):
 def unir_mesas(request):
     container = get_container()
     datos = container.union_mesa_service.obtener_datos_para_union()
+    mesas_dict = {m.id: m for m in datos['mesas']}
+    uniones_info = []
+    for u in datos['uniones']:
+        mesas_union = [mesas_dict[mid] for mid in u.mesa_ids if mid in mesas_dict]
+        capacidad = sum(m.capacidad for m in mesas_union)
+        primera_zona = mesas_union[0].zona if mesas_union else ''
+        uniones_info.append({
+            'union': u,
+            'mesas': mesas_union,
+            'capacidad_total': capacidad,
+            'primera_zona': primera_zona,
+        })
+    datos['uniones_info'] = uniones_info
     if request.method == 'POST':
         mesa_ids = request.POST.getlist('mesas')
         try:
