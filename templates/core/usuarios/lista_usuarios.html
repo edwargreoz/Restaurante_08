@@ -3,90 +3,13 @@
 
 {% block title %}Gestión de Usuarios{% endblock %}
 
-{% block extra_css %}
-<style>
-    .page-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-    .page-header h1 {
-        margin: 0;
-        font-size: 2rem;
-        font-weight: 700;
-        color: #2c3e50;
-    }
-    .table-wrapper {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        overflow: hidden;
-        margin-bottom: 2rem;
-    }
-    .table {
-        margin-bottom: 0;
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .table th, .table td {
-        padding: 1rem 1.5rem;
-        vertical-align: middle;
-        border-bottom: 1px solid #edf2f7;
-    }
-    .table th {
-        background-color: #f8fafc;
-        font-weight: 600;
-        color: #4a5568;
-        text-transform: uppercase;
-        font-size: 0.85rem;
-        letter-spacing: 0.05em;
-    }
-    .badge-rol {
-        padding: 0.4em 0.8em;
-        border-radius: 20px;
-        font-size: 0.85em;
-        font-weight: 600;
-    }
-    .badge-admin { background-color: #eebfbf; color: #c53030; }
-    .badge-mozo { background-color: #c6f6d5; color: #2f855a; }
-    .badge-cocinero { background-color: #bee3f8; color: #2b6cb0; }
-    .badge-cajero { background-color: #feebc8; color: #c05621; }
-    .badge-inactive { background-color: #e2e8f0; color: #718096; }
-    
-    .actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-    .btn-action {
-        padding: 0.4rem 0.8rem;
-        border-radius: 6px;
-        font-size: 0.875rem;
-        font-weight: 500;
-        text-decoration: none;
-        transition: all 0.2s;
-        border: none;
-        cursor: pointer;
-    }
-    .btn-edit {
-        background-color: #ebf4ff;
-        color: #3182ce;
-    }
-    .btn-edit:hover { background-color: #bee3f8; }
-    .btn-delete {
-        background-color: #fff5f5;
-        color: #e53e3e;
-    }
-    .btn-delete:hover { background-color: #fed7d7; }
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="page-header">
-    <h1>Gestión de Usuarios</h1>
-    <a href="{% url 'crear_usuario' %}" class="btn btn-primary" style="padding: 0.6rem 1.5rem;">+ Nuevo Usuario</a>
+    <div>
+        <div class="eyebrow">Equipo</div>
+        <h1>Gestión de Usuarios</h1>
+    </div>
+    <a href="{% url 'crear_usuario' %}" class="btn btn-primary btn-sm">+ Nuevo Usuario</a>
 </div>
 
 <div class="table-wrapper">
@@ -103,49 +26,51 @@
         </thead>
         <tbody>
             {% for u in usuarios %}
-            <tr style="{% if not u.is_active %}opacity: 0.6;{% endif %}">
+            <tr style="{% if not u.is_active %}opacity: 0.5;{% endif %}">
                 <td><strong>{{ u.username }}</strong></td>
                 <td>{{ u.nombre_completo|default:"-" }}</td>
                 <td>{{ u.email|default:"-" }}</td>
                 <td>
                     {% if u.is_superuser %}
-                        <span class="badge-rol badge-admin">Administrador</span>
+                        <span class="badge badge-occupied">Administrador</span>
                     {% else %}
                         {% with grupo=u.grupos|first %}
                             {% if grupo %}
-                                <span class="badge-rol 
-                                    {% if grupo == 'Mozo' %}badge-mozo
-                                    {% elif grupo == 'Cocinero' %}badge-cocinero
-                                    {% elif grupo == 'Cajero' %}badge-cajero
-                                    {% else %}badge-inactive{% endif %}">
+                                <span class="badge
+                                    {% if grupo == 'Mozo' %}badge-free
+                                    {% elif grupo == 'Cocinero' %}badge-info
+                                    {% elif grupo == 'Cajero' %}badge-prep
+                                    {% else %}badge-info{% endif %}">
                                     {{ grupo }}
                                 </span>
                             {% else %}
-                                <span class="badge-rol badge-inactive">Sin Rol</span>
+                                <span class="badge" style="background:#eee; color:var(--text-muted);">Sin Rol</span>
                             {% endif %}
                         {% endwith %}
                     {% endif %}
                 </td>
                 <td>
                     {% if u.is_active %}
-                        <span style="color: #48bb78; font-weight: 600;">Activo</span>
+                        <span class="badge badge-free">Activo</span>
                     {% else %}
-                        <span style="color: #e53e3e; font-weight: 600;">Inactivo</span>
+                        <span class="badge badge-occupied">Inactivo</span>
                     {% endif %}
                 </td>
-                <td class="actions">
-                    <a href="{% url 'editar_usuario' u.id %}" class="btn-action btn-edit">Editar</a>
-                    {% if u.is_active and not u == request.user %}
-                    <form action="{% url 'eliminar_usuario' u.id %}" method="post" style="display:inline;" onsubmit="return confirm('¿Estás seguro de que deseas desactivar este usuario?');">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-action btn-delete">Desactivar</button>
-                    </form>
-                    {% endif %}
+                <td>
+                    <div class="row-actions">
+                        <a href="{% url 'editar_usuario' u.id %}" class="btn btn-outline btn-sm" style="padding:6px 14px; font-size:12px;">Editar</a>
+                        {% if u.is_active and not u == request.user %}
+                        <form action="{% url 'eliminar_usuario' u.id %}" method="post" style="display:inline; margin:0;" onsubmit="return confirm('¿Desactivar este usuario?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding:6px 14px; font-size:12px;">Desactivar</button>
+                        </form>
+                        {% endif %}
+                    </div>
                 </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="6" style="text-align: center; padding: 2rem;">No hay usuarios registrados.</td>
+                <td colspan="6" class="empty-row">No hay usuarios registrados.</td>
             </tr>
             {% endfor %}
         </tbody>

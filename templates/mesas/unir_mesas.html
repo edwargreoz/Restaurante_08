@@ -6,14 +6,19 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/mesas/unir_mesas.css' %}">
+<style>
+    .mesa-card[data-mesa-id] { transition: .2s; cursor: grab; }
+    .mesa-card[data-mesa-id]:active { cursor: grabbing; }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Unir Mesas</h1>
-    <a href="{% url 'plano_mesas' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">
-        ← Volver al Plano
-    </a>
+    <div>
+        <div class="eyebrow">Sala</div>
+        <h1>Unir Mesas</h1>
+    </div>
+    <a href="{% url 'plano_mesas' %}" class="btn btn-outline btn-sm">← Volver al Plano</a>
 </div>
 
 <div class="row">
@@ -22,21 +27,19 @@
             <div class="card-header">
                 <strong>Arrastra una mesa sobre otra para unirlas</strong>
             </div>
-
             <div class="card-body">
                 <form method="POST" action="{% url 'unir_mesas' %}">
                     {% csrf_token %}
-
                     <div class="row">
                         {% for mesa in mesas %}
                         <div class="col-md-4 col-6 mb-2">
                             <div class="card card-mesa union-mesa-card mesa-card p-3 text-center"
                                  data-mesa-id="{{ mesa.id }}"
-                                 {% if mesa.id in union_mesas_ids %}style="border-color:#6c757d;opacity:0.5;"
-                                 {% elif mesa.estado == 'LIBRE' %}style="border-color:#198754;"
-                                 {% elif mesa.estado == 'OCUPADA' %}style="border-color:#dc3545;"
-                                 {% elif mesa.estado == 'RESERVADA' %}style="border-color:#ffc107;"
-                                 {% else %}style="border-color:#6c757d;{% endif %}">
+                                 {% if mesa.id in union_mesas_ids %}style="border-color:var(--text-muted);opacity:0.5;"
+                                 {% elif mesa.estado == 'LIBRE' %}style="border-color:var(--free);"
+                                 {% elif mesa.estado == 'OCUPADA' %}style="border-color:var(--occupied);"
+                                 {% elif mesa.estado == 'RESERVADA' %}style="border-color:var(--prep);"
+                                 {% else %}style="border-color:var(--text-muted);{% endif %}">
 
                                 <input type="checkbox" name="mesas" value="{{ mesa.id }}"
                                     data-zona="{{ mesa.zona }}"
@@ -44,20 +47,18 @@
 
                                 <strong>Mesa {{ mesa.numero }}</strong>
 
-                                <small class="d-block text-muted">
+                                <small class="d-block" style="color:var(--text-muted);">
                                     {{ mesa.zona|zona_display }} · {{ mesa.capacidad }} pax
                                 </small>
 
                                 {% if mesa.id in union_mesas_ids %}
-                                    <span class="badge mt-1" style="background:#b77a2f;color:#fff;">
-                                        Ya unida
-                                    </span>
+                                    <span class="badge" style="background:var(--gold);color:var(--dark);">Ya unida</span>
                                 {% else %}
-                                    <span class="badge mt-1
-                                        {% if mesa.estado == 'LIBRE' %}bg-success
-                                        {% elif mesa.estado == 'OCUPADA' %}bg-danger
-                                        {% elif mesa.estado == 'RESERVADA' %}bg-warning text-dark
-                                        {% else %}bg-secondary{% endif %}">
+                                    <span class="badge
+                                        {% if mesa.estado == 'LIBRE' %}badge-free
+                                        {% elif mesa.estado == 'OCUPADA' %}badge-occupied
+                                        {% elif mesa.estado == 'RESERVADA' %}badge-prep
+                                        {% else %}badge-info{% endif %}">
                                         {{ mesa.estado|estado_display }}
                                     </span>
                                 {% endif %}
@@ -65,10 +66,7 @@
                         </div>
                         {% endfor %}
                     </div>
-
-                    <button type="submit" class="btn btn-primary mt-3" style="width:auto;padding:0.7rem 2rem;">
-                        Unir Mesas
-                    </button>
+                    <button type="submit" class="btn btn-primary mt-3">Unir Mesas</button>
                 </form>
             </div>
         </div>
@@ -76,60 +74,42 @@
 
     <div class="col-md-5">
         <div class="card">
-            <div class="card-header">
-                <strong>Uniones activas</strong>
-            </div>
-
+            <div class="card-header"><strong>Uniones activas</strong></div>
             <div class="card-body">
                 {% for info in uniones_info %}
-                <div class="union-item" style="flex-direction:column;align-items:stretch;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-                        <div class="union-item-info">
-                            <span class="union-item-mesas">
-                                {% for m in info.mesas %}
-                                    Mesa {{ m.numero }}{% if not forloop.last %} + {% endif %}
-                                {% endfor %}
+                <div class="union-item" style="flex-direction:column; align-items:stretch; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--border);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <div>
+                            <span style="font-weight:600;">
+                                {% for m in info.mesas %}Mesa {{ m.numero }}{% if not forloop.last %} + {% endif %}{% endfor %}
                             </span>
-
-                            <span class="union-item-detalle">
-                                Capacidad total: {{ info.capacidad_total }} personas
-                            </span>
+                            <br>
+                            <span style="font-size:12px; color:var(--text-muted);">Capacidad total: {{ info.capacidad_total }} personas</span>
                         </div>
-
                         <form method="POST" action="{% url 'deshacer_union' info.union.id %}">
                             {% csrf_token %}
-                            <button type="submit" class="btn-deshacer">
-                                Deshacer
-                            </button>
+                            <button type="submit" class="btn btn-danger btn-sm" style="padding:4px 10px; font-size:11px;">Deshacer</button>
                         </form>
                     </div>
 
                     <form method="POST" action="{% url 'agregar_mesa_union' info.union.id %}"
-                          style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;">
+                          style="display:flex; gap:8px; align-items:center;">
                         {% csrf_token %}
-
-                        <select name="mesa_id" class="form-control select-agregar-mesa"
+                        <select name="mesa_id" class="select-agregar-mesa"
                                 data-zona-union="{{ info.primera_zona }}"
-                                style="flex:1;padding:0.4rem 0.6rem;font-size:0.85rem;" required>
+                                style="flex:1; padding:8px 12px; font-size:13px; border:1.5px solid var(--border); border-radius:var(--r-sm);" required>
                             <option value="">Agregar mesa...</option>
-
                             {% for m in mesas_disponibles %}
                             <option value="{{ m.id }}" data-zona="{{ m.zona }}">
                                 Mesa {{ m.numero }} ({{ m.zona|zona_display }})
                             </option>
                             {% endfor %}
                         </select>
-
-                        <button type="submit" class="btn btn-primary"
-                                style="width:auto;padding:0.4rem 0.8rem;font-size:0.85rem;">
-                            +
-                        </button>
+                        <button type="submit" class="btn btn-primary btn-sm" style="padding:8px 14px;">+</button>
                     </form>
                 </div>
                 {% empty %}
-                <p class="text-muted text-center mb-0">
-                    No hay uniones activas
-                </p>
+                <p style="text-align:center; color:var(--text-muted);">No hay uniones activas</p>
                 {% endfor %}
             </div>
         </div>

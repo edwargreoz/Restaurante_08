@@ -1,68 +1,63 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load role_tags %}
 {% block title %}Comandas para Cobrar{% endblock %}
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/caja/cobrar_comanda.css' %}">
-{% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>Comandas para Cobrar</h1>
-    {% if caja_abierta %}
-    <span class="badge badge-pago badge-pago-efectivo">Turno: {{ caja_abierta.turno }}</span>
-    {% else %}
-    <span class="badge" style="background:#6c757d;">Sin turno abierto</span>
-    {% endif %}
+    <div>
+        <div class="eyebrow">Caja</div>
+        <h1>Comandas para Cobrar</h1>
+    </div>
 </div>
 
-{% if not caja_abierta %}
-<div class="alert alert-warning">
-    No hay un turno de caja abierto.
-    <a href="{% url 'apertura_turno' %}" class="alert-link">Abrir turno</a>
-</div>
-{% endif %}
-
-{% if comandas %}
-<div class="table-wrapper">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Mesa</th>
-                <th>Mozo</th>
-                <th>Total</th>
-                <th>Estado</th>
-                <th>Desde</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for comanda in comandas %}
-            <tr>
-                <td><strong>Mesa {{ comanda.numero_mesa }}</strong></td>
-                <td>{{ comanda.nombre_mozo }}</td>
-                <td><strong>S/ {{ comanda.total|floatformat:2 }}</strong></td>
-                <td>
-                    <span class="badge {% if comanda.estado == 'ABIERTA' %}badge-blue{% else %}badge-orange{% endif %}">
-                        {{ comanda.estado|estado_display }}
-                    </span>
-                </td>
-                <td>{{ comanda.fecha_apertura|timesince }}</td>
-                <td>
-                    {% if comanda.estado == 'LISTA' %}
-                    <a href="{% url 'cobrar_comanda' comanda.id %}" class="btn btn-primary btn-sm">Cobrar</a>
-                    {% else %}
-                    <span class="btn btn-secondary btn-sm disabled" title="La comanda debe estar lista para cobrar">Cobrar</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+{% if not turno_abierto %}
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-body" style="text-align:center; padding:40px;">
+        <div class="empty-icon" style="margin:0 auto 12px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+        <h3 style="font-size:18px;">Sin turno abierto</h3>
+        <p style="color:var(--text-muted); font-size:13.5px;">Abre un turno de caja para comenzar a cobrar.</p>
+        <a href="{% url 'apertura_turno' %}" class="btn btn-primary btn-sm">Ir a Caja</a>
+    </div>
 </div>
 {% else %}
-<div class="empty-state">
-    <h4>No hay comandas pendientes de cobro</h4>
-    <p>Todas las comandas están cobradas o no hay comandas activas.</p>
+
+<div class="card">
+    <div class="card-body" style="padding:0;">
+        <table class="table" style="margin:0;">
+            <thead>
+                <tr>
+                    <th>#</th><th>Mesa</th><th>Mozo</th><th>Total</th><th>Estado</th><th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for comanda in comandas %}
+                <tr>
+                    <td><strong>{{ comanda.id }}</strong></td>
+                    <td>Mesa {{ comanda.mesa.numero }}</td>
+                    <td>{{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</td>
+                    <td><span class="price">S/ {{ comanda.total }}</span></td>
+                    <td>
+                        {% if comanda.estado == 'ABIERTA' %}
+                            <span class="badge badge-info">Abierta</span>
+                        {% else %}
+                            <span class="badge badge-prep">{{ comanda.estado }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'cobrar_comanda' comanda.id %}"
+                           class="btn btn-primary btn-sm" style="padding:6px 14px; font-size:12px;">
+                            Cobrar
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="empty-row">No hay comandas para cobrar</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
+
 {% endif %}
 {% endblock %}

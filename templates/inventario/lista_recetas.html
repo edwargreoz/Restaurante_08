@@ -5,69 +5,80 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/inventario/lista_recetas.css' %}">
 <style>
-    .receta-ingrediente { padding: 0.4rem 0; border-bottom: 1px solid #eee; }
+    .receta-ingrediente { padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
     .receta-ingrediente:last-child { border-bottom: none; }
-    .ingrediente-cantidad { font-weight: 600; color: #2c3e50; }
-    .ingrediente-stock-ok { color: #27ae60; font-size: 0.82rem; }
-    .ingrediente-stock-bajo { color: #e74c3c; font-size: 0.82rem; font-weight: 600; }
+    .ingrediente-cantidad { font-weight: 600; color: var(--text); }
+    .ingrediente-stock-ok { color: var(--free); font-size: 0.82rem; font-weight: 500; }
+    .ingrediente-stock-bajo { color: var(--occupied); font-size: 0.82rem; font-weight: 600; }
 </style>
 {% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>Recetas</h1>
     <div>
-        <a href="{% url 'lista_insumos' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Volver a Inventario</a>
-        <a href="{% url 'crear_receta' %}" class="btn btn-primary" style="width:auto;padding:0.6rem 1.5rem;">Nueva Receta</a>
+        <div class="eyebrow">Cocina</div>
+        <h1>Recetas</h1>
+    </div>
+    <div style="display:flex; gap:8px;">
+        <a href="{% url 'lista_insumos' %}" class="btn btn-outline btn-sm">Volver a Inventario</a>
+        <a href="{% url 'crear_receta' %}" class="btn btn-primary btn-sm">Nueva Receta</a>
     </div>
 </div>
-<div class="table-wrapper">
-    {% for receta in recetas %}
-    <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <strong>{{ receta.nombre }}</strong>
-            <div>
-                <a href="{% url 'editar_receta' receta.id %}" class="btn btn-sm btn-warning">Editar</a>
-                <form method="POST" action="{% url 'eliminar_receta_completa' receta.id %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-danger"
-                            onclick="return confirm('Eliminar la receta {{ receta.nombre }}? Se desasociara de los platos.')">Eliminar</button>
-                </form>
-            </div>
+
+{% for receta in recetas %}
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <strong>{{ receta.nombre }}</strong>
+        <div style="display:flex; gap:6px;">
+            <a href="{% url 'editar_receta' receta.id %}" class="btn btn-outline btn-sm" style="padding:6px 14px; font-size:12px;">Editar</a>
+            <form method="POST" action="{% url 'eliminar_receta_completa' receta.id %}" style="display:inline; margin:0;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm" style="padding:6px 14px; font-size:12px;"
+                        onclick="return confirm('Eliminar la receta {{ receta.nombre }}? Se desasociará de los platos.')">Eliminar</button>
+            </form>
         </div>
-        <div class="card-body p-0">
-            <div class="px-3 py-2">
-                {% for ri in receta.insumos %}
-                <div class="receta-ingrediente d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="ingrediente-cantidad">
-                            {{ ri.cantidad_por_porcion|floatformat:2 }}
-                            {% if ri.unidad_cocina_obj %}
-                                {{ ri.unidad_cocina_obj.nombre }}
-                            {% else %}
-                                {{ ri.unidad|unidad_display }}
-                            {% endif %}
-                        </span>
-                        de <strong>{{ ri.insumo_obj.nombre }}</strong>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="{% if ri.insumo_obj.stock_actual < ri.insumo_obj.stock_minimo %}ingrediente-stock-bajo{% else %}ingrediente-stock-ok{% endif %}">
-                            Stock: {{ ri.insumo_obj.stock_actual|floatformat:2 }} {{ ri.unidad|unidad_display }}
-                        </span>
-                        <form method="POST" action="{% url 'eliminar_receta' ri.id %}" style="display:inline;">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-danger"
-                                    onclick="return confirm('Quitar {{ ri.insumo_obj.nombre }} de {{ receta.nombre }}?')">X</button>
-                        </form>
-                    </div>
+    </div>
+    <div class="card-body" style="padding:0;">
+        <div style="padding:12px 20px;">
+            {% for ri in receta.insumos %}
+            <div class="receta-ingrediente" style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <span class="ingrediente-cantidad">
+                        {{ ri.cantidad_por_porcion|floatformat:2 }}
+                        {% if ri.unidad_cocina_obj %}
+                            {{ ri.unidad_cocina_obj.nombre }}
+                        {% else %}
+                            {{ ri.unidad|unidad_display }}
+                        {% endif %}
+                    </span>
+                    de <strong>{{ ri.insumo_obj.nombre }}</strong>
                 </div>
-                {% empty %}
-                <p class="text-muted mb-0">Sin ingredientes asignados</p>
-                {% endfor %}
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="{% if ri.insumo_obj.stock_actual < ri.insumo_obj.stock_minimo %}ingrediente-stock-bajo{% else %}ingrediente-stock-ok{% endif %}">
+                        Stock: {{ ri.insumo_obj.stock_actual|floatformat:2 }} {{ ri.unidad|unidad_display }}
+                    </span>
+                    <form method="POST" action="{% url 'eliminar_receta' ri.id %}" style="display:inline; margin:0;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm" style="padding:4px 10px; font-size:11px;"
+                                onclick="return confirm('Quitar {{ ri.insumo_obj.nombre }} de {{ receta.nombre }}?')">X</button>
+                    </form>
+                </div>
             </div>
+            {% empty %}
+            <p style="color:var(--text-muted); margin:0;">Sin ingredientes asignados</p>
+            {% endfor %}
         </div>
     </div>
-    {% empty %}
-    <div class="alert alert-info">No hay recetas registradas.</div>
-    {% endfor %}
 </div>
+{% empty %}
+<div class="card">
+    <div class="empty">
+        <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
+        </div>
+        <h3>No hay recetas</h3>
+        <p>Crea tu primera receta para asociar insumos a los platos.</p>
+        <a href="{% url 'crear_receta' %}" class="btn btn-primary btn-sm">Nueva Receta</a>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}

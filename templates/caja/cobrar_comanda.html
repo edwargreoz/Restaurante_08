@@ -7,11 +7,14 @@
 {% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>Cobrar Comanda #{{ comanda.id }}</h1>
+    <div>
+        <div class="eyebrow">Caja</div>
+        <h1>Cobrar Comanda #{{ comanda.id }}</h1>
+    </div>
     {% if user|has_group:'Mozo' %}
-    <a href="{% url 'plano_mesas' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Volver</a>
+    <a href="{% url 'plano_mesas' %}" class="btn btn-outline btn-sm">Volver</a>
     {% else %}
-    <a href="{% url 'lista_comandas_cobro' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Volver</a>
+    <a href="{% url 'lista_comandas_cobro' %}" class="btn btn-outline btn-sm">Volver</a>
     {% endif %}
 </div>
 <div class="row">
@@ -80,7 +83,7 @@
                         {% csrf_token %}
                         <div class="form-group">
                             <label for="metodo">Método de pago</label>
-                            <select name="metodo" id="metodo" class="form-control" required>
+                            <select name="metodo" id="metodo" required>
                                 <option value="">--- Seleccionar ---</option>
                                 {% for key, label in metodos %}
                                 <option value="{{ key }}">{{ label }}</option>
@@ -94,14 +97,14 @@
                         </div>
                         <div class="form-group pago-vuelto-group" id="vuelto-group">
                             <label for="vuelto">Vuelto (S/)</label>
-                            <input type="number" name="vuelto" id="vuelto" step="0.01" min="0" value="0">
+                            <input type="number" name="vuelto" id="vuelto" step="0.01" min="0" value="0" readonly style="background:var(--gold-soft);">
                         </div>
                         <div class="form-group" id="referencia-group">
                             <label for="referencia">Referencia (últimos 4 dígitos)</label>
                             <input type="text" name="referencia" id="referencia" placeholder="Ej: ****1234" maxlength="20">
-                            <small class="text-muted">Obligatorio para tarjeta</small>
+                            <span class="hint">Obligatorio para tarjeta</span>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100">Cobrar S/ {{ comanda.total|floatformat:2 }}</button>
+                        <button type="submit" class="btn btn-primary" style="width:100%;">Cobrar S/ {{ comanda.total|floatformat:2 }}</button>
                     </form>
                 </div>
                 <div class="tab-pane fade" id="split-pago">
@@ -145,7 +148,7 @@
                             <p class="mb-1">Suma pagos: <strong>S/ <span id="split-suma-pagos">0.00</span></strong></p>
                             <p class="mb-0">Restante: <strong>S/ <span id="split-restante" data-total="{{ comanda.total|stringformat:'.2f' }}">{{ comanda.total|floatformat:2 }}</span></strong></p>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100" id="split-submit" disabled>Cobrar S/ {{ comanda.total|floatformat:2 }}</button>
+                        <button type="submit" class="btn btn-primary" style="width:100%;" id="split-submit" disabled>Cobrar S/ {{ comanda.total|floatformat:2 }}</button>
                     </form>
                     <!-- Template fuera del form para que los inputs required ocultos no bloqueen el submit -->
                     <div id="split-template" style="display:none;">

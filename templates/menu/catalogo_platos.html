@@ -1,48 +1,62 @@
 {% extends 'base.html' %}
 {% load static %}
-
 {% block title %}Catalogo de Platos{% endblock %}
-
 {% block content %}
-<h1 class="mb-4">Catalogo de Platos</h1>
-
-{% if user.is_superuser %}
-<div class="mb-3">
-    <a href="{% url 'gestion_menu' %}" class="btn btn-primary">Gestionar Menú</a>
+<div class="page-header">
+    <div>
+        <div class="eyebrow">Carta</div>
+        <h1>Catálogo de Platos</h1>
+    </div>
+    {% if user.is_superuser %}
+    <a href="{% url 'gestion_menu' %}" class="btn btn-primary btn-sm">Gestionar Menú</a>
+    {% endif %}
 </div>
-{% endif %}
 
 {% for categoria in categorias %}
-    <h2 class="mt-4">{{ categoria.nombre }}</h2>
-    <div class="row">
+<section>
+    <h2 style="font-size:22px; margin-bottom:16px;">{{ categoria.nombre }}</h2>
+    <div class="dish-grid">
         {% for plato in categoria.platos %}
-        <div class="col-md-4 mb-3">
-            <div class="card">
-                <img class="card-img-top" src="
+        <div class="dish-card">
+            <div class="dish-img">
                 {% if plato.imagen %}
-                    {{ plato.imagen.url }}
-                {% else %}{% static 'icons/orden.png' %}{% endif %}" alt="{{ plato.nombre }}">
-                <div class="card-body">
-                    <h5 class="card-title">{{ plato.nombre }}</h5>
-                    <p class="card-text">{{ plato.descripcion|truncatewords:15 }}</p>
-                    <p class="card-text"><strong>S/ {{ plato.precio }}</strong></p>
-                    <p class="card-text"><strong>Tiempo de preparación:</strong> {{ plato.tiempo_preparacion_min }} minutos</p>
+                <img src="{{ plato.imagen.url }}" alt="{{ plato.nombre }}" style="width:100%;height:100%;object-fit:cover;position:relative;">
+                {% else %}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8Z"/><path d="M6 1v3M10 1v3M14 1v3"/></svg>
+                {% endif %}
+            </div>
+            <div class="dish-body">
+                <h3>{{ plato.nombre }}</h3>
+                <p style="color:var(--text-muted); font-size:13px; margin:0;">{{ plato.descripcion|truncatewords:12 }}</p>
+                <div class="dish-meta">
+                    <span class="price">S/ {{ plato.precio }}</span>
                     {% if plato.disponible %}
-                        <span class="badge bg-success">Disponible</span>
+                    <span class="badge badge-info">Disponible</span>
                     {% else %}
-                        <span class="badge bg-danger">No disponible</span>
+                    <span class="badge badge-occupied">No disponible</span>
                     {% endif %}
-
-                    </div>
                 </div>
             </div>
-            {% empty %}
-            <div class="col-12">
-                <p class="text-muted">No hay platos disponibles en esta categoría.</p>
-            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <p class="text-muted">No hay platos disponibles en esta categoría.</p>
+        </div>
         {% endfor %}
     </div>
-    {% empty %}
-    <div class="alert alert-info">No hay categorias o platos registrados.</div>
-    {% endfor %}
+</section>
+{% empty %}
+<div class="card">
+    <div class="empty">
+        <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4H6.5A2.5 2.5 0 0 0 4 6.5v13Z"/></svg>
+        </div>
+        <h3>No hay categorías o platos</h3>
+        <p>Crea categorías y platos desde la gestión del menú.</p>
+        {% if user.is_superuser %}
+        <a href="{% url 'gestion_menu' %}" class="btn btn-primary btn-sm">Ir a Gestión</a>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
 {% endblock %}

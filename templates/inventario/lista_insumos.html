@@ -7,10 +7,15 @@
 {% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>Inventario de Insumos</h1>
+    <div>
+        <div class="eyebrow">Almacén</div>
+        <h1>Inventario de Insumos</h1>
+    </div>
     {% if es_admin %}
-    <a href="{% url 'gestion_insumos' %}" class="btn btn-primary" style="width:auto;padding:0.6rem 1.5rem;">Ir a Gestión</a>
-    <a href="{% url 'lista_recetas' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.5rem;">Ver Recetas</a>
+    <div style="display:flex; gap:8px;">
+        <a href="{% url 'gestion_insumos' %}" class="btn btn-primary btn-sm">Ir a Gestión</a>
+        <a href="{% url 'lista_recetas' %}" class="btn btn-outline btn-sm">Ver Recetas</a>
+    </div>
     {% endif %}
 </div>
 <div class="table-wrapper">
@@ -31,12 +36,9 @@
                 <td>S/ {{ insumo.costo_unitario|floatformat:2 }}</td>
                 <td>
                     {% if insumo.stock_actual < insumo.stock_minimo %}
-                    <span class="insumo-alerta">
-                        <img src="{% static 'icons/Alertastock.png' %}" alt="">
-                        Stock bajo
-                    </span>
+                    <span class="badge badge-occupied">Stock bajo</span>
                     {% else %}
-                    <span class="insumo-ok">Ok</span>
+                    <span class="badge badge-free">Ok</span>
                     {% endif %}
                 </td>
             </tr>

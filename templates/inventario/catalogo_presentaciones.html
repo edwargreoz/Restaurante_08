@@ -4,52 +4,47 @@
 {% block title %}Catalogo de Presentaciones{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/inventario/gestion_insumos.css' %}">
-<style>
-    .help-text { font-size: 0.82rem; color: #888; margin-bottom: 1rem; }
-</style>
 {% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>Catalogo de Presentaciones</h1>
     <div>
-        <a href="{% url 'gestion_insumos' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Volver a Insumos</a>
+        <div class="eyebrow">Catálogo</div>
+        <h1>Catálogo de Presentaciones</h1>
     </div>
+    <a href="{% url 'gestion_insumos' %}" class="btn btn-outline btn-sm">Volver a Insumos</a>
 </div>
 
 <div class="row">
     <div class="col-md-5">
         <div class="card">
             <div class="card-header">
-                <strong>Nueva Presentacion</strong>
+                <strong>Nueva Presentación</strong>
             </div>
             <div class="card-body gestion-form">
-
                 <form method="POST">
                     {% csrf_token %}
                     <div class="form-group">
                         <label for="nombre">Nombre</label>
-                        <input type="text" name="nombre" id="nombre" placeholder="Ej: Saco 25kg, Caja 12u..." required class="form-control">
+                        <input type="text" name="nombre" id="nombre" placeholder="Ej: Saco 25kg, Caja 12u..." required>
                     </div>
                     <div class="form-group">
                         <label for="cantidad">Cantidad contenida</label>
-                        <input type="number" name="cantidad" id="cantidad" step="0.01" min="0.01" placeholder="Ej: 25" required class="form-control">
+                        <input type="number" name="cantidad" id="cantidad" step="0.01" min="0.01" placeholder="Ej: 25" required>
                     </div>
                     <div class="form-group">
                         <label for="unidad_medida">Unidad de medida</label>
-                        <select name="unidad_medida" id="unidad_medida" class="form-control" required>
+                        <select name="unidad_medida" id="unidad_medida" required>
                             <option value="">--- Seleccionar ---</option>
                             {% for key, label in unidades %}
                             <option value="{{ key }}">{{ label }}</option>
                             {% endfor %}
                         </select>
-
                     </div>
                     <div class="form-group">
                         <label for="costo_compra">Costo de referencia (S/)</label>
-                        <input type="number" name="costo_compra" id="costo_compra" step="0.01" min="0" value="0" class="form-control">
-
+                        <input type="number" name="costo_compra" id="costo_compra" step="0.01" min="0" value="0">
                     </div>
-                    <button type="submit" class="btn btn-primary">Crear Presentacion</button>
+                    <button type="submit" class="btn btn-primary">Crear Presentación</button>
                 </form>
             </div>
         </div>
@@ -70,13 +65,13 @@
                         <td>
                             <form method="POST" action="{% url 'eliminar_presentacion_catalogo' p.id %}" style="display:inline;">
                                 {% csrf_token %}
-                                <button type="submit" class="btn-eliminar"
-                                        onclick="return confirm('Eliminar {{ p.nombre }} del catalogo?')">Eliminar</button>
+                                <button type="submit" class="btn btn-danger btn-sm"
+                                        onclick="return confirm('Eliminar {{ p.nombre }} del catálogo?')">Eliminar</button>
                             </form>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="5" class="empty-row">No hay presentaciones en el catalogo. Crea una para empezar.</td></tr>
+                    <tr><td colspan="5" class="empty-row">No hay presentaciones en el catálogo.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

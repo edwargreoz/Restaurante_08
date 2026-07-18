@@ -1,93 +1,50 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load role_tags %}
-{% block title %}Gestión de Mesas{% endblock %}
-
+{% block title %}Administración de Mesas{% endblock %}
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 text-gray-800">Administración de Mesas</h2>
-        <a href="{% url 'plano_mesas' %}" class="btn btn-sm btn-secondary text-white shadow-sm" style="border-radius: 20px; font-weight: 500;">
-            <i class="fas fa-arrow-left"></i> Regresar al Plano
-        </a>
+<div class="page-header">
+    <div>
+        <div class="eyebrow">Sala</div>
+        <h1>Administración de Mesas</h1>
     </div>
+    <a href="{% url 'form_mesa' %}" class="btn btn-primary btn-sm">+ Crear Mesa</a>
+</div>
 
-    <div class="row">
-        <!-- Columna del formulario (Izquierda) -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow">
-                <div class="card-header bg-dark text-white">
-                    <h6 class="m-0 font-weight-bold">Añadir Nueva Mesa</h6>
-                </div>
-                <div class="card-body">
-                    <form method="post" action="{% url 'lista_mesas_admin' %}">
-                        {% csrf_token %}
-                        {{ form.as_p }}
-                        <button type="submit" class="btn w-100 shadow-sm mt-3" style="background-color: #27ae60; color: white; border-radius: 20px; font-weight: 500;">
-                            <i class="fas fa-plus"></i> Crear Mesa
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- Columna de la tabla (Derecha) -->
-        <div class="col-lg-8">
-            <div class="card shadow mb-4">
-                <div class="card-body">
-                    <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Nº Mesa</th>
-                            <th>Capacidad</th>
-                            <th>Zona</th>
-                            <th>Estado Actual</th>
-                            <th class="text-center">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for mesa in mesas %}
-                        <tr>
-                            <td class="fw-bold">Mesa {{ mesa.numero }}</td>
-                            <td>{{ mesa.capacidad }} personas</td>
-                            <td>{{ mesa.zona|zona_display }}</td>
-                            <td>
-                                {% if mesa.estado == 'LIBRE' %}
-                                    <span class="badge bg-success">Libre</span>
-                                {% elif mesa.estado == 'OCUPADA' %}
-                                    <span class="badge bg-danger">Ocupada</span>
-                                {% elif mesa.estado == 'RESERVADA' %}
-                                    <span class="badge bg-primary">Reservada</span>
-                                {% else %}
-                                    <span class="badge bg-warning text-dark">{{ mesa.estado|estado_display }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">
-                                {% if mesa.estado == 'RESERVADA' %}
-                                    <button class="btn btn-sm btn-outline-secondary me-2" disabled title="No se puede editar una mesa reservada">Editar</button>
-                                {% else %}
-                                    <a href="{% url 'editar_mesa' mesa.id %}" class="btn btn-sm btn-outline-primary me-2">Editar</a>
-                                {% endif %}
-
-                                {% if mesa.estado == 'LIBRE' %}
-                                    <a href="{% url 'eliminar_mesa' mesa.id %}" class="btn btn-sm btn-outline-danger">Eliminar</a>
-                                {% else %}
-                                    <button class="btn btn-sm btn-outline-secondary" disabled title="Solo se pueden borrar mesas Libres">Eliminar</button>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center">No hay mesas registradas o activas en el sistema.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+<div class="table-wrapper">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Mesa</th><th>Capacidad</th><th>Zona</th><th>Estado</th><th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mesa in mesas %}
+            <tr>
+                <td><strong>Mesa {{ mesa.numero }}</strong></td>
+                <td>{{ mesa.capacidad }} personas</td>
+                <td>{{ mesa.zona|default:"-" }}</td>
+                <td>
+                    {% if mesa.estado == 'LIBRE' %}
+                        <span class="badge badge-free">Libre</span>
+                    {% elif mesa.estado == 'OCUPADA' %}
+                        <span class="badge badge-occupied">Ocupada</span>
+                    {% elif mesa.estado == 'RESERVADA' %}
+                        <span class="badge badge-prep">Reservada</span>
+                    {% else %}
+                        <span class="badge badge-info">{{ mesa.estado }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="row-actions">
+                        <a href="{% url 'form_mesa' mesa.id %}" class="btn btn-outline btn-sm" style="padding:6px 12px; font-size:12px;">Editar</a>
+                        <a href="{% url 'eliminar_mesa_confirmar' mesa.id %}" class="btn btn-danger btn-sm" style="padding:6px 12px; font-size:12px;">Eliminar</a>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="empty-row">No hay mesas registradas</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock %}

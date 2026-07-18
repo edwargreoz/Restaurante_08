@@ -3,30 +3,31 @@
 {% load role_tags %}
 {% block title %}Gestion de Insumos{% endblock %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/inventario/gestion_insumos.css' %}">
 <style>
     .gestion-acciones { white-space: nowrap; }
     .gestion-acciones .btn-comprar,
     .gestion-acciones .btn-editar-inline,
     .gestion-acciones .btn-eliminar-inline { display: inline-block; margin-right: 3px; margin-bottom: 2px; font-size: 0.75rem; padding: 0.25rem 0.6rem; }
-    .btn-comprar { background: #198754; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-    .btn-comprar:hover { background: #157347; }
-    .btn-editar-inline { background: #6c757d; color: #fff; border: none; border-radius: 4px; text-decoration: none; }
-    .btn-editar-inline:hover { background: #5a6268; color: #fff; }
-    .btn-eliminar-inline { background: #dc3545; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-    .btn-eliminar-inline:hover { background: #bb2d3b; }
-    .compra-modal-preview { background: #e9f7ef; border: 1px solid #b7e4c7; border-radius: 6px; padding: 0.6rem; margin-top: 0.5rem; font-size: 0.85rem; display: none; }
-    .compra-badge-catalogo { background: #ffc107; color: #000; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 3px; margin-left: 0.4rem; }
+    .btn-comprar { background: var(--free); color: #fff; border: none; border-radius: var(--r-sm); cursor: pointer; font-weight:600; }
+    .btn-comprar:hover { background: #258a53; }
+    .btn-editar-inline { background: var(--dark-3); color: #fff; border: none; border-radius: var(--r-sm); text-decoration: none; font-weight:500; }
+    .btn-editar-inline:hover { background: var(--dark); color: #fff; }
+    .btn-eliminar-inline { background: #fbeae7; color: var(--occupied); border: none; border-radius: var(--r-sm); cursor: pointer; font-weight:600; }
+    .btn-eliminar-inline:hover { background: #f5d0cb; }
+    .compra-modal-preview { background: var(--gold-soft); border: 1px solid #e8dfc4; border-radius: var(--r-sm); padding: 0.6rem; margin-top: 0.5rem; font-size: 0.85rem; display: none; }
 </style>
 {% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>{% if editar %}Editar Insumo{% else %}Gestion de Insumos{% endif %}</h1>
-    {% if not editar %}
     <div>
-        <a href="{% url 'lista_insumos' %}" class="btn btn-secondary btn-sm">Ver Inventario</a>
+        <div class="eyebrow">Almacén</div>
+        <h1>{% if editar %}Editar Insumo{% else %}Gestión de Insumos{% endif %}</h1>
+    </div>
+    {% if not editar %}
+    <div style="display:flex; gap:8px;">
+        <a href="{% url 'lista_insumos' %}" class="btn btn-outline btn-sm">Ver Inventario</a>
         <a href="{% url 'unidades_cocina' %}" class="btn btn-info btn-sm">Unidades Cocina</a>
-        <a href="{% url 'catalogo_presentaciones' %}" class="btn btn-outline-primary btn-sm">Catalogo</a>
+        <a href="{% url 'catalogo_presentaciones' %}" class="btn btn-outline btn-sm">Catálogo</a>
     </div>
     {% endif %}
 </div>

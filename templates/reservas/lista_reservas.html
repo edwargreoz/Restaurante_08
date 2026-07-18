@@ -1,84 +1,75 @@
 {% extends 'base.html' %}
 {% load static %}
-{% load role_tags %}
-{% block title %}Reservas - Restaurant{% endblock %}
-
+{% block title %}Reservas{% endblock %}
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/reservas/reservas.css' %}">
+<style>
+    .btn-gold { background: linear-gradient(145deg, var(--gold-light), var(--gold-dark)); color: var(--dark); border: none; border-radius: var(--r-sm); padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-gold:hover { box-shadow: var(--shadow-gold); }
+    .btn-cancel { background: #fbeae7; color: var(--occupied); border: none; border-radius: var(--r-sm); padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-cancel:hover { background: #f5d0cb; }
+    .btn-finalize { background: #e7f6ee; color: var(--free); border: none; border-radius: var(--r-sm); padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .btn-finalize:hover { background: #d1f0e0; }
+</style>
 {% endblock %}
-
 {% block content %}
-<div class="page-header reservas-header">
+<div class="page-header">
     <div>
+        <div class="eyebrow">Reservas</div>
         <h1>Gestión de Reservas</h1>
-        <span class="page-user">Administra las reservas del restaurante</span>
     </div>
-    <a href="{% url 'crear_reserva' %}" class="btn btn-gold">+ Nueva Reserva</a>
+    <a href="{% url 'crear_reserva' %}" class="btn btn-primary btn-sm">+ Nueva Reserva</a>
 </div>
 
 <div class="table-wrapper">
     <table class="table">
         <thead>
             <tr>
-                <th>Mesa</th>
-                <th>Cliente</th>
-                <th>Contacto</th>
-                <th>Fecha y Hora</th>
-                <th>Personas</th>
-                <th>Estado</th>
-                <th>Acciones</th>
+                <th>Cliente</th><th>Fecha</th><th>Hora</th><th>Personas</th><th>Mesas</th><th>Estado</th><th>Acciones</th>
             </tr>
         </thead>
         <tbody>
             {% for reserva in reservas %}
             <tr>
+                <td><strong>{{ reserva.cliente_nombre }}</strong></td>
+                <td>{{ reserva.fecha }}</td>
+                <td>{{ reserva.hora_inicio }} - {{ reserva.hora_fin }}</td>
+                <td>{{ reserva.num_personas }}</td>
+                <td>{% for m in reserva.mesas.all %}M{{ m.numero }}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
                 <td>
-                    {% if reserva.union_mesa_id %}
-                        <strong>Unión: {{ reserva.union_mesa_nombre }}</strong>
+                    {% if reserva.estado == 'CONFIRMADA' %}
+                        <span class="badge badge-free">Confirmada</span>
+                    {% elif reserva.estado == 'PENDIENTE' %}
+                        <span class="badge badge-prep">Pendiente</span>
+                    {% elif reserva.estado == 'CANCELADA' %}
+                        <span class="badge badge-occupied">Cancelada</span>
+                    {% elif reserva.estado == 'FINALIZADA' %}
+                        <span class="badge badge-info">Finalizada</span>
                     {% else %}
-                        <strong>Mesa {{ reserva.mesa_numero }}</strong>
+                        <span class="badge">{{ reserva.estado }}</span>
                     {% endif %}
                 </td>
-                <td>{{ reserva.cliente_nombre }}</td>
-                <td>{{ reserva.cliente_contacto|default:"-" }}</td>
-                <td>{{ reserva.fecha|date:"d/m/Y" }} <br><small class="text-muted" style="color: #a0aec0;">{{ reserva.hora_inicio|time:"h:i A" }} - {{ reserva.hora_fin|time:"h:i A" }}</small></td>
-                <td>{{ reserva.num_personas }} pax</td>
                 <td>
-                    {% if reserva.activo %}
-                        <span class="badge badge-active">Activa</span>
-                    {% elif reserva.finalizada %}
-                        <span class="badge badge-completed">Finalizada</span>
-                    {% else %}
-                        <span class="badge badge-cancelled">Cancelada</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <div class="d-flex gap-2">
-                        {% if reserva.activo %}
-                            <a href="{% url 'editar_reserva' reserva.id %}" class="btn-cancel" style="border-color: #f39c12; color: #f39c12; text-decoration: none; padding: 4px 8px; line-height: normal; display: inline-block;">Editar</a>
-                            <form action="{% url 'finalizar_reserva' reserva.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de finalizar esta reserva?');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn-finalize">Finalizar</button>
-                            </form>
-                            <form action="{% url 'cancelar_reserva' reserva.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de cancelar esta reserva?');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn-cancel">Cancelar</button>
-                            </form>
-                        {% else %}
-                            {% if user.is_superuser %}
-                            <form action="{% url 'eliminar_reserva' reserva.id %}" method="post" class="d-inline" onsubmit="return confirm('¿Estás seguro de ELIMINAR permanentemente esta reserva?');">
-                                {% csrf_token %}
-                                <button type="submit" class="btn-cancel" style="border-color: #d63031; color: #d63031;" title="Eliminar del sistema">Eliminar</button>
-                            </form>
-                            {% endif %}
+                    <div class="row-actions">
+                        {% if reserva.estado != 'CANCELADA' and reserva.estado != 'FINALIZADA' %}
+                        <a href="{% url 'editar_reserva' reserva.id %}" class="btn-gold">Editar</a>
+                        <form method="post" action="{% url 'cancelar_reserva' reserva.id %}" class="d-inline" onsubmit="return confirm('¿Cancelar reserva?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-cancel">Cancelar</button>
+                        </form>
+                        <form method="post" action="{% url 'finalizar_reserva' reserva.id %}" class="d-inline" onsubmit="return confirm('¿Finalizar reserva?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-finalize">Finalizar</button>
+                        </form>
                         {% endif %}
+                        <form method="post" action="{% url 'eliminar_reserva' reserva.id %}" class="d-inline" onsubmit="return confirm('¿Eliminar permanentemente esta reserva?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-cancel">Eliminar</button>
+                        </form>
                     </div>
                 </td>
             </tr>
             {% empty %}
-            <tr>
-                <td colspan="7" class="empty-row">No hay reservas registradas en el sistema.</td>
-            </tr>
+            <tr><td colspan="7" class="empty-row">No hay reservas registradas</td></tr>
             {% endfor %}
         </tbody>
     </table>

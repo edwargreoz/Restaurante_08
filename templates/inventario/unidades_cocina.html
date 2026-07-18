@@ -5,15 +5,17 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/inventario/gestion_insumos.css' %}">
 <style>
-    .help-box { background: #f8f9fa; border-left: 3px solid #3498db; padding: 0.8rem 1rem; margin-bottom: 1.2rem; font-size: 0.85rem; color: #555; }
+    .help-box { background: var(--gold-soft); border-left: 3px solid var(--gold); padding: 0.8rem 1rem; margin-bottom: 1.2rem; font-size: 0.85rem; color: var(--text); border-radius: 0 var(--r-sm) var(--r-sm) 0; }
 </style>
 {% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>Unidades de Cocina</h1>
-    <a href="{% url 'gestion_insumos' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Volver a Inventario</a>
+    <div>
+        <div class="eyebrow">Cocina</div>
+        <h1>Unidades de Cocina</h1>
+    </div>
+    <a href="{% url 'gestion_insumos' %}" class="btn btn-outline btn-sm">Volver a Inventario</a>
 </div>
-
 
 <div class="row">
     <div class="col-md-5">
@@ -24,13 +26,13 @@
                     {% csrf_token %}
                     <div class="form-group">
                         <label>Nombre</label>
-                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Taza, Cucharada, Porcion..." required>
+                        <input type="text" name="nombre" placeholder="Ej: Taza, Cucharada, Porcion..." required>
                     </div>
                     <div class="form-group">
                         <label>1 esta unidad equivale a</label>
-                        <div class="input-group">
-                            <input type="number" name="equivalencia_cantidad" class="form-control" step="0.01" min="0.01" placeholder="Ej: 250" required>
-                            <select name="equivalencia_unidad" class="form-select" required>
+                        <div style="display:flex; gap:8px;">
+                            <input type="number" name="equivalencia_cantidad" step="0.01" min="0.01" placeholder="Ej: 250" required style="flex:1;">
+                            <select name="equivalencia_unidad" required style="flex:1;">
                                 <option value="">Unidad base</option>
                                 {% for key, label in unidades_medida %}
                                 <option value="{{ key }}">{{ label }}</option>
@@ -40,7 +42,7 @@
                     </div>
                     <div class="form-group">
                         <label>Grupo</label>
-                        <select name="grupo" class="form-control" required>
+                        <select name="grupo" required>
                             <option value="VOLUMEN">Volumen (tazas, cucharadas...)</option>
                             <option value="PESO">Peso (pizca, manojo...)</option>
                             <option value="CANTIDAD">Cantidad (porcion, pieza, rebanada...)</option>
@@ -62,11 +64,11 @@
                     <tr>
                         <td><strong>{{ u.nombre }}</strong></td>
                         <td>1 {{ u.nombre }} = {{ u.equivalencia_cantidad|floatformat:2 }} {{ u.equivalencia_unidad|unidad_display }}</td>
-                        <td>{{ u.grupo }}</td>
+                        <td><span class="badge badge-info">{{ u.grupo }}</span></td>
                         <td>
                             <form method="POST" action="{% url 'eliminar_unidad_cocina' u.id %}" style="display:inline;">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                <button type="submit" class="btn btn-danger btn-sm"
                                         onclick="return confirm('Eliminar {{ u.nombre }}?')">Eliminar</button>
                             </form>
                         </td>
