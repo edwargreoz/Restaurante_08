@@ -35,32 +35,6 @@
     updateTimers();
     setInterval(updateTimers, 1000);
 
-    // WebSocket reemplaza el autoRefresh cada 30s
-    var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    var wsUrl = protocol + '//' + window.location.host + '/ws/kds/';
-    var socket = new WebSocket(wsUrl);
-
-    socket.onmessage = function (e) {
-        var data = JSON.parse(e.data);
-        if (data.action === 'refresh') {
-            fetch(window.location.pathname, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(function(response) { return response.text(); })
-                .then(function(html) {
-                    var parser = new DOMParser();
-                    var doc = parser.parseFromString(html, 'text/html');
-                    var newKds = doc.querySelector('.kds-container');
-                    var oldKds = document.querySelector('.kds-container');
-                    if (newKds && oldKds) {
-                        oldKds.innerHTML = newKds.innerHTML;
-                    }
-                });
-        }
-    };
-
-    socket.onclose = function () {
-        setTimeout(function() { location.reload(); }, 3000);
-    };
-
     var toasts = document.querySelectorAll('.kds-toast');
     toasts.forEach(function(t) {
         setTimeout(function() {

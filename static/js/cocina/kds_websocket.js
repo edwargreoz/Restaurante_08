@@ -1,26 +1,47 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/kds/`;
-    let socket = new WebSocket(wsUrl);
+    const containerSel = '.kds-container';
+    let socket = null;
+    let reconnectTimeout = null;
+    let debounceTimer = null;
 
-    socket.onmessage = function (e) {
-        const data = JSON.parse(e.data);
-        if (data.action === 'refresh') {
-            fetch(window.location.pathname, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
-                .then(response => response.text())
-                .then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-                    const newKds = doc.querySelector('.kds-container');
-                    const oldKds = document.querySelector('.kds-container');
-                    if (newKds && oldKds) {
-                        oldKds.innerHTML = newKds.innerHTML;
-                    }
-                });
-        }
-    };
+    function connect() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        socket = new WebSocket(`${protocol}//${window.location.host}/ws/kds/`);
 
-    socket.onclose = function () {
-        setTimeout(() => { window.location.reload(); }, 3000);
-    };
+        socket.onopen = function () {
+            console.log('[KDS] WebSocket conectado');
+        };
+
+        socket.onmessage = function (e) {
+            const data = JSON.parse(e.data);
+            if (data.action === 'refresh') {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(function () {
+                    fetch(window.location.pathname, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                        .then(function (response) { return response.text(); })
+                        .then(function (html) {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            const newContent = doc.querySelector(containerSel);
+                            const oldContent = document.querySelector(containerSel);
+                            if (newContent && oldContent) {
+                                oldContent.innerHTML = newContent.innerHTML;
+                            }
+                        });
+                }, 100);
+            }
+        };
+
+        socket.onclose = function () {
+            console.log('[KDS] WebSocket cerrado, reconectando en 3s...');
+            reconnectTimeout = setTimeout(connect, 3000);
+        };
+
+        socket.onerror = function (err) {
+            console.error('[KDS] WebSocket error:', err);
+            socket.close();
+        };
+    }
+
+    connect();
 });

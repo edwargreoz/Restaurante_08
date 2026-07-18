@@ -62,20 +62,25 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // WebSocket para actualizar lista de uniones en tiempo real
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/plano/`;
-    let socket = new WebSocket(wsUrl);
+    function connectWS() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const socket = new WebSocket(`${protocol}//${window.location.host}/ws/plano/`);
 
-    socket.onmessage = function (e) {
-        const data = JSON.parse(e.data);
-        if (data.action === 'refresh') {
-            setTimeout(function () {
-                location.reload();
-            }, 500);
-        }
-    };
+        socket.onopen = function () { console.log('[UnirMesas] WebSocket conectado'); };
 
-    socket.onclose = function () {
-        setTimeout(function () { location.reload(); }, 3000);
-    };
+        socket.onmessage = function (e) {
+            const data = JSON.parse(e.data);
+            if (data.action === 'refresh') {
+                setTimeout(function () { location.reload(); }, 500);
+            }
+        };
+
+        socket.onclose = function () {
+            console.log('[UnirMesas] WebSocket cerrado, reconectando en 3s...');
+            setTimeout(connectWS, 3000);
+        };
+
+        socket.onerror = function () { socket.close(); };
+    }
+    connectWS();
 });
