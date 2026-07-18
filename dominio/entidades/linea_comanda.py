@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Optional
 from dominio.excepciones import TransicionEstadoInvalida
 
@@ -11,6 +12,15 @@ class LineaComanda:
     cantidad: int = 1
     observacion: str = ''
     estado: str = 'PENDIENTE'
+    nombre_plato: Optional[str] = None
+    precio_unitario: Optional[Decimal] = None
+    tiempo_preparacion_min: Optional[int] = None
+
+    @property
+    def subtotal(self) -> Decimal:
+        if self.precio_unitario is not None:
+            return self.precio_unitario * self.cantidad
+        return Decimal('0')
 
     TRANSICIONES = {
         'PENDIENTE': ['EN_PREP'],

@@ -1,6 +1,6 @@
 
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Optional, List
 from dominio.excepciones import ReglaNegocioViolada
 
 
@@ -10,6 +10,7 @@ class Categoria:
     nombre: str
     es_bebida: bool = False
     orden_display: int = 0
+    platos: List = field(default_factory=list)
 
     def validar_nombre(self) -> None:
         if not self.nombre or not self.nombre.strip():

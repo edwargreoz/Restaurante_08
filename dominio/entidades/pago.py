@@ -17,6 +17,14 @@ class Pago:
 
     METODOS_VALIDOS = ('EFECTIVO', 'TARJETA', 'YAPE', 'PLIN', 'TRANSFERENCIA')
 
+    METODOS = (
+        ('EFECTIVO', 'Efectivo'),
+        ('TARJETA', 'Tarjeta'),
+        ('YAPE', 'Yape'),
+        ('PLIN', 'Plin'),
+        ('TRANSFERENCIA', 'Transferencia'),
+    )
+
     def calcular_vuelto(self, total_comanda: Decimal) -> Decimal:
         if self.monto < total_comanda:
             raise MontoInvalido(

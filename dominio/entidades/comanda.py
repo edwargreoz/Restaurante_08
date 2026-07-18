@@ -1,7 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, List
 from dominio.excepciones import TransicionEstadoInvalida
 
 
@@ -14,6 +14,9 @@ class Comanda:
     fecha_apertura: Optional[datetime] = None
     fecha_cierre: Optional[datetime] = None
     total: Decimal = Decimal('0')
+    numero_mesa: Optional[int] = None
+    nombre_mozo: Optional[str] = None
+    lineas: List = field(default_factory=list)
 
     TRANSICIONES = {
         'ABIERTA': ['EN_PREPARACION', 'ANULADA'],

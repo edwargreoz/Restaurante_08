@@ -16,6 +16,11 @@ class Reserva:
     num_personas: int
     activo: bool = True
     finalizada: bool = False
+    cliente_contacto: str = ''
+    observacion: str = ''
+    creado_por_nombre: str = ''
+    mesa_numero: Optional[int] = None
+    union_mesa_nombre: Optional[str] = None
 
     def cancelar(self) -> None:
         if not self.activo:
