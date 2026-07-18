@@ -19,7 +19,7 @@
               <select name="categoria" class="form-select" required>
                 <option value="">Seleccionar categoría</option>
                 {% for cat in categorias %}
-                <option value="{{ cat.id }}" {% if editar and editar.categoria.id == cat.id %}selected{% endif %}>{{ cat.nombre }}</option>
+                <option value="{{ cat.id }}" {% if editar and editar.categoria_id == cat.id %}selected{% endif %}>{{ cat.nombre }}</option>
                 {% endfor %}
               </select>
             </div>
