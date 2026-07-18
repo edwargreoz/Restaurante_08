@@ -51,6 +51,9 @@ class LineaComandaRepository:
         return LineaComanda(
             id=l.id, comanda_id=l.comanda_id, plato_id=l.plato_id,
             cantidad=l.cantidad, observacion=l.observacion, estado=l.estado,
+            nombre_plato=l.plato.nombre if l.plato else None,
+            precio_unitario=l.plato.precio if l.plato else None,
+            tiempo_preparacion_min=l.plato.tiempo_preparacion_min if l.plato else None,
         )
 
     def cambiar_comanda_lote(self, comanda_origen_id: int, comanda_destino_id: int) -> None:

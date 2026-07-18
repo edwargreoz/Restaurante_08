@@ -43,11 +43,26 @@ class ReservaRepository:
         ReservaModel.objects.filter(id=reserva_id).update(activo=False)
 
     def _a_entidad(self, r) -> Reserva:
+        mesa_numero = None
+        if r.mesa:
+            mesa_numero = r.mesa.numero
+        union_mesa_nombre = None
+        if r.union_mesa:
+            mesas_nums = list(r.union_mesa.mesas.values_list('numero', flat=True)) if hasattr(r.union_mesa, 'mesas') else []
+            union_mesa_nombre = ' + '.join(f'Mesa {m}' for m in mesas_nums) if mesas_nums else None
+        creado_por_nombre = ''
+        if hasattr(r, 'creado_por') and r.creado_por:
+            creado_por_nombre = r.creado_por.get_full_name() or r.creado_por.username
         return Reserva(
             id=r.id, mesa_id=r.mesa_id, union_mesa_id=r.union_mesa_id,
             cliente_nombre=r.cliente_nombre, fecha=r.fecha,
             hora_inicio=r.hora_inicio, hora_fin=r.hora_fin,
             num_personas=r.num_personas, activo=r.activo, finalizada=r.finalizada,
+            cliente_contacto=getattr(r, 'cliente_contacto', ''),
+            observacion=getattr(r, 'observacion', ''),
+            creado_por_nombre=creado_por_nombre,
+            mesa_numero=mesa_numero,
+            union_mesa_nombre=union_mesa_nombre,
         )
 
     def listar_activas_por_mesa(self, mesa_id: int) -> List[Reserva]:
