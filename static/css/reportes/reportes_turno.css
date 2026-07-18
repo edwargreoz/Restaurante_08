@@ -38,17 +38,9 @@
     color: #4a5568;
 }
 
-.filtros-rapidos .btn-outline-primary {
-    border-color: #cbd5e0;
-    color: #4a5568;
+.filtros-rapidos .btn-outline {
     padding: 0.25rem 0.8rem;
     font-size: 0.8rem;
-}
-
-.filtros-rapidos .btn-outline-primary:hover {
-    background: #b77a2f;
-    border-color: #b77a2f;
-    color: #fff;
 }
 
 /* Resumen cards */

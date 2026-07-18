@@ -10,7 +10,7 @@
 </div>
 
 {% if not turno_abierto %}
-<div class="card" style="margin-bottom:16px;">
+<div class="card">
     <div class="card-body" style="text-align:center; padding:40px;">
         <div class="empty-icon" style="margin:0 auto 12px;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -22,41 +22,39 @@
 </div>
 {% else %}
 
-<div class="card">
-    <div class="card-body" style="padding:0;">
-        <table class="table" style="margin:0;">
-            <thead>
-                <tr>
-                    <th>#</th><th>Mesa</th><th>Mozo</th><th>Total</th><th>Estado</th><th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for comanda in comandas %}
-                <tr>
-                    <td><strong>{{ comanda.id }}</strong></td>
-                    <td>Mesa {{ comanda.mesa.numero }}</td>
-                    <td>{{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</td>
-                    <td><span class="price">S/ {{ comanda.total }}</span></td>
-                    <td>
-                        {% if comanda.estado == 'ABIERTA' %}
-                            <span class="badge badge-info">Abierta</span>
-                        {% else %}
-                            <span class="badge badge-prep">{{ comanda.estado }}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{% url 'cobrar_comanda' comanda.id %}"
-                           class="btn btn-primary btn-sm" style="padding:6px 14px; font-size:12px;">
-                            Cobrar
-                        </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr><td colspan="6" class="empty-row">No hay comandas para cobrar</td></tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+<div class="table-wrapper">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>#</th><th>Mesa</th><th>Mozo</th><th>Total</th><th>Estado</th><th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for comanda in comandas %}
+            <tr>
+                <td><strong>{{ comanda.id }}</strong></td>
+                <td>Mesa {{ comanda.mesa.numero }}</td>
+                <td>{{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</td>
+                <td><span class="price">S/ {{ comanda.total }}</span></td>
+                <td>
+                    {% if comanda.estado == 'ABIERTA' %}
+                        <span class="badge badge-info">Abierta</span>
+                    {% else %}
+                        <span class="badge badge-prep">{{ comanda.estado }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'cobrar_comanda' comanda.id %}"
+                       class="btn btn-primary btn-sm">
+                        Cobrar
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="empty-row">No hay comandas para cobrar</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
 {% endif %}

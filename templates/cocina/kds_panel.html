@@ -15,7 +15,7 @@
     </div>
     <div class="kds-header-right">
         <span class="kds-clock" id="kdsClock"></span>
-        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()"> Actualizar</button>
+        <button class="btn btn-outline btn-sm" onclick="location.reload()">Actualizar</button>
     </div>
 </div>
 
@@ -42,7 +42,7 @@
         </div>
         <div class="kds-card-meta">
             <span> {{ comanda.nombre_mozo }}</span>
-            <span class="kds-comanda-estado badge {% if comanda.estado == 'EN_PREPARACION' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
+            <span class="kds-comanda-estado badge {% if comanda.estado == 'EN_PREPARACION' %}badge-prep{% else %}badge-info{% endif %}">
                 {{ comanda.estado|estado_display }}
             </span>
         </div>
@@ -57,20 +57,20 @@
                         {% endif %}
                     </div>
                     <div class="kds-linea-meta">
-                        <span class="badge {% if linea.estado == 'PENDIENTE' %}bg-warning text-dark{% elif linea.estado == 'EN_PREP' %}bg-primary{% else %}bg-success{% endif %}">
+                        <span class="badge {% if linea.estado == 'PENDIENTE' %}badge-prep{% elif linea.estado == 'EN_PREP' %}badge-info{% else %}badge-free{% endif %}">
                             {{ linea.estado|estado_display }}
                         </span>
-                        <small class="text-muted">{{ linea.tiempo_preparacion_min }} min</small>
+                        <small style="color:var(--text-muted);">{{ linea.tiempo_preparacion_min }} min</small>
                     </div>
                 </div>
                 <div class="kds-linea-actions">
                     {% if linea.estado == 'PENDIENTE' %}
-                    <form method="post" action="{% url 'enviar_cocina' linea.id %}" class="d-inline">
+                    <form method="post" action="{% url 'enviar_cocina' linea.id %}" style="display:inline;">
                         {% csrf_token %}
                         <button type="submit" class="btn-kds btn-kds-start">Iniciar</button>
                     </form>
                     {% elif linea.estado == 'EN_PREP' %}
-                    <form method="post" action="{% url 'marcar_listo' linea.id %}" class="d-inline">
+                    <form method="post" action="{% url 'marcar_listo' linea.id %}" style="display:inline;">
                         {% csrf_token %}
                         <button type="submit" class="btn-kds btn-kds-done">Listo</button>
                     </form>

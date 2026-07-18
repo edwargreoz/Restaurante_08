@@ -10,15 +10,18 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Plano del Salon</h1>
+<div class="page-header">
     <div>
-        <span class="badge bg-success">Libre</span>
-        <span class="badge bg-danger">Ocupada</span>
-        <span class="badge bg-warning text-dark">Reservada</span>
-        <span class="badge bg-secondary">Limpieza</span>
+        <div class="eyebrow">Salon</div>
+        <h1>Plano del Salon</h1>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span class="badge badge-free">Libre</span>
+        <span class="badge badge-occupied">Ocupada</span>
+        <span class="badge badge-prep">Reservada</span>
+        <span class="badge badge-info">Limpieza</span>
         {% if user.is_superuser %}
-        <a href="{% url 'lista_mesas_admin' %}" class="btn btn-sm btn-dark ms-2">Gestión Mesas</a>
+        <a href="{% url 'lista_mesas_admin' %}" class="btn btn-dark btn-sm">Gestión Mesas</a>
         {% endif %}
     </div>
 </div>
@@ -49,7 +52,7 @@
                             </h5>
                             <p class="card-text union-card-capacity">Capacidad total: {{ item.capacidad }} pax</p>
                             <p class="card-text">
-                                <small class="text-muted">
+                                <small style="color:var(--text-muted);">
                                     {% if item.zona == 'SALON' %}Salon Principal
                                     {% elif item.zona == 'TERRAZA' %}Terraza
                                     {% elif item.zona == 'VIP' %}VIP
@@ -57,10 +60,10 @@
                                 </small>
                             </p>
                             <span class="badge
-                                {% if item.estado == 'LIBRE' %}bg-success
-                                {% elif item.estado == 'OCUPADA' %}bg-danger
-                                {% elif item.estado == 'RESERVADA' %}bg-warning text-dark
-                                {% else %}bg-secondary{% endif %}">
+                                {% if item.estado == 'LIBRE' %}badge-free
+                                {% elif item.estado == 'OCUPADA' %}badge-occupied
+                                {% elif item.estado == 'RESERVADA' %}badge-prep
+                                {% else %}badge-info{% endif %}">
                                 {{ item.estado }}
                             </span>
                         </div>
@@ -86,16 +89,16 @@
                             {% endif %}
                             <p class="card-text">Capacidad: {{ item.mesa.capacidad }}</p>
                             <p class="card-text">
-                                <small class="text-muted">{{ item.mesa.zona|zona_display }}</small>
+                                <small style="color:var(--text-muted);">{{ item.mesa.zona|zona_display }}</small>
                             </p>
                             {% if item.mesa.id in union_mesas_ids %}
                                 <span class="union-badge">{{ union_labels|dict_key:item.mesa.id }}</span>
                             {% endif %}
                             <span class="badge
-                                {% if item.mesa.estado == 'LIBRE' %}bg-success
-                                {% elif item.mesa.estado == 'OCUPADA' %}bg-danger
-                                {% elif item.mesa.estado == 'RESERVADA' %}bg-warning text-dark
-                                {% else %}bg-secondary{% endif %}">
+                                {% if item.mesa.estado == 'LIBRE' %}badge-free
+                                {% elif item.mesa.estado == 'OCUPADA' %}badge-occupied
+                                {% elif item.mesa.estado == 'RESERVADA' %}badge-prep
+                                {% else %}badge-info{% endif %}">
                                 {{ item.mesa.estado|estado_display }}
                             </span>
                         </div>
@@ -104,8 +107,8 @@
                     <div class="card-footer bg-transparent border-0 text-center pb-3 pt-0">
                         <form action="{% url 'marcar_mesa_libre' item.mesa.id %}" method="post">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-outline-secondary w-100">
-                                <i class="bi bi-check-circle"></i> Marcar Libre
+                            <button type="submit" class="btn btn-outline btn-sm" style="width:100%;">
+                                Marcar Libre
                             </button>
                         </form>
                     </div>
@@ -115,8 +118,14 @@
             {% endif %}
         {% empty %}
         <div class="col-12">
-            <div class="alert alert-info">
-                No hay mesas registradas, agregalas desde el panel de administración.
+            <div class="card">
+                <div class="empty">
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+                    </div>
+                    <h3>No hay mesas registradas</h3>
+                    <p>Agregalas desde el panel de administración.</p>
+                </div>
             </div>
         </div>
         {% endfor %}

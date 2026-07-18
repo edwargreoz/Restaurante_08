@@ -10,28 +10,29 @@
 {% block content %}
 <div class="page-header">
     <div>
+        <div class="eyebrow">Reservas</div>
         <h1>Editar Reserva</h1>
-        <span class="page-user">Modificar los detalles de la reserva de {{ reserva.cliente_nombre }}</span>
     </div>
+    <span class="page-user">Modificar los detalles de la reserva de {{ reserva.cliente_nombre }}</span>
 </div>
 
 <div class="form-card">
     <form action="{% url 'editar_reserva' reserva.id %}" method="post">
         {% csrf_token %}
-        
+
         <div class="row">
             <div class="col-md-6">
                 <div class="form-group">
                     <label>Mesas disponibles (Selecciona una o varias de la misma zona)</label>
-                    <div class="form-control premium-input" style="height: auto; max-height: 200px; overflow-y: auto; padding: 15px;">
+                    <div style="height:auto; max-height:200px; overflow-y:auto; padding:15px; border:1.5px solid var(--border); border-radius:var(--r-sm); background:#fff;">
                         {% regroup mesas|dictsort:"zona" by zona as mesas_por_zona %}
                         {% for zona in mesas_por_zona %}
-                            <div class="mb-3">
-                                <strong style="color: #d4af37; border-bottom: 1px solid #d4af37; display: block; margin-bottom: 8px;">{{ zona.grouper|zona_display }}</strong>
+                            <div style="margin-bottom:12px;">
+                                <strong style="color: var(--gold-dark); border-bottom: 1px solid var(--gold); display: block; margin-bottom: 8px; padding-bottom:4px;">{{ zona.grouper|zona_display }}</strong>
                                 {% for mesa in zona.list %}
                                     <div style="display: flex; align-items: center; margin-left: 10px; margin-bottom: 5px;">
-                                        <input type="checkbox" name="mesas_ids" value="{{ mesa.id }}" id="mesa_{{ mesa.id }}" {% if mesa.id|stringformat:"s" in mesas_actuales_ids %}checked{% endif %} style="margin: 0; margin-right: 8px; width: 16px; height: 16px; flex-shrink: 0; cursor: pointer;">
-                                        <label for="mesa_{{ mesa.id }}" style="margin: 0; font-weight: normal; cursor: pointer;">
+                                        <input type="checkbox" name="mesas_ids" value="{{ mesa.id }}" id="mesa_{{ mesa.id }}" {% if mesa.id|stringformat:"s" in mesas_actuales_ids %}checked{% endif %} style="margin: 0; margin-right: 8px; width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; accent-color:var(--gold);">
+                                        <label for="mesa_{{ mesa.id }}" style="margin: 0; font-weight: normal; cursor: pointer; font-size:14px;">
                                             Mesa {{ mesa.numero }} (Capacidad: {{ mesa.capacidad }} pax)
                                         </label>
                                     </div>
@@ -44,7 +45,7 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="fecha">Fecha</label>
-                    <input type="date" name="fecha" id="fecha" class="form-control premium-input" min="{% now 'Y-m-d' %}" required value="{{ datos.fecha }}">
+                    <input type="date" name="fecha" id="fecha" min="{% now 'Y-m-d' %}" required value="{{ datos.fecha }}">
                 </div>
             </div>
         </div>
@@ -53,14 +54,14 @@
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="cliente_nombre">Nombre del cliente</label>
-                    <input type="text" name="cliente_nombre" id="cliente_nombre" class="form-control premium-input" required placeholder="Ej: Juan Pérez" value="{{ datos.cliente_nombre }}">
+                    <input type="text" name="cliente_nombre" id="cliente_nombre" required placeholder="Ej: Juan Pérez" value="{{ datos.cliente_nombre }}">
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="cliente_contacto">Contacto (Opcional)</label>
-                    <input type="text" name="cliente_contacto" id="cliente_contacto" class="form-control premium-input" placeholder="Ej: 987654321 o juan@correo.com" value="{{ datos.cliente_contacto }}">
-                    <small class="text-muted" style="font-size: 0.85em;">Debe ser un correo válido o un celular de 9 dígitos.</small>
+                    <input type="text" name="cliente_contacto" id="cliente_contacto" placeholder="Ej: 987654321 o juan@correo.com" value="{{ datos.cliente_contacto }}">
+                    <span class="hint">Debe ser un correo válido o un celular de 9 dígitos.</span>
                 </div>
             </div>
         </div>
@@ -69,31 +70,31 @@
             <div class="col-md-4">
                 <div class="form-group">
                     <label for="hora_inicio">Hora de inicio</label>
-                    <input type="time" name="hora_inicio" id="hora_inicio" class="form-control premium-input" required min="07:00" max="22:00" value="{{ datos.hora_inicio }}">
+                    <input type="time" name="hora_inicio" id="hora_inicio" required min="07:00" max="22:00" value="{{ datos.hora_inicio }}">
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="form-group">
                     <label for="hora_fin">Hora de fin</label>
-                    <input type="time" name="hora_fin" id="hora_fin" class="form-control premium-input" required min="07:00" max="22:00" value="{{ datos.hora_fin }}">
+                    <input type="time" name="hora_fin" id="hora_fin" required min="07:00" max="22:00" value="{{ datos.hora_fin }}">
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="form-group">
                     <label for="num_personas">Número de personas</label>
-                    <input type="number" name="num_personas" id="num_personas" class="form-control premium-input" required min="1" placeholder="Ej: 4" value="{{ datos.num_personas }}">
+                    <input type="number" name="num_personas" id="num_personas" required min="1" placeholder="Ej: 4" value="{{ datos.num_personas }}">
                 </div>
             </div>
         </div>
 
         <div class="form-group">
             <label for="observacion">Observaciones (Opcional)</label>
-            <textarea name="observacion" id="observacion" rows="3" class="form-control premium-input" placeholder="Alergias, peticiones especiales...">{{ datos.observacion }}</textarea>
+            <textarea name="observacion" id="observacion" rows="3" placeholder="Alergias, peticiones especiales...">{{ datos.observacion }}</textarea>
         </div>
 
-        <div class="form-actions mt-4 d-flex justify-content-between align-items-center">
-            <a href="{% url 'lista_reservas' %}" class="btn-cancel-link" style="color: #7f8fa6; text-decoration: none;">Cancelar y volver</a>
-            <button type="submit" class="btn btn-gold">Confirmar Reserva</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+            <a href="{% url 'lista_reservas' %}" class="btn btn-outline">Cancelar y volver</a>
+            <button type="submit" class="btn btn-primary">Confirmar Reserva</button>
         </div>
     </form>
 </div>
@@ -105,10 +106,9 @@
 
         horaInicioInput.addEventListener('change', function() {
             if (this.value) {
-                // Ensure hora_fin cannot be before hora_inicio
                 horaFinInput.min = this.value;
                 if (horaFinInput.value && horaFinInput.value <= this.value) {
-                    horaFinInput.value = ''; // clear invalid end time
+                    horaFinInput.value = '';
                 }
             }
         });

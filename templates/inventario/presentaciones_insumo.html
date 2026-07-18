@@ -27,7 +27,7 @@
     <div class="col-md-5">
         <div class="card">
             <div class="card-header"><strong>Nueva Presentación</strong></div>
-            <div class="card-body gestion-form">
+            <div class="card-body">
                 <form method="POST">
                     {% csrf_token %}
                     <div class="form-group">
@@ -76,13 +76,13 @@
                         <td>{% if p.es_principal %}<span class="badge badge-free">Si</span>{% else %}<span class="badge badge-info">No</span>{% endif %}</td>
                         <td>
                             <div class="row-actions">
-                                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#compraModal{{ p.id }}" style="padding:6px 12px; font-size:12px;">
+                                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#compraModal{{ p.id }}">
                                     Comprar
                                 </button>
                                 <form method="POST" action="{% url 'eliminar_presentacion' p.id %}" style="display:inline;">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-danger btn-sm"
-                                            onclick="return confirm('Eliminar {{ p.nombre }}?')" style="padding:6px 12px; font-size:12px;">Eliminar</button>
+                                            onclick="return confirm('Eliminar {{ p.nombre }}?')">Eliminar</button>
                                 </form>
                             </div>
                         </td>

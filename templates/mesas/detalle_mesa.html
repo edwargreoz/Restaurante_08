@@ -53,7 +53,7 @@
                             <span class="mesa-info-value">
                                 {% if union_activa %}{{ capacidad_total_union }}{% else %}{{ mesa.capacidad }}{% endif %}
                                 <small>personas</small>
-                                {% if union_activa %}<small class="text-muted d-block">({{ mesas_union|length }} mesas unidas)</small>{% endif %}
+                                {% if union_activa %}<small style="color:var(--text-muted); display:block;">({{ mesas_union|length }} mesas unidas)</small>{% endif %}
                             </span>
                         </div>
                         <div class="mesa-info-item">
@@ -73,7 +73,7 @@
                                     {% endfor %}
                                 </span>
                                 {% else %}
-                                <span class="text-muted">Sin union</span>
+                                <span style="color:var(--text-muted);">Sin union</span>
                                 {% endif %}
                             </span>
                         </div>
@@ -82,7 +82,7 @@
                     <div class="p-3 border-top">
                         <form method="POST" action="{% url 'deshacer_union' union_activa.id %}" onsubmit="return confirm('¿Separar mesas? Se anularán las comandas activas y se liberarán las mesas.')">
                             {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2 py-2 fw-bold" style="border-radius:10px;">
+                            <button type="submit" class="btn btn-danger" style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px; padding:12px;">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
                                     <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -109,7 +109,7 @@
                         Comanda
                     </div>
                     {% if comanda_activa %}
-                    <span class="badge bg-primary fs-6 px-3 py-1">{{ comanda_activa.estado|estado_display }}</span>
+                    <span class="badge badge-info" style="font-size:14px; padding:6px 14px;">{{ comanda_activa.estado|estado_display }}</span>
                     {% endif %}
                 </div>
                 <div class="detalle-card-body p-0">
@@ -140,11 +140,11 @@
                                     <td class="comanda-precio">S/ {{ linea.precio_unitario }}</td>
                                     <td class="comanda-subtotal">S/ {{ linea.subtotal }}</td>
                                     <td class="comanda-estado">
-                                        <span class="badge badge-estado
-                                            {% if linea.estado == 'PENDIENTE' %}bg-warning text-dark
-                                            {% elif linea.estado == 'EN_PREP' %}bg-info text-white
-                                            {% elif linea.estado == 'LISTO' %}bg-success
-                                            {% else %}bg-secondary{% endif %}">
+                                        <span class="badge
+                                            {% if linea.estado == 'PENDIENTE' %}badge-prep
+                                            {% elif linea.estado == 'EN_PREP' %}badge-info
+                                            {% elif linea.estado == 'LISTO' %}badge-free
+                                            {% else %}badge-info{% endif %}">
                                             {{ linea.estado|estado_display }}
                                         </span>
                                     </td>
@@ -182,7 +182,7 @@
                             Ir a Cobrar
                         </span>
                         {% endif %}
-                        <form method="POST" action="{% url 'anular_comanda' comanda_activa.id %}" class="d-inline">
+                        <form method="POST" action="{% url 'anular_comanda' comanda_activa.id %}" style="display:inline;">
                             {% csrf_token %}
                             <button type="submit" class="btn-anular" onclick="return confirm('¿Anular comanda? Se liberara la mesa y se restaurara el stock.')">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -235,30 +235,36 @@
                         {% csrf_token %}
                         <div class="row g-3">
                             <div class="col-md-5">
-                                <label class="form-label fw-semibold">Plato</label>
-                                <select name="plato_id" class="form-select form-select-lg" required>
-                                    <option value="">Seleccionar...</option>
-                                    {% for categoria in categorias %}
-                                    <optgroup label="{{ categoria.nombre }}">
-                                        {% for plato in categoria.platos %}
-                                        <option value="{{ plato.id }}" {% if not plato.disponible %}disabled{% endif %}>
-                                            {{ plato.nombre }} - S/ {{ plato.precio }}
-                                        </option>
+                                <div class="form-group">
+                                    <label>Plato</label>
+                                    <select name="plato_id" required>
+                                        <option value="">Seleccionar...</option>
+                                        {% for categoria in categorias %}
+                                        <optgroup label="{{ categoria.nombre }}">
+                                            {% for plato in categoria.platos %}
+                                            <option value="{{ plato.id }}" {% if not plato.disponible %}disabled{% endif %}>
+                                                {{ plato.nombre }} - S/ {{ plato.precio }}
+                                            </option>
+                                            {% endfor %}
+                                        </optgroup>
                                         {% endfor %}
-                                    </optgroup>
-                                    {% endfor %}
-                                </select>
+                                    </select>
+                                </div>
                             </div>
                             <div class="col-md-2">
-                                <label class="form-label fw-semibold">Cantidad</label>
-                                <input type="number" name="cantidad" class="form-control form-control-lg" value="1" min="1" required>
+                                <div class="form-group">
+                                    <label>Cantidad</label>
+                                    <input type="number" name="cantidad" value="1" min="1" required>
+                                </div>
                             </div>
                             <div class="col-md-3">
-                                <label class="form-label fw-semibold">Observacion</label>
-                                <input type="text" name="observacion" class="form-control form-control-lg" placeholder="ej: sin cebolla">
+                                <div class="form-group">
+                                    <label>Observacion</label>
+                                    <input type="text" name="observacion" placeholder="ej: sin cebolla">
+                                </div>
                             </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button type="submit" class="btn-add-plato w-100">
+                            <div class="col-md-2" style="display:flex; align-items:flex-end;">
+                                <button type="submit" class="btn-add-plato" style="width:100%;">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <line x1="12" y1="5" x2="12" y2="19"></line>
                                         <line x1="5" y1="12" x2="19" y2="12"></line>

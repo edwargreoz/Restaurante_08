@@ -7,25 +7,28 @@
 {% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1>Tomar Pedido - Mesa {{ mesa.numero }}</h1>
-    <a href="{% url 'plano_mesas' %}" class="btn btn-secondary">Volver al Plano</a>
+<div class="page-header">
+    <div>
+        <div class="eyebrow">Pedidos</div>
+        <h1>Tomar Pedido - Mesa {{ mesa.numero }}</h1>
+    </div>
+    <a href="{% url 'plano_mesas' %}" class="btn btn-outline btn-sm">Volver al Plano</a>
 </div>
 
 <div class="row">
     <div class="col-md-4">
-        <div class="card mb-3">
-            <div class="card-header">Información de Mesa</div>
+        <div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><strong>Información de Mesa</strong></div>
             <div class="card-body">
-                <p><strong>Número:</strong> {{ mesa.numero }}</p>
-                <p><strong>Capacidad:</strong> {% if mesas_union %}{{ capacidad_total_union }} personas (unión de {{ mesas_union|length }} mesas){% else %}{{ mesa.capacidad }} personas{% endif %}</p>
-                <p><strong>Zona:</strong> {{ mesa.zona|zona_display }}</p>
-                <p><strong>Estado:</strong>
+                <p style="margin-bottom:8px;"><strong>Número:</strong> {{ mesa.numero }}</p>
+                <p style="margin-bottom:8px;"><strong>Capacidad:</strong> {% if mesas_union %}{{ capacidad_total_union }} personas (unión de {{ mesas_union|length }} mesas){% else %}{{ mesa.capacidad }} personas{% endif %}</p>
+                <p style="margin-bottom:8px;"><strong>Zona:</strong> {{ mesa.zona|zona_display }}</p>
+                <p style="margin-bottom:0;"><strong>Estado:</strong>
                     <span class="badge
-                        {% if mesa.estado == 'LIBRE' %}bg-success
-                        {% elif mesa.estado == 'OCUPADA' %}bg-danger
-                        {% elif mesa.estado == 'RESERVADA' %}bg-warning text-dark
-                        {% else %}bg-secondary{% endif %}">
+                        {% if mesa.estado == 'LIBRE' %}badge-free
+                        {% elif mesa.estado == 'OCUPADA' %}badge-occupied
+                        {% elif mesa.estado == 'RESERVADA' %}badge-prep
+                        {% else %}badge-info{% endif %}">
                         {{ mesa.estado|estado_display }}
                     </span>
                 </p>
@@ -34,11 +37,12 @@
     </div>
 <div class="col-md-8">
     {% if comanda %}
-    <div class="card mb-3">
-        <div class="card-header">Comanda Actual</div>
+    <div class="card" style="margin-bottom:16px;">
+        <div class="card-header"><strong>Comanda Actual</strong></div>
             <div class="card-body">
-                <p><strong>Mozo:</strong> {{ comanda.nombre_mozo }}</p>
-                <p><strong>Estado:</strong> <span class="badge bg-primary">{{ comanda.estado|estado_display }}</span></p>
+                <p style="margin-bottom:8px;"><strong>Mozo:</strong> {{ comanda.nombre_mozo }}</p>
+                <p style="margin-bottom:12px;"><strong>Estado:</strong> <span class="badge badge-info">{{ comanda.estado|estado_display }}</span></p>
+                <div class="table-wrapper">
                 <table class="table table-comanda">
                     <thead>
                         <tr>
@@ -56,11 +60,11 @@
                             <td class="col-cant">{{ linea.cantidad }}</td>
                             <td class="col-subtotal">S/ {{ linea.subtotal }}</td>
                             <td class="col-estado">
-                                <span class="badge badge-estado
-                                    {% if linea.estado == 'PENDIENTE' %}bg-warning text-dark
-                                    {% elif linea.estado == 'EN_PREP' %}bg-info text-white
-                                    {% elif linea.estado == 'LISTO' %}bg-success
-                                    {% else %}bg-secondary{% endif %}">
+                                <span class="badge
+                                    {% if linea.estado == 'PENDIENTE' %}badge-prep
+                                    {% elif linea.estado == 'EN_PREP' %}badge-info
+                                    {% elif linea.estado == 'LISTO' %}badge-free
+                                    {% else %}badge-info{% endif %}">
                                     {{ linea.estado|estado_display }}
                                 </span>
                             </td>
@@ -68,7 +72,7 @@
                         {% if linea.estado == 'PENDIENTE' %}
                             <form method="post" action="{% url 'enviar_cocina' linea.id %}">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-warning">Enviar a Cocina</button>
+                        <button type="submit" class="btn btn-outline btn-sm">Enviar a Cocina</button>
                             </form>
                         {% endif %}
                             </td>
@@ -84,37 +88,44 @@
                             </tr>
                         </tfoot>
                 </table>
+                </div>
         </div>
     </div>
 
-<div class="card mb-3">
-            <div class="card-header">Agregar Plato</div>
+<div class="card" style="margin-bottom:16px;">
+            <div class="card-header"><strong>Agregar Plato</strong></div>
                 <div class="card-body">
                     <form method="post" action="{% url 'agregar_platos_pedido' comanda.id %}">
                         {% csrf_token %}
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Plato</label>
-                                <select name="plato_id" class="form-select" required>
-                                    <option value="">Seleccionar...</option>
-                                    {% for categoria in categorias %}
-                                    <optgroup label="{{ categoria.nombre }}">
-                                        {% for plato in categoria.platos %}
-                                        <option value="{{ plato.id }}" {% if not plato.disponible %}disabled{% endif %}>
-                                            {{ plato.nombre }} - S/ {{ plato.precio }}
-                                        </option>
+                            <div class="col-md-6" style="margin-bottom:12px;">
+                                <div class="form-group">
+                                    <label>Plato</label>
+                                    <select name="plato_id" required>
+                                        <option value="">Seleccionar...</option>
+                                        {% for categoria in categorias %}
+                                        <optgroup label="{{ categoria.nombre }}">
+                                            {% for plato in categoria.platos %}
+                                            <option value="{{ plato.id }}" {% if not plato.disponible %}disabled{% endif %}>
+                                                {{ plato.nombre }} - S/ {{ plato.precio }}
+                                            </option>
+                                            {% endfor %}
+                                        </optgroup>
                                         {% endfor %}
-                                    </optgroup>
-                                    {% endfor %}
-                                </select>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="col-md-2 mb-3">
-                                <label class="form-label">Cantidad</label>
-                                <input type="number" name="cantidad" class="form-control" value="1" min="1" required>
+                            <div class="col-md-2" style="margin-bottom:12px;">
+                                <div class="form-group">
+                                    <label>Cantidad</label>
+                                    <input type="number" name="cantidad" value="1" min="1" required>
+                                </div>
                             </div>
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Observación</label>
-                                <input type="text" name="observacion" class="form-control" placeholder="ej: sin sal">
+                            <div class="col-md-4" style="margin-bottom:12px;">
+                                <div class="form-group">
+                                    <label>Observación</label>
+                                    <input type="text" name="observacion" placeholder="ej: sin sal">
+                                </div>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-success">Agregar a Comanda</button>
@@ -124,11 +135,14 @@
 
     {% else %}
             <div class="card">
-                <div class="card-body">
-                                <p class="text-muted">No hay comanda activa para esta mesa.</p>
-                                <p>Abra una comanda desde el <a href="{% url 'detalle_mesa' mesa.id %}">detalle de la mesa</a>.</p>
-                            </div>
-                        </div>
+                <div class="card-body" style="text-align:center; padding:40px;">
+                    <div class="empty-icon" style="margin:0 auto 12px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
+                    <h3 style="font-size:18px;">No hay comanda activa</h3>
+                    <p style="color:var(--text-muted); font-size:13.5px;">Abra una comanda desde el <a href="{% url 'detalle_mesa' mesa.id %}" style="color:var(--gold-dark); font-weight:600;">detalle de la mesa</a>.</p>
+                </div>
+            </div>
                     {% endif %}
                 </div>
             </div>

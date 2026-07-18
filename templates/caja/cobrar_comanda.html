@@ -19,7 +19,7 @@
 </div>
 <div class="row">
     <div class="col-md-7">
-        <div class="card mb-4">
+        <div class="card" style="margin-bottom:16px;">
             <div class="card-header">
                 Mesa {{ comanda.numero_mesa }} — Mozo: {{ comanda.nombre_mozo }}
             </div>
@@ -46,7 +46,7 @@
         </div>
         {% if comanda.pagos %}
         <div class="card">
-            <div class="card-header">Pagos registrados</div>
+            <div class="card-header"><strong>Pagos registrados</strong></div>
             <div class="table-wrapper">
                 <table class="table">
                     <thead><tr><th>Método</th><th>Monto</th><th>Vuelto</th><th>Ref.</th></tr></thead>
@@ -111,10 +111,10 @@
                     <form method="POST" id="split-form">
                         {% csrf_token %}
                         <div id="split-pagos-container">
-                            <div class="split-pago-item card card-body mb-2 p-3">
+                            <div class="split-pago-item card card-body" style="margin-bottom:8px; padding:16px;">
                                 <div class="form-group">
                                     <label>Método de pago</label>
-                                    <select name="metodo[]" class="form-control split-metodo" required>
+                                    <select name="metodo[]" class="split-metodo" required>
                                         <option value="">--- Seleccionar ---</option>
                                         {% for key, label in metodos %}
                                         <option value="{{ key }}">{{ label }}</option>
@@ -123,39 +123,39 @@
                                 </div>
                                 <div class="form-group">
                                     <label>Monto a pagar (S/)</label>
-                                    <input type="number" name="monto[]" class="form-control split-monto" step="0.01" min="0.01" required>
+                                    <input type="number" name="monto[]" class="split-monto" step="0.01" min="0.01" required>
                                 </div>
                                 <div class="form-group split-recibido-group" style="display:none;">
                                     <label>Recibido (S/)</label>
-                                    <input type="number" name="recibido[]" class="form-control split-recibido" step="0.01" min="0">
+                                    <input type="number" name="recibido[]" class="split-recibido" step="0.01" min="0">
                                 </div>
                                 <div class="form-group split-vuelto-group" style="display:none;">
                                     <label>Vuelto (S/)</label>
-                                    <input type="number" name="vuelto[]" class="form-control split-vuelto" step="0.01" min="0" value="0" readonly style="background:#f8f9fa;">
+                                    <input type="number" name="vuelto[]" class="split-vuelto" step="0.01" min="0" value="0" readonly style="background:var(--gold-soft);">
                                 </div>
                                 <div class="form-group split-ref-group" style="display:none;">
                                     <label>Referencia (últimos 4 dígitos)</label>
-                                    <input type="text" name="referencia[]" class="form-control split-referencia" placeholder="Ej: ****1234" maxlength="20">
+                                    <input type="text" name="referencia[]" class="split-referencia" placeholder="Ej: ****1234" maxlength="20">
                                 </div>
                                 <button type="button" class="btn btn-danger btn-sm remove-split-pago" style="display:none;">Eliminar</button>
                             </div>
                         </div>
-                        <div class="d-flex gap-2 mb-3">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="add-split-pago">+ Agregar otro método</button>
+                        <div style="display:flex; gap:8px; margin-bottom:12px;">
+                            <button type="button" class="btn btn-outline btn-sm" id="add-split-pago">+ Agregar otro método</button>
                         </div>
-                        <div class="pago-resumen border-top pt-3 mb-3">
-                            <p class="mb-1">Total cuenta: <strong>S/ <span id="split-total-cuenta" data-total="{{ comanda.total|stringformat:'.2f' }}">{{ comanda.total|floatformat:2 }}</span></strong></p>
-                            <p class="mb-1">Suma pagos: <strong>S/ <span id="split-suma-pagos">0.00</span></strong></p>
-                            <p class="mb-0">Restante: <strong>S/ <span id="split-restante" data-total="{{ comanda.total|stringformat:'.2f' }}">{{ comanda.total|floatformat:2 }}</span></strong></p>
+                        <div class="pago-resumen" style="border-top:1px solid var(--border); padding-top:12px; margin-bottom:12px;">
+                            <p style="margin-bottom:4px;">Total cuenta: <strong>S/ <span id="split-total-cuenta" data-total="{{ comanda.total|stringformat:'.2f' }}">{{ comanda.total|floatformat:2 }}</span></strong></p>
+                            <p style="margin-bottom:4px;">Suma pagos: <strong>S/ <span id="split-suma-pagos">0.00</span></strong></p>
+                            <p style="margin-bottom:0;">Restante: <strong>S/ <span id="split-restante" data-total="{{ comanda.total|stringformat:'.2f' }}">{{ comanda.total|floatformat:2 }}</span></strong></p>
                         </div>
                         <button type="submit" class="btn btn-primary" style="width:100%;" id="split-submit" disabled>Cobrar S/ {{ comanda.total|floatformat:2 }}</button>
                     </form>
                     <!-- Template fuera del form para que los inputs required ocultos no bloqueen el submit -->
                     <div id="split-template" style="display:none;">
-                        <div class="split-pago-item card card-body mb-2 p-3">
+                        <div class="split-pago-item card card-body" style="margin-bottom:8px; padding:16px;">
                             <div class="form-group">
                                 <label>Método de pago</label>
-                                <select class="form-control split-metodo">
+                                <select class="split-metodo">
                                     <option value="">--- Seleccionar ---</option>
                                     {% for key, label in metodos %}
                                     <option value="{{ key }}">{{ label }}</option>
@@ -164,19 +164,19 @@
                             </div>
                             <div class="form-group">
                                 <label>Monto a pagar (S/)</label>
-                                <input type="number" class="form-control split-monto" step="0.01" min="0.01">
+                                <input type="number" class="split-monto" step="0.01" min="0.01">
                             </div>
                             <div class="form-group split-recibido-group" style="display:none;">
                                 <label>Recibido (S/)</label>
-                                <input type="number" class="form-control split-recibido" step="0.01" min="0">
+                                <input type="number" class="split-recibido" step="0.01" min="0">
                             </div>
                             <div class="form-group split-vuelto-group" style="display:none;">
                                 <label>Vuelto (S/)</label>
-                                <input type="number" class="form-control split-vuelto" step="0.01" min="0" value="0" readonly style="background:#f8f9fa;">
+                                <input type="number" class="split-vuelto" step="0.01" min="0" value="0" readonly style="background:var(--gold-soft);">
                             </div>
                             <div class="form-group split-ref-group" style="display:none;">
                                 <label>Referencia (últimos 4 dígitos)</label>
-                                <input type="text" class="form-control split-referencia" placeholder="Ej: ****1234" maxlength="20">
+                                <input type="text" class="split-referencia" placeholder="Ej: ****1234" maxlength="20">
                             </div>
                             <button type="button" class="btn btn-danger btn-sm remove-split-pago">Eliminar</button>
                         </div>

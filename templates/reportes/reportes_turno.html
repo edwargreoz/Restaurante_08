@@ -7,20 +7,23 @@
 {% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>Reporte de Ventas</h1>
+    <div>
+        <div class="eyebrow">Reportes</div>
+        <h1>Reporte de Ventas</h1>
+    </div>
     <p class="page-subtitle">Consulta y analiza los ingresos del restaurante</p>
 </div>
 
 <div class="card filtros-card">
     <div class="card-header">
         <strong>Filtrar reporte</strong>
-        <small class="text-muted">Selecciona un turno, rango de fechas o ambos</small>
+        <small style="color:var(--text-muted);">Selecciona un turno, rango de fechas o ambos</small>
     </div>
     <div class="card-body">
         <form method="GET" class="filtros-form">
             <div class="form-group">
                 <label for="caja_id">Turno de caja</label>
-                <select name="caja_id" id="caja_id" class="form-control">
+                <select name="caja_id" id="caja_id">
                     <option value="">--- Todos los turnos ---</option>
                     {% for c in cajas %}
                     <option value="{{ c.id }}" {% if request.GET.caja_id|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
@@ -31,21 +34,21 @@
             </div>
             <div class="form-group">
                 <label for="fecha_desde">Desde</label>
-                <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" value="{{ request.GET.fecha_desde }}">
+                <input type="date" name="fecha_desde" id="fecha_desde" value="{{ request.GET.fecha_desde }}">
             </div>
             <div class="form-group">
                 <label for="fecha_hasta">Hasta</label>
-                <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" value="{{ request.GET.fecha_hasta }}">
+                <input type="date" name="fecha_hasta" id="fecha_hasta" value="{{ request.GET.fecha_hasta }}">
             </div>
             <div class="filtros-actions">
-                <button type="submit" class="btn btn-primary" style="width:auto;padding:0.7rem 1.5rem;">Aplicar filtros</button>
-                <a href="{% url 'reportes_turno' %}" class="btn btn-secondary" style="width:auto;padding:0.7rem 1.5rem;">Limpiar filtros</a>
+                <button type="submit" class="btn btn-primary" style="width:auto;">Aplicar filtros</button>
+                <a href="{% url 'reportes_turno' %}" class="btn btn-outline" style="width:auto;">Limpiar filtros</a>
             </div>
         </form>
         <div class="filtros-rapidos">
             <span>Acceso rápido:</span>
-            <a href='?fecha_desde={% now "Y-m-d" %}&amp;fecha_hasta={% now "Y-m-d" %}' class="btn btn-sm btn-outline-primary">Hoy</a>
-            <a href='?fecha_desde={% now "Y-m" %}-01&amp;fecha_hasta={% now "Y-m-d" %}' class="btn btn-sm btn-outline-primary">Este mes</a>
+            <a href='?fecha_desde={% now "Y-m-d" %}&amp;fecha_hasta={% now "Y-m-d" %}' class="btn btn-outline btn-sm">Hoy</a>
+            <a href='?fecha_desde={% now "Y-m" %}-01&amp;fecha_hasta={% now "Y-m-d" %}' class="btn btn-outline btn-sm">Este mes</a>
         </div>
     </div>
 </div>
@@ -138,11 +141,13 @@
     </table>
 </div>
 {% else %}
-<div class="empty-state">
-    <h4>Sin resultados</h4>
+<div class="empty">
+    <div class="empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <h3>Sin resultados</h3>
     <p>No se encontraron pagos con los filtros seleccionados.</p>
-    <p class="text-muted">Prueba con un rango de fechas diferente o selecciona otro turno.</p>
-    <a href="{% url 'reportes_turno' %}" class="btn btn-primary" style="width:auto;padding:0.7rem 1.5rem;margin-top:0.5rem;">Limpiar filtros</a>
+    <a href="{% url 'reportes_turno' %}" class="btn btn-primary" style="margin-top:8px;">Limpiar filtros</a>
 </div>
 {% endif %}
 {% endblock %}

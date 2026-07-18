@@ -47,7 +47,7 @@
                     </div>
                     <div class="form-group">
                         <label for="unidad">Unidad de medida</label>
-                        <select name="unidad" id="unidad" class="form-control" required>
+                        <select name="unidad" id="unidad" required>
                             <option value="">--- Seleccionar ---</option>
                             {% with u=editar.unidad|default:'' %}
                             <option value="UNIDAD" {% if u == 'UNIDAD' %}selected{% endif %}>Unidad</option>
@@ -131,27 +131,27 @@
                     {% csrf_token %}
                     <input type="hidden" name="insumo_id" id="compraInsumoId" value="">
                     <input type="hidden" name="presentacion_id" id="compraPresentacionId" value="">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Presentacion</label>
-                        <select id="compraSelectPresentacion" class="form-select" required onchange="onSelectPresentacion()">
+                    <div class="form-group">
+                        <label>Presentacion</label>
+                        <select id="compraSelectPresentacion" required onchange="onSelectPresentacion()">
                             <option value="">Seleccionar presentacion...</option>
                         </select>
-                        <small class="text-muted" id="compraInfoPresentacion"></small>
+                        <small style="color:var(--text-muted);" id="compraInfoPresentacion"></small>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Cantidad de paquetes</label>
-                        <input type="number" id="compraCantidad" class="form-control" min="1" value="1" required oninput="actualizarPreviewCompra()">
+                    <div class="form-group">
+                        <label>Cantidad de paquetes</label>
+                        <input type="number" id="compraCantidad" min="1" value="1" required oninput="actualizarPreviewCompra()">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Costo total (S/)</label>
-                        <input type="number" id="compraCosto" class="form-control" step="0.01" min="0" value="0" required>
+                    <div class="form-group">
+                        <label>Costo total (S/)</label>
+                        <input type="number" id="compraCosto" step="0.01" min="0" value="0" required>
                     </div>
                     <div class="compra-modal-preview" id="compraPreview"></div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success" onclick="confirmarCompra()">Registrar Compra</button>
+                <button type="button" class="btn btn-outline" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmarCompra()">Registrar Compra</button>
             </div>
         </div>
     </div>
