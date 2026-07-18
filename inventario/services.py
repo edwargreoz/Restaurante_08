@@ -129,8 +129,8 @@ class RecetaService:
 
     def crear(self, nombre: str, insumos_data: list = None):
         receta = self.repo.obtener_o_crear(nombre=nombre)
-        # Si es nueva (no tiene insumos), agregar los insumos proporcionados
-        es_nueva = not bool(self.repo.listar_receta_insumos())  # simplificado
+        todos_ri = self.repo.listar_receta_insumos()
+        es_nueva = not any(ri.receta_id == receta.id for ri in todos_ri)
         if insumos_data and es_nueva:
             for item in insumos_data:
                 self.repo.obtener_receta_insumo_o_crear(

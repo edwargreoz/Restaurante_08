@@ -22,6 +22,13 @@ class RecetaRepository:
         r, _ = RecetaModel.objects.get_or_create(nombre=nombre)
         return self._a_entidad(r)
 
+    def obtener_por_id(self, receta_id: int) -> Optional[Receta]:
+        try:
+            r = RecetaModel.objects.get(id=receta_id)
+            return self._a_entidad(r)
+        except RecetaModel.DoesNotExist:
+            return None
+
     def listar(self) -> List[Receta]:
         return [self._a_entidad(r) for r in RecetaModel.objects.all()]
 
