@@ -12,6 +12,29 @@ document.addEventListener('DOMContentLoaded', function () {
     mesas.forEach(function (mesa) {
         mesa.setAttribute('draggable', 'true');
 
+        var link = mesa.querySelector('a.card-link-mesa');
+        if (link) {
+            link.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            link.addEventListener('drop', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                mesa.dispatchEvent(new DragEvent('drop', {
+                    dataTransfer: e.dataTransfer,
+                    bubbles: false
+                }));
+            });
+            link.addEventListener('dragenter', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            link.addEventListener('dragleave', function (e) {
+                e.stopPropagation();
+            });
+        }
+
         mesa.addEventListener('dragstart', function (e) {
             var transferData = {
                 mesaId: this.dataset.mesaId,
