@@ -114,6 +114,14 @@ class RecetaInsumo(ModeloBase):
         verbose_name='Unidad en la receta'
     )
 
+    unidad_cocina = models.ForeignKey(
+        'UnidadCocina',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='receta_insumos',
+        verbose_name='Unidad de cocina'
+    )
+
     class Meta:
         verbose_name = 'Insumo de Receta'
         verbose_name_plural = 'Insumos de Recetas'
@@ -238,3 +246,67 @@ class UnidadConversion(ModeloBase):
             raise UnidadConversionInvalida(f'{self.nombre} no tiene subunidad definida')
         en_sub = self.contiene_unidad.convertir_desde_base(cantidad_base)
         return en_sub / self.contiene_cantidad
+
+
+class UnidadCocina(ModeloBase):
+    GRUPOS = (
+        ('VOLUMEN', 'Volumen'),
+        ('PESO', 'Peso'),
+        ('CANTIDAD', 'Cantidad'),
+    )
+
+    nombre = models.CharField(max_length=100, unique=True, verbose_name='Nombre')
+    equivalencia_cantidad = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        verbose_name='Cantidad equivalente en unidad base'
+    )
+    equivalencia_unidad = models.CharField(
+        max_length=20, choices=Insumo.UNIDADES,
+        verbose_name='Unidad base de equivalencia'
+    )
+    grupo = models.CharField(
+        max_length=20, choices=GRUPOS,
+        default='VOLUMEN',
+        verbose_name='Grupo'
+    )
+
+    class Meta:
+        ordering = ['nombre']
+        verbose_name = 'Unidad de Cocina'
+        verbose_name_plural = 'Unidades de Cocina'
+
+    def __str__(self):
+        return f'{self.nombre} ({self.equivalencia_cantidad} {self.equivalencia_unidad})'
+
+
+class PresentacionInsumo(ModeloBase):
+    insumo = models.ForeignKey(
+        Insumo, on_delete=models.CASCADE,
+        related_name='presentaciones',
+        verbose_name='Insumo'
+    )
+    nombre = models.CharField(max_length=200, verbose_name='Nombre de la presentación')
+    cantidad = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        verbose_name='Cantidad contenida'
+    )
+    unidad_medida = models.CharField(
+        max_length=20, choices=Insumo.UNIDADES,
+        verbose_name='Unidad de medida'
+    )
+    costo_compra = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        verbose_name='Costo de compra (S/)'
+    )
+    es_principal = models.BooleanField(
+        default=False,
+        verbose_name='¿Es presentación principal?'
+    )
+
+    class Meta:
+        ordering = ['nombre']
+        verbose_name = 'Presentación de Insumo'
+        verbose_name_plural = 'Presentaciones de Insumos'
+
+    def __str__(self):
+        return f'{self.nombre} ({self.cantidad} {self.unidad_medida})'

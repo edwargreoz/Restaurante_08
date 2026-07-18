@@ -138,6 +138,7 @@ class RecetaService:
                     insumo_id=item['insumo_id'],
                     cantidad_por_porcion=item['cantidad'],
                     unidad=item.get('unidad', 'UNIDAD'),
+                    unidad_cocina_id=item.get('unidad_cocina_id'),
                 )
         return receta
 
@@ -159,6 +160,7 @@ class RecetaService:
                     insumo_id=item['insumo_id'],
                     cantidad_por_porcion=item['cantidad'],
                     unidad=item.get('unidad', 'UNIDAD'),
+                    unidad_cocina_id=item.get('unidad_cocina_id'),
                 )
         return receta
 
@@ -266,3 +268,102 @@ class UnidadConversionService:
             niveles_procesados.append(uc)
             todas_unidades.append(uc)  # Para que niveles posteriores lo encuentren
         return list(reversed(niveles_procesados))
+
+
+class PresentacionInsumoService:
+
+    def __init__(self, presentacion_repo, insumo_repo,
+                 movimiento_insumo_repo=None):
+        self.repo = presentacion_repo
+        self.insumo_repo = insumo_repo
+        self.movimiento_insumo_repo = movimiento_insumo_repo
+
+    def listar_por_insumo(self, insumo_id: int):
+        return self.repo.listar_por_insumo(insumo_id)
+
+    def obtener_por_id(self, presentacion_id: int):
+        p = self.repo.obtener_por_id(presentacion_id)
+        if not p:
+            raise RecursoNoEncontrado('Presentación no encontrada')
+        return p
+
+    def crear(self, insumo_id: int, nombre: str, cantidad,
+              unidad_medida: str, costo_compra=Decimal('0'),
+              es_principal=False):
+        from dominio.entidades.presentacion_insumo import PresentacionInsumo
+        p = PresentacionInsumo(
+            id=None, insumo_id=insumo_id, nombre=nombre,
+            cantidad=Decimal(str(cantidad)), unidad_medida=unidad_medida,
+            costo_compra=Decimal(str(costo_compra)), es_principal=es_principal,
+        )
+        return self.repo.guardar(p)
+
+    def eliminar(self, presentacion_id: int):
+        p = self.repo.obtener_por_id(presentacion_id)
+        if not p:
+            raise RecursoNoEncontrado('Presentación no encontrada')
+        self.repo.eliminar(presentacion_id)
+
+    def registrar_compra(self, presentacion_id: int,
+                         cantidad_paquetes: int, costo_total: Decimal,
+                         usuario=None):
+        p = self.repo.obtener_por_id(presentacion_id)
+        if not p:
+            raise RecursoNoEncontrado('Presentación no encontrada')
+        insumo = self.insumo_repo.obtener_por_id(p.insumo_id)
+        if not insumo:
+            raise RecursoNoEncontrado('Insumo no encontrado')
+        stock_anterior = insumo.stock_actual
+        cantidad_base = p.calcular_stock_base(cantidad_paquetes)
+        insumo.stock_actual += cantidad_base
+        if cantidad_base > 0:
+            insumo.costo_unitario = Decimal(str(costo_total)) / cantidad_base
+        self.insumo_repo.guardar(insumo)
+        if self.movimiento_insumo_repo:
+            from dominio.entidades.movimiento_insumo import MovimientoInsumo
+            self.movimiento_insumo_repo.guardar(MovimientoInsumo(
+                insumo_id=insumo.id, tipo='COMPRA',
+                cantidad=cantidad_base,
+                stock_anterior=stock_anterior,
+                stock_posterior=insumo.stock_actual,
+                usuario_id=getattr(usuario, 'id', None),
+                observacion=f'Compra: {cantidad_paquetes} x {p.nombre}',
+                origen='COMPRA',
+            ))
+        return insumo
+
+
+class UnidadCocinaService:
+
+    def __init__(self, unidad_cocina_repo):
+        self.repo = unidad_cocina_repo
+
+    def listar(self):
+        return self.repo.listar()
+
+    def obtener_por_id(self, unidad_id: int):
+        u = self.repo.obtener_por_id(unidad_id)
+        if not u:
+            raise RecursoNoEncontrado('Unidad de cocina no encontrada')
+        return u
+
+    def crear(self, nombre: str, equivalencia_cantidad,
+              equivalencia_unidad: str, grupo: str = 'VOLUMEN'):
+        from dominio.entidades.unidad_cocina import UnidadCocina
+        u = UnidadCocina(
+            id=None, nombre=nombre,
+            equivalencia_cantidad=Decimal(str(equivalencia_cantidad)),
+            equivalencia_unidad=equivalencia_unidad,
+            grupo=grupo,
+        )
+        return self.repo.guardar(u)
+
+    def eliminar(self, unidad_id: int):
+        u = self.repo.obtener_por_id(unidad_id)
+        if not u:
+            raise RecursoNoEncontrado('Unidad de cocina no encontrada')
+        self.repo.eliminar(unidad_id)
+
+    def convertir_a_unidad_base(self, cantidad, unidad_cocina_id):
+        uc = self.obtener_por_id(unidad_cocina_id)
+        return uc.convertir_a_base(Decimal(str(cantidad)))
