@@ -1,29 +1,29 @@
-document.addEventListener('DOMContentLoaded', function () {
-    const containerSel = '.kds-container';
-    let socket = null;
-    let reconnectTimeout = null;
-    let debounceTimer = null;
+(function () {
+    var containerSel = '.kds-container';
+    var socket = null;
+    var reconnectTimeout = null;
+    var debounceTimer = null;
 
     function connect() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        socket = new WebSocket(`${protocol}//${window.location.host}/ws/kds/`);
+        var protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        socket = new WebSocket(protocol + '//' + window.location.host + '/ws/kds/');
 
         socket.onopen = function () {
             console.log('[KDS] WebSocket conectado');
         };
 
         socket.onmessage = function (e) {
-            const data = JSON.parse(e.data);
+            var data = JSON.parse(e.data);
             if (data.action === 'refresh') {
                 clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(function () {
                     fetch(window.location.pathname, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                         .then(function (response) { return response.text(); })
                         .then(function (html) {
-                            const parser = new DOMParser();
-                            const doc = parser.parseFromString(html, 'text/html');
-                            const newContent = doc.querySelector(containerSel);
-                            const oldContent = document.querySelector(containerSel);
+                            var parser = new DOMParser();
+                            var doc = parser.parseFromString(html, 'text/html');
+                            var newContent = doc.querySelector(containerSel);
+                            var oldContent = document.querySelector(containerSel);
                             if (newContent && oldContent) {
                                 oldContent.innerHTML = newContent.innerHTML;
                             }
@@ -44,4 +44,4 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     connect();
-});
+})();
