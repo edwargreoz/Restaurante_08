@@ -17,7 +17,6 @@ from infraestructura.notificador import (
     ChannelsNotificadorPlano, ChannelsNotificadorKDS, ChannelsNotificadorComanda,
 )
 
-
 from menu.services import CategoriaService, PlatoService
 from mesas.services import MesaService, UnionMesaService
 from pedidos.services import ComandaService, LineaComandaService
@@ -56,20 +55,6 @@ class Container:
             categoria_repo=self.categoria_repo,
             receta_repo=self.receta_repo,
         )
-        self.mesa_service = MesaService(
-            mesa_repo=self.mesa_repo,
-            comanda_repo=self.comanda_repo,
-            reserva_repo=self.reserva_repo,
-            union_mesa_repo=self.union_mesa_repo,
-            notificador_plano=self.notificador_plano,
-        )
-        self.union_mesa_service = UnionMesaService(
-            mesa_repo=self.mesa_repo,
-            comanda_repo=self.comanda_repo,
-            union_mesa_repo=self.union_mesa_repo,
-            notificador_plano=self.notificador_plano,
-        )
-
         self.insumo_service = InsumoService(
             insumo_repo=self.insumo_repo,
             unidad_conversion_repo=self.unidad_conversion_repo,
@@ -78,17 +63,9 @@ class Container:
         self.unidad_conversion_service = UnidadConversionService(
             unidad_conversion_repo=self.unidad_conversion_repo,
         )
-
         self.receta_service = RecetaService(
             receta_repo=self.receta_repo,
             insumo_repo=self.insumo_repo,
-        )
-
-        self.reserva_service = ReservaService(
-            reserva_repo=self.reserva_repo,
-            mesa_repo=self.mesa_repo,
-            union_mesa_repo=self.union_mesa_repo,
-            notificador_plano=self.notificador_plano,
         )
 
         self.comanda_service = ComandaService(
@@ -97,7 +74,6 @@ class Container:
             caja_repo=self.caja_repo,
             union_mesa_repo=self.union_mesa_repo,
             reserva_repo=self.reserva_repo,
-            reserva_service=self.reserva_service,
             linea_comanda_repo=self.linea_comanda_repo,
             pago_repo=self.pago_repo,
             plato_repo=self.plato_repo,
@@ -116,11 +92,36 @@ class Container:
             notificador_plano=self.notificador_plano,
             notificador_kds=self.notificador_kds,
         )
+
+        self.reserva_service = ReservaService(
+            reserva_repo=self.reserva_repo,
+            mesa_repo=self.mesa_repo,
+            union_mesa_repo=self.union_mesa_repo,
+            notificador_plano=self.notificador_plano,
+        )
+
         self.caja_service = CajaService(
             caja_repo=self.caja_repo,
             comanda_repo=self.comanda_repo,
             pago_repo=self.pago_repo,
         )
+
+        self.mesa_service = MesaService(
+            mesa_repo=self.mesa_repo,
+            comanda_repo=self.comanda_repo,
+            reserva_repo=self.reserva_repo,
+            union_mesa_repo=self.union_mesa_repo,
+            notificador_plano=self.notificador_plano,
+        )
+
+        self.union_mesa_service = UnionMesaService(
+            mesa_repo=self.mesa_repo,
+            comanda_repo=self.comanda_repo,
+            union_mesa_repo=self.union_mesa_repo,
+            caja_repo=self.caja_repo,
+            notificador_plano=self.notificador_plano,
+        )
+
         self.pago_service = PagoService(
             comanda_service=self.comanda_service,
             comanda_repo=self.comanda_repo,
@@ -141,6 +142,7 @@ class Container:
             insumo_repo=self.insumo_repo,
             linea_comanda_repo=self.linea_comanda_repo,
         )
+
 
 import threading
 
