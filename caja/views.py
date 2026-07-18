@@ -75,7 +75,7 @@ def lista_comandas_cobro(request):
         caja_abierta = None
     return render(request, 'caja/lista_comandas_cobro.html', {
         'comandas': comandas,
-        'caja_abierta': caja_abierta,
+        'turno_abierto': caja_abierta,
     })
 
 @login_required

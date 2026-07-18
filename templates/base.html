@@ -41,10 +41,7 @@
                 {% endif %}
 
                 {% if user|has_group:'Cajero' %}
-                {% if not user.is_superuser %}
-                <a href="{% url 'lista_comandas_cobro' %}" class="nav-link {% if request.resolver_match.url_name == 'lista_comandas_cobro' or request.resolver_match.url_name == 'cobrar_comanda' %}active{% endif %}">Cobrar</a>
-                {% endif %}
-                <a href="{% url 'apertura_turno' %}" class="nav-link {% if request.resolver_match.url_name == 'apertura_turno' %}active{% endif %}">Caja</a>
+                <a href="{% if caja_abierta_nav %}{% url 'lista_comandas_cobro' %}{% else %}{% url 'apertura_turno' %}{% endif %}" class="nav-link {% if request.resolver_match.url_name == 'apertura_turno' or request.resolver_match.url_name == 'lista_comandas_cobro' or request.resolver_match.url_name == 'cobrar_comanda' %}active{% endif %}">Caja</a>
                 {% endif %}
 
                 {% if user|has_group:'Mozo' %}

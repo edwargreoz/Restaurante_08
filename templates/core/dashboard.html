@@ -55,7 +55,7 @@
                 Cerrada
             {% endif %}
         </p>
-        <a href="{% url 'apertura_turno' %}" class="card-link stretched-link">Ir a caja →</a>
+        <a href="{% if caja_actual %}{% url 'lista_comandas_cobro' %}{% else %}{% url 'apertura_turno' %}{% endif %}" class="card-link stretched-link">Ir a caja →</a>
     </div>
     {% endif %}
 </div>
