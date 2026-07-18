@@ -42,6 +42,34 @@ class Reserva:
     def es_para_union(self) -> bool:
         return self.union_mesa_id is not None
 
+    @property
+    def estado(self) -> str:
+        if self.finalizada:
+            return 'FINALIZADA'
+        if not self.activo:
+            return 'CANCELADA'
+        return 'ACTIVA'
+
+    @property
+    def mesas_display(self) -> str:
+        if self.union_mesa_nombre:
+            return self.union_mesa_nombre
+        if self.mesa_numero:
+            return f'Mesa {self.mesa_numero}'
+        return '-'
+
+    @property
+    def hora_rango(self) -> str:
+        return f'{self.hora_inicio.strftime("%H:%M")} - {self.hora_fin.strftime("%H:%M")}'
+
+    @property
+    def fecha_display(self) -> str:
+        meses = [
+            '', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+        ]
+        return f'{self.fecha.day} de {meses[self.fecha.month]} de {self.fecha.year}'
+
     def validar_horario(self) -> None:
         if self.hora_inicio >= self.hora_fin:
             raise ReglaNegocioViolada('La hora de inicio debe ser anterior a la hora de fin')

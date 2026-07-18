@@ -37,12 +37,12 @@ class ReservaRepository:
         return self._a_entidad(r)
 
     def listar(self) -> List[Reserva]:
-        return [self._a_entidad(r) for r in ReservaModel.activos.select_related(
+        return [self._a_entidad(r) for r in ReservaModel.objects.select_related(
             'mesa', 'union_mesa', 'creado_por'
-        ).prefetch_related('union_mesa__mesas').all()]
+        ).prefetch_related('union_mesa__mesas').order_by('-fecha', 'hora_inicio').all()]
 
     def eliminar(self, reserva_id: int) -> None:
-        ReservaModel.objects.filter(id=reserva_id).update(activo=False)
+        ReservaModel.objects.filter(id=reserva_id).delete()
 
     def _a_entidad(self, r) -> Reserva:
         mesa_numero = None

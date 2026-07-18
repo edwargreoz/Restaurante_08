@@ -60,3 +60,9 @@ METODO_DISPLAY = {
 @register.filter
 def metodo_display(value):
     return METODO_DISPLAY.get(value, value or '')
+
+@register.filter
+def split_mesas(value):
+    if not value:
+        return []
+    return [part.strip() for part in value.split(' + ') if part.strip()]
