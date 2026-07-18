@@ -87,6 +87,7 @@ def crear_insumo(request):
 @login_required
 @user_passes_test(es_admin)
 def editar_insumo(request, insumo_id):
+    import json
     container = get_container()
     try:
         insumo = container.insumo_service.obtener_por_id(insumo_id)
@@ -108,9 +109,33 @@ def editar_insumo(request, insumo_id):
             return redirect('gestion_insumos')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
+
+    insumos = container.insumo_service.listar_insumos()
+    catalogo = container.presentacion_insumo_service.listar_catalogo()
+
+    presentaciones_por_insumo = {}
+    for ins in insumos:
+        vinculadas = container.presentacion_insumo_service.listar_por_insumo(ins.id)
+        presentaciones_por_insumo[ins.id] = [
+            {
+                'id': p.id, 'nombre': p.nombre,
+                'cantidad': float(p.cantidad), 'unidad_medida': p.unidad_medida,
+                'costo_compra': float(p.costo_compra),
+            }
+            for p in vinculadas
+        ]
+
+    compatible_catalogo = [
+        {'id': p.id, 'nombre': p.nombre, 'cantidad': float(p.cantidad),
+         'unidad_medida': p.unidad_medida, 'costo_compra': float(p.costo_compra)}
+        for p in catalogo
+    ]
+
     return render(request, 'inventario/gestion_insumos.html', {
         'editar': insumo,
-        'insumos': container.insumo_service.listar_insumos(),
+        'insumos': insumos,
+        'presentaciones_por_insumo_json': json.dumps(presentaciones_por_insumo),
+        'catalogo_json': json.dumps(compatible_catalogo),
     })
 
 @login_required
