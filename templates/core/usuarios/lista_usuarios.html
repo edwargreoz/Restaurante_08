@@ -105,20 +105,20 @@
             {% for u in usuarios %}
             <tr style="{% if not u.is_active %}opacity: 0.6;{% endif %}">
                 <td><strong>{{ u.username }}</strong></td>
-                <td>{{ u.get_full_name|default:"-" }}</td>
+                <td>{{ u.nombre_completo|default:"-" }}</td>
                 <td>{{ u.email|default:"-" }}</td>
                 <td>
                     {% if u.is_superuser %}
                         <span class="badge-rol badge-admin">Administrador</span>
                     {% else %}
-                        {% with grupo=u.groups.first %}
+                        {% with grupo=u.grupos|first %}
                             {% if grupo %}
                                 <span class="badge-rol 
-                                    {% if grupo.name == 'Mozo' %}badge-mozo
-                                    {% elif grupo.name == 'Cocinero' %}badge-cocinero
-                                    {% elif grupo.name == 'Cajero' %}badge-cajero
+                                    {% if grupo == 'Mozo' %}badge-mozo
+                                    {% elif grupo == 'Cocinero' %}badge-cocinero
+                                    {% elif grupo == 'Cajero' %}badge-cajero
                                     {% else %}badge-inactive{% endif %}">
-                                    {{ grupo.name }}
+                                    {{ grupo }}
                                 </span>
                             {% else %}
                                 <span class="badge-rol badge-inactive">Sin Rol</span>

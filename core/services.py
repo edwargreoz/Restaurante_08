@@ -68,6 +68,10 @@ class UsuarioService:
 
     def crear(self, username: str, password: str,
               grupo_nombre: str = None, **extra):
+        if grupo_nombre == 'Admin':
+            extra['is_superuser'] = True
+            extra['is_staff'] = True
+            grupo_nombre = None
         return self.repo.crear(
             username=username, password=password,
             grupo_nombre=grupo_nombre, **extra

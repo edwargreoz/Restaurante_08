@@ -76,6 +76,9 @@ def crear_usuario(request):
                 username=form.cleaned_data['username'],
                 password=form.cleaned_data['password'],
                 email=form.cleaned_data.get('email', ''),
+                first_name=form.cleaned_data.get('first_name', ''),
+                last_name=form.cleaned_data.get('last_name', ''),
+                grupo_nombre=form.cleaned_data.get('rol', '')
             )
             messages.success(request, 'Usuario creado correctamente.')
             return redirect('lista_usuarios')
