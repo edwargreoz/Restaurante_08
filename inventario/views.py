@@ -22,12 +22,25 @@ def lista_insumos(request):
 @login_required
 @user_passes_test(es_admin)
 def gestion_insumos(request):
+    import json
     container = get_container()
     insumos = container.insumo_service.listar_insumos()
-    presentaciones = container.presentacion_insumo_service.listar_catalogo()
+    presentaciones_por_insumo = {}
+    for insumo in insumos:
+        presentaciones = container.presentacion_insumo_service.listar_por_insumo(insumo.id)
+        presentaciones_por_insumo[insumo.id] = [
+            {
+                'id': p.id,
+                'nombre': p.nombre,
+                'cantidad': float(p.cantidad),
+                'unidad_medida': p.unidad_medida,
+                'costo_compra': float(p.costo_compra),
+            }
+            for p in presentaciones
+        ]
     return render(request, 'inventario/gestion_insumos.html', {
         'insumos': insumos,
-        'presentaciones': presentaciones,
+        'presentaciones_por_insumo_json': json.dumps(presentaciones_por_insumo),
     })
 
 @login_required
@@ -36,33 +49,22 @@ def crear_insumo(request):
     if request.method == 'POST':
         try:
             container = get_container()
-            insumo = container.insumo_service.crear(
-                nombre=request.POST.get('nombre'),
+            nombre = request.POST.get('nombre', '').strip()
+            if not nombre:
+                messages.error(request, 'El nombre es obligatorio')
+                return redirect('gestion_insumos')
+            existente = container.insumo_service.obtener_por_nombre(nombre)
+            if existente:
+                messages.error(request, f'Ya existe un insumo llamado "{nombre}". Edítalo en su lugar.')
+                return redirect('gestion_insumos')
+            container.insumo_service.crear(
+                nombre=nombre,
                 unidad=request.POST.get('unidad'),
                 stock_actual=request.POST.get('stock_actual', 0),
                 stock_minimo=request.POST.get('stock_minimo', 0),
                 costo_unitario=request.POST.get('costo_unitario', 0),
             )
-            presentacion_id = request.POST.get('presentacion_id')
-            cantidad_paquetes = request.POST.get('cantidad_paquetes', 0)
-            costo_total = request.POST.get('costo_compra', 0)
-            if presentacion_id and int(cantidad_paquetes) > 0:
-                from dominio.entidades.presentacion_insumo import PresentacionInsumo
-                p_domain = container.presentacion_insumo_service.obtener_por_id(int(presentacion_id))
-                container.presentacion_insumo_service.vincular_a_insumo(
-                    presentacion_id=int(presentacion_id),
-                    insumo_id=insumo.id,
-                )
-                from dominio.entidades.presentacion_insumo import PresentacionInsumo as PIDomain
-                container.presentacion_insumo_service.registrar_compra(
-                    presentacion_id=int(presentacion_id),
-                    cantidad_paquetes=int(cantidad_paquetes),
-                    costo_total=Decimal(str(costo_total)),
-                    usuario=request.user,
-                )
-                messages.success(request, f'Insumo creado con {cantidad_paquetes} x {p_domain.nombre} al stock')
-            else:
-                messages.success(request, 'Insumo creado')
+            messages.success(request, 'Insumo creado')
         except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
             messages.error(request, str(e))
     return redirect('gestion_insumos')
@@ -320,7 +322,10 @@ def registrar_compra_presentacion(request, presentacion_id):
                 usuario=request.user,
             )
             messages.success(request, f'Compra registrada: {p.nombre}')
-            return redirect('presentaciones_insumo', insumo_id=p.insumo_id)
+            next_url = request.POST.get('next')
+            if next_url:
+                return redirect(next_url)
+            return redirect('gestion_insumos')
     except RecursoNoEncontrado:
         messages.error(request, 'Presentacion no encontrada')
     return redirect('gestion_insumos')

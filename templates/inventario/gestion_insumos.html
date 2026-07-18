@@ -5,10 +5,11 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/inventario/gestion_insumos.css' %}">
 <style>
-    .help-text { font-size: 0.82rem; color: #888; margin-bottom: 1rem; }
     .btn-presentaciones { font-size: 0.78rem; padding: 0.2rem 0.6rem; }
-    .seccion-compra { background: #f8f9fa; border: 1px dashed #ccc; border-radius: 6px; padding: 1rem; margin-top: 1rem; }
-    .seccion-compra h6 { margin-bottom: 0.75rem; color: #555; }
+    .btn-comprar { background: #198754; color: #fff; border: none; font-size: 0.78rem; padding: 0.25rem 0.7rem; border-radius: 4px; cursor: pointer; }
+    .btn-comprar:hover { background: #157347; }
+    .compra-modal-preview { background: #e9f7ef; border: 1px solid #b7e4c7; border-radius: 6px; padding: 0.75rem; margin-top: 0.75rem; font-size: 0.88rem; display: none; }
+    .compra-modal-sin-pres { color: #888; font-style: italic; }
 </style>
 {% endblock %}
 {% block content %}
@@ -48,49 +49,23 @@
                             <option value="ML" {% if u == 'ML' %}selected{% endif %}>Mililitro</option>
                             {% endwith %}
                         </select>
-                        <small class="text-muted">Esta es la unidad base con la que se mide en cocina y almacén.</small>
+                        <small class="text-muted">Esta es la unidad base con la que se mide en cocina y almacen.</small>
                     </div>
                     <div class="form-group">
                         <label for="stock_actual">Stock actual</label>
                         <input type="number" name="stock_actual" id="stock_actual" step="0.01" min="0"
-                               value="{{ editar.stock_actual|default:'' }}" required>
+                               value="{{ editar.stock_actual|default:'0' }}" required>
                     </div>
                     <div class="form-group">
                         <label for="stock_minimo">Stock minimo (alerta)</label>
                         <input type="number" name="stock_minimo" id="stock_minimo" step="0.01" min="0"
-                               value="{{ editar.stock_minimo|default:'' }}" required>
+                               value="{{ editar.stock_minimo|default:'0' }}" required>
                     </div>
                     <div class="form-group">
                         <label for="costo_unitario">Costo unitario (S/)</label>
                         <input type="number" name="costo_unitario" id="costo_unitario" step="0.01" min="0"
-                               value="{{ editar.costo_unitario|default:'' }}" required>
+                               value="{{ editar.costo_unitario|default:'0' }}" required>
                     </div>
-
-                    {% if not editar and presentaciones %}
-                    <div class="seccion-compra">
-                        <h6>Compra inicial (opcional)</h6>
-                        <small class="text-muted d-block mb-2">Si ya tienes mercaderia, selecciona la presentacion y cantidad para registrar el stock de una vez.</small>
-                        <div class="form-group">
-                            <label for="presentacion_id">Presentacion</label>
-                            <select name="presentacion_id" id="presentacion_id" class="form-control">
-                                <option value="">-- Sin presentacion --</option>
-                                {% for p in presentaciones %}
-                                <option value="{{ p.id }}" data-unidad="{{ p.unidad_medida }}" data-cantidad="{{ p.cantidad }}" data-costo="{{ p.costo_compra }}">{{ p.nombre }} ({{ p.cantidad }} {{ p.unidad_medida }})</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="cantidad_paquetes">Cantidad de paquetes</label>
-                            <input type="number" name="cantidad_paquetes" id="cantidad_paquetes" step="1" min="0" value="0" class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <label for="costo_compra">Costo total de la compra (S/)</label>
-                            <input type="number" name="costo_compra" id="costo_compra" step="0.01" min="0" value="0" class="form-control">
-                        </div>
-                        <div id="preview-compra" class="alert alert-info py-2 mb-0" style="display:none;font-size:0.85rem;"></div>
-                    </div>
-                    {% endif %}
-
                     <button type="submit" class="btn btn-primary" style="margin-top:1rem;">
                         {% if editar %}Guardar Cambios{% else %}Crear Insumo{% endif %}
                     </button>
@@ -116,6 +91,10 @@
                         <td>{{ insumo.stock_minimo|floatformat:2 }}</td>
                         <td>S/ {{ insumo.costo_unitario|floatformat:2 }}</td>
                         <td class="gestion-acciones">
+                            <button type="button" class="btn-comprar"
+                                    data-insumo-id="{{ insumo.id }}"
+                                    data-insumo-nombre="{{ insumo.nombre }}"
+                                    onclick="abrirModalCompra(this)">Comprar</button>
                             <a href="{% url 'editar_insumo' insumo.id %}" class="table-link">Editar</a>
                             <a href="{% url 'presentaciones_insumo' insumo.id %}" class="btn btn-sm btn-outline-primary btn-presentaciones">Presentaciones</a>
                             <form method="POST" action="{% url 'eliminar_insumo' insumo.id %}" style="display:inline;">
@@ -130,49 +109,153 @@
                     {% endfor %}
                 </tbody>
             </table>
-            {% if insumos %}
-            <div class="px-3 pb-2">
-                <small class="text-muted">Haz clic en <strong>Presentaciones</strong> para ver las presentaciones vinculadas a un insumo y registrar compras.</small>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
 
-{% if not editar and presentaciones %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var select = document.getElementById('presentacion_id');
-    var preview = document.getElementById('preview-compra');
-    if (!select) return;
+<div class="modal fade" id="modalCompra" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Comprar: <span id="compraInsumoNombre"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="compraSinPresentaciones" class="compra-modal-sin-pres" style="display:none;">
+                    Este insumo no tiene presentaciones vinculadas.
+                    <a href="#" id="compraLinkPresentaciones">Crear una presentacion aqui.</a>
+                </div>
+                <form id="formCompra" method="POST" action="" style="display:none;">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'gestion_insumos' %}">
+                    <input type="hidden" name="cantidad_paquetes" id="compraHiddenPaq" value="0">
+                    <input type="hidden" name="costo_total" id="compraHiddenCosto" value="0">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Presentacion</label>
+                        <select id="compraSelectPresentacion" class="form-select" required>
+                            <option value="">Seleccionar presentacion...</option>
+                        </select>
+                        <small class="text-muted" id="compraInfoPresentacion"></small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Cantidad de paquetes</label>
+                        <input type="number" id="compraCantidad" class="form-control" min="1" value="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Costo total (S/)</label>
+                        <input type="number" id="compraCosto" class="form-control" step="0.01" min="0" value="0" required>
+                    </div>
+                    <div class="compra-modal-preview" id="compraPreview"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnConfirmarCompra" onclick="confirmarCompra()">Registrar Compra</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    select.addEventListener('change', function() {
-        var opt = select.options[select.selectedIndex];
-        if (!opt.value) { preview.style.display = 'none'; return; }
-        var cantidad = parseFloat(opt.getAttribute('data-cantidad')) || 0;
-        var costo = parseFloat(opt.getAttribute('data-costo')) || 0;
-        var unidad = opt.getAttribute('data-unidad');
-        preview.style.display = 'block';
-        preview.innerHTML = 'Se agregaran <strong>' + cantidad + ' x cantidad</strong> = total ' + unidad + ' al stock. Costo: S/ ' + costo.toFixed(2) + ' por paquete.';
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var presentacionesPorInsumo = {{ presentaciones_por_insumo_json|safe }};
+var currentInsumoId = null;
+
+function abrirModalCompra(btn) {
+    currentInsumoId = parseInt(btn.getAttribute('data-insumo-id'));
+    var nombre = btn.getAttribute('data-insumo-nombre');
+    document.getElementById('compraInsumoNombre').textContent = nombre;
+
+    var pres = presentacionesPorInsumo[currentInsumoId] || [];
+    var select = document.getElementById('compraSelectPresentacion');
+    var form = document.getElementById('formCompra');
+    var sinPres = document.getElementById('compraSinPresentaciones');
+    var linkPres = document.getElementById('compraLinkPresentaciones');
+
+    select.innerHTML = '<option value="">Seleccionar presentacion...</option>';
+    document.getElementById('compraPreview').style.display = 'none';
+
+    if (pres.length === 0) {
+        form.style.display = 'none';
+        sinPres.style.display = 'block';
+        linkPres.href = '/inventario/presentaciones/' + currentInsumoId + '/';
+        var modal = new bootstrap.Modal(document.getElementById('modalCompra'));
+        modal.show();
+        return;
+    }
+
+    sinPres.style.display = 'none';
+    form.style.display = 'block';
+    form.action = '/inventario/presentaciones/compra/0/';
+
+    pres.forEach(function(p) {
+        var opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.nombre + ' (' + p.cantidad + ' ' + p.unidad_medida + ') - S/ ' + p.costo_compra.toFixed(2);
+        opt.setAttribute('data-cantidad', p.cantidad);
+        opt.setAttribute('data-unidad', p.unidad_medida);
+        opt.setAttribute('data-costo', p.costo_compra);
+        select.appendChild(opt);
     });
 
-    var cantInput = document.getElementById('cantidad_paquetes');
-    var costoInput = document.getElementById('costo_compra');
-    function actualizarPreview() {
-        var opt = select.options[select.selectedIndex];
-        if (!opt.value) return;
-        var cantidad = parseFloat(opt.getAttribute('data-cantidad')) || 0;
-        var costoPaq = parseFloat(opt.getAttribute('data-costo')) || 0;
-        var unidad = opt.getAttribute('data-unidad');
-        var paq = parseInt(cantInput.value) || 0;
-        var totalStock = cantidad * paq;
-        var totalCosto = costoPaq * paq;
-        preview.style.display = 'block';
-        preview.innerHTML = 'Se agregaran <strong>' + totalStock + ' ' + unidad + '</strong> al stock (' + paq + ' x ' + cantidad + '). Costo total: <strong>S/ ' + totalCosto.toFixed(2) + '</strong>';
-        costoInput.value = totalCosto.toFixed(2);
+    select.selectedIndex = 1;
+    actualizarPreviewCompra();
+
+    var modal = new bootstrap.Modal(document.getElementById('modalCompra'));
+    modal.show();
+}
+
+document.getElementById('compraSelectPresentacion').addEventListener('change', actualizarPreviewCompra);
+document.getElementById('compraCantidad').addEventListener('input', actualizarPreviewCompra);
+
+function actualizarPreviewCompra() {
+    var select = document.getElementById('compraSelectPresentacion');
+    var opt = select.options[select.selectedIndex];
+    var preview = document.getElementById('compraPreview');
+    var info = document.getElementById('compraInfoPresentacion');
+
+    if (!opt || !opt.value) {
+        preview.style.display = 'none';
+        info.textContent = '';
+        return;
     }
-    if (cantInput) cantInput.addEventListener('input', actualizarPreview);
-});
+
+    var cantidad = parseFloat(opt.getAttribute('data-cantidad')) || 0;
+    var unidad = opt.getAttribute('data-unidad');
+    var costoPaq = parseFloat(opt.getAttribute('data-costo')) || 0;
+    var paq = parseInt(document.getElementById('compraCantidad').value) || 0;
+    var totalStock = cantidad * paq;
+    var totalCosto = costoPaq * paq;
+
+    document.getElementById('compraCosto').value = totalCosto.toFixed(2);
+
+    info.textContent = cantidad + ' ' + unidad + ' por paquete';
+    preview.style.display = 'block';
+    preview.innerHTML = 'Se agregaran <strong>' + totalStock + ' ' + unidad + '</strong> al stock (' + paq + ' x ' + cantidad + '). Costo total: <strong>S/ ' + totalCosto.toFixed(2) + '</strong>';
+}
+
+function confirmarCompra() {
+    var select = document.getElementById('compraSelectPresentacion');
+    var opt = select.options[select.selectedIndex];
+    if (!opt || !opt.value) {
+        alert('Selecciona una presentacion');
+        return;
+    }
+
+    var presId = opt.value;
+    var paq = parseInt(document.getElementById('compraCantidad').value) || 0;
+    var costo = document.getElementById('compraCosto').value;
+
+    if (paq < 1) { alert('La cantidad debe ser al menos 1'); return; }
+
+    var form = document.getElementById('formCompra');
+    form.action = '/inventario/presentaciones/compra/' + presId + '/';
+    document.getElementById('compraHiddenPaq').value = paq;
+    document.getElementById('compraHiddenCosto').value = costo;
+
+    form.submit();
+}
 </script>
-{% endif %}
 {% endblock %}

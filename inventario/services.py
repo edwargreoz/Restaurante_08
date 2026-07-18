@@ -33,6 +33,10 @@ class InsumoService:
             raise RecursoNoEncontrado('Insumo no encontrado')
         return insumo_domain
 
+    def obtener_por_nombre(self, nombre: str):
+        insumos = self.repo.listar()
+        return next((i for i in insumos if i.nombre.lower() == nombre.lower()), None)
+
     def crear(self, nombre: str, unidad: str,
               stock_actual=Decimal('0'), stock_minimo=Decimal('0'),
               costo_unitario=Decimal('0')):
