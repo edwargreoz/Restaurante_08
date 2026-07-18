@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}Recetas de Insumos{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/inventario/lista_recetas.css' %}">
@@ -37,18 +38,18 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for ri in receta.insumos.all %}
+                    {% for ri in receta.insumos %}
                     <tr>
-                        <td>{{ ri.insumo.nombre }}</td>
-                        <td>{{ ri.cantidad_por_porcion|floatformat:2 }} {{ ri.get_unidad_display }}</td>
-                        <td class="{% if ri.insumo.stock_actual < ri.insumo.stock_minimo %}stock-bajo{% endif %}">
-                            {{ ri.insumo.stock_actual|floatformat:2 }} {{ ri.insumo.get_unidad_display }}
+                        <td>{{ ri.insumo_obj.nombre }}</td>
+                        <td>{{ ri.cantidad_por_porcion|floatformat:2 }} {{ ri.unidad|unidad_display }}</td>
+                        <td class="{% if ri.insumo_obj.stock_actual < ri.insumo_obj.stock_minimo %}stock-bajo{% endif %}">
+                            {{ ri.insumo_obj.stock_actual|floatformat:2 }} {{ ri.unidad|unidad_display }}
                         </td>
                         <td>
                             <form method="POST" action="{% url 'eliminar_receta' ri.id %}" style="display:inline;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-eliminar-receta"
-                                        onclick="return confirm('¿Eliminar {{ ri.insumo.nombre }} de {{ receta.nombre }}?')">Eliminar</button>
+                                        onclick="return confirm('¿Eliminar {{ ri.insumo_obj.nombre }} de {{ receta.nombre }}?')">Eliminar</button>
                             </form>
                         </td>
                     </tr>

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}Gestión de Insumos{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/inventario/gestion_insumos.css' %}">
@@ -73,7 +74,7 @@
                     {% for insumo in insumos %}
                     <tr>
                         <td><strong>{{ insumo.nombre }}</strong></td>
-                        <td>{{ insumo.get_unidad_display }}</td>
+                        <td>{{ insumo.unidad|unidad_display }}</td>
                         <td>{{ insumo.stock_actual|floatformat:2 }}</td>
                         <td>{{ insumo.stock_minimo|floatformat:2 }}</td>
                         <td>S/ {{ insumo.costo_unitario|floatformat:2 }}</td>

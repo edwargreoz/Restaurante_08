@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}Turno de Caja{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/caja/apertura_turno.css' %}">
@@ -15,8 +16,8 @@
             <div class="card-body">
                 <img src="{% static 'icons/caja.png' %}" class="turno-icono" alt="">
                 <p class="card-label">Turno: {{ caja.turno }}</p>
-                <p class="turno-estado" style="color:#fff;">{{ caja.get_estado_display }}</p>
-                <p class="turno-info"><strong>Cajero:</strong> {{ caja.cajero.get_full_name|default:caja.cajero.username }}</p>
+                <p class="turno-estado" style="color:#fff;">{{ caja.estado|estado_display }}</p>
+                <p class="turno-info"><strong>Cajero:</strong> {{ caja.nombre_cajero }}</p>
                 <p class="turno-info"><strong>Saldo inicial:</strong> S/ {{ caja.saldo_inicial|floatformat:2 }}</p>
                 <p class="turno-info"><strong>Apertura:</strong> {{ caja.fecha_apertura|date:"d/m/Y H:i" }}</p>
                 <form method="POST" class="mt-3">

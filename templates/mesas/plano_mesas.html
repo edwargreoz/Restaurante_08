@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load mesas_extras %}
+{% load role_tags %}
 
 {% block title %}Plano del Salon{% endblock %}
 
@@ -85,7 +86,7 @@
                             {% endif %}
                             <p class="card-text">Capacidad: {{ item.mesa.capacidad }}</p>
                             <p class="card-text">
-                                <small class="text-muted">{{ item.mesa.get_zona_display }}</small>
+                                <small class="text-muted">{{ item.mesa.zona|zona_display }}</small>
                             </p>
                             {% if item.mesa.id in union_mesas_ids %}
                                 <span class="union-badge">{{ union_labels|dict_key:item.mesa.id }}</span>
@@ -95,7 +96,7 @@
                                 {% elif item.mesa.estado == 'OCUPADA' %}bg-danger
                                 {% elif item.mesa.estado == 'RESERVADA' %}bg-warning text-dark
                                 {% else %}bg-secondary{% endif %}">
-                                {{ item.mesa.get_estado_display }}
+                                {{ item.mesa.estado|estado_display }}
                             </span>
                         </div>
                     </a>

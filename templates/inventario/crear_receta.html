@@ -35,13 +35,13 @@
                         </thead>
                         <tbody id="insumosBody">
                             {% if editar %}
-                                {% for ri in editar.insumos.all %}
+                                {% for ri in editar.insumos %}
                                 <tr class="insumo-row">
                                     <td>
                                         <select name="insumos[]" class="form-control" required>
                                             <option value="">--- Seleccionar ---</option>
                                             {% for insumo in insumos %}
-                                            <option value="{{ insumo.id }}" {% if ri.insumo.id == insumo.id %}selected{% endif %}>
+                                            <option value="{{ insumo.id }}" {% if ri.insumo_id == insumo.id %}selected{% endif %}>
                                                 {{ insumo.nombre }}
                                             </option>
                                             {% endfor %}

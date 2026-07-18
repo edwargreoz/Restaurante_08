@@ -54,7 +54,7 @@
         <p class="card-label">Caja — {{ caja_actual.turno|default:"Sin turno" }}</p>
         <p class="card-number" style="font-size: 1.8rem;">
             {% if caja_actual %}
-                {{ caja_actual.get_estado_display }}
+                {{ caja_actual.estado|estado_display }}
             {% else %}
                 Cerrada
             {% endif %}
@@ -80,15 +80,15 @@
         <tbody>
             {% for comanda in ultimas_comandas %}
             <tr>
-                <td><strong>Mesa {{ comanda.mesa.numero }}</strong></td>
-                <td>{{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</td>
+                <td><strong>Mesa {{ comanda.numero_mesa }}</strong></td>
+                <td>{{ comanda.nombre_mozo }}</td>
                 <td>{{ comanda.fecha_apertura|timesince }}</td>
                 <td>
                     <span class="badge {% if comanda.estado == 'ABIERTA' %}badge-blue{% else %}badge-orange{% endif %}">
-                        {{ comanda.get_estado_display }}
+                        {{ comanda.estado|estado_display }}
                     </span>
                 </td>
-                <td><a href="{% url 'detalle_mesa' comanda.mesa.id %}" class="table-link">Ver →</a></td>
+                <td><a href="{% url 'detalle_mesa' comanda.mesa_id %}" class="table-link">Ver →</a></td>
             </tr>
             {% empty %}
             <tr>
@@ -108,7 +108,7 @@
         </div>
         <div class="alert-item-info">
             <strong>{{ insumo.nombre }}</strong>
-            <span>{{ insumo.stock_actual }} {{ insumo.get_unidad_display }} (mín {{ insumo.stock_minimo }} {{ insumo.get_unidad_display }})</span>
+            <span>{{ insumo.stock_actual }} {{ insumo.unidad|unidad_display }} (mín {{ insumo.stock_minimo }} {{ insumo.unidad|unidad_display }})</span>
         </div>
     </div>
     {% empty %}

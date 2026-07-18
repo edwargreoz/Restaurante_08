@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 
 {% block title %}Unir Mesas{% endblock %}
 
@@ -44,7 +45,7 @@
                                 <strong>Mesa {{ mesa.numero }}</strong>
 
                                 <small class="d-block text-muted">
-                                    {{ mesa.get_zona_display }} · {{ mesa.capacidad }} pax
+                                    {{ mesa.zona|zona_display }} · {{ mesa.capacidad }} pax
                                 </small>
 
                                 {% if mesa.id in union_mesas_ids %}
@@ -57,7 +58,7 @@
                                         {% elif mesa.estado == 'OCUPADA' %}bg-danger
                                         {% elif mesa.estado == 'RESERVADA' %}bg-warning text-dark
                                         {% else %}bg-secondary{% endif %}">
-                                        {{ mesa.get_estado_display }}
+                                        {{ mesa.estado|estado_display }}
                                     </span>
                                 {% endif %}
                             </div>
@@ -80,49 +81,41 @@
             </div>
 
             <div class="card-body">
-                {% for union in uniones %}
+                {% for info in uniones_info %}
                 <div class="union-item" style="flex-direction:column;align-items:stretch;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
                         <div class="union-item-info">
                             <span class="union-item-mesas">
-                                {% for m in union.mesas.all %}
+                                {% for m in info.mesas %}
                                     Mesa {{ m.numero }}{% if not forloop.last %} + {% endif %}
                                 {% endfor %}
                             </span>
 
                             <span class="union-item-detalle">
-                                Capacidad total: {{ union.capacidad_total }} personas
-                                · {{ union.creado_en|date:"d/m/Y H:i" }}
+                                Capacidad total: {{ info.capacidad_total }} personas
                             </span>
                         </div>
 
-                        {% if not union.esta_reservada %}
-                        <form method="POST" action="{% url 'deshacer_union' union.id %}">
+                        <form method="POST" action="{% url 'deshacer_union' info.union.id %}">
                             {% csrf_token %}
                             <button type="submit" class="btn-deshacer">
                                 Deshacer
                             </button>
                         </form>
-                        {% endif %}
                     </div>
 
-                    {% if union.esta_reservada %}
-                    <div class="text-warning small mt-2" style="font-weight:600;">
-                        <i class="fas fa-lock"></i> Unión reservada. Edita la reserva para modificar.
-                    </div>
-                    {% else %}
-                    <form method="POST" action="{% url 'agregar_mesa_union' union.id %}"
+                    <form method="POST" action="{% url 'agregar_mesa_union' info.union.id %}"
                           style="display:flex;gap:0.5rem;align-items:center;margin-top:0.5rem;">
                         {% csrf_token %}
 
                         <select name="mesa_id" class="form-control select-agregar-mesa"
-                                data-zona-union="{{ union.mesas.all.0.zona }}"
+                                data-zona-union="{{ info.primera_zona }}"
                                 style="flex:1;padding:0.4rem 0.6rem;font-size:0.85rem;" required>
                             <option value="">Agregar mesa...</option>
 
                             {% for m in mesas_disponibles %}
                             <option value="{{ m.id }}" data-zona="{{ m.zona }}">
-                                Mesa {{ m.numero }} ({{ m.get_zona_display }})
+                                Mesa {{ m.numero }} ({{ m.zona|zona_display }})
                             </option>
                             {% endfor %}
                         </select>
@@ -132,7 +125,6 @@
                             +
                         </button>
                     </form>
-                    {% endif %}
                 </div>
                 {% empty %}
                 <p class="text-muted text-center mb-0">

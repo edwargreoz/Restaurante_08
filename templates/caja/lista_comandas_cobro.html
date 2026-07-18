@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}Comandas para Cobrar{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/caja/cobrar_comanda.css' %}">
@@ -37,12 +38,12 @@
         <tbody>
             {% for comanda in comandas %}
             <tr>
-                <td><strong>Mesa {{ comanda.mesa.numero }}</strong></td>
-                <td>{{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</td>
+                <td><strong>Mesa {{ comanda.numero_mesa }}</strong></td>
+                <td>{{ comanda.nombre_mozo }}</td>
                 <td><strong>S/ {{ comanda.total|floatformat:2 }}</strong></td>
                 <td>
                     <span class="badge {% if comanda.estado == 'ABIERTA' %}badge-blue{% else %}badge-orange{% endif %}">
-                        {{ comanda.get_estado_display }}
+                        {{ comanda.estado|estado_display }}
                     </span>
                 </td>
                 <td>{{ comanda.fecha_apertura|timesince }}</td>

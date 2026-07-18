@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}Mesa {{ mesa.numero }}{% endblock %}
 
 {% block extra_css %}
@@ -17,7 +18,7 @@
                 Volver
             </a>
             <h1 class="detalle-title">
-                {% if union_activa %}{% for m in union_activa.mesas.all %}Mesa {{ m.numero }}{% if not forloop.last %} + {% endif %}{% endfor %}{% else %}Mesa {{ mesa.numero }}{% endif %}
+                {% if union_activa %}{% for m in mesas_union %}Mesa {{ m.numero }}{% if not forloop.last %} + {% endif %}{% endfor %}{% else %}Mesa {{ mesa.numero }}{% endif %}
             </h1>
         </div>
         <span class="detalle-estado-badge
@@ -26,7 +27,7 @@
             {% elif mesa.estado == 'RESERVADA' %}estado-reservada
             {% else %}estado-limpieza{% endif %}">
             <span class="detalle-estado-dot"></span>
-            {{ mesa.get_estado_display }}
+            {{ mesa.estado|estado_display }}
         </span>
     </div>
 
@@ -53,7 +54,7 @@
                         </div>
                         <div class="mesa-info-item">
                             <span class="mesa-info-label">Zona</span>
-                            <span class="mesa-info-value">{{ mesa.get_zona_display }}</span>
+                            <span class="mesa-info-value">{{ mesa.zona|zona_display }}</span>
                         </div>
                         <div class="mesa-info-item">
                             <span class="mesa-info-label">Union</span>
@@ -63,7 +64,7 @@
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b77a2f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/>
                                     </svg>
-                                    {% for m in union_activa.mesas.all %}
+                                    {% for m in mesas_union %}
                                         Mesa {{ m.numero }}{% if not forloop.last %} + {% endif %}
                                     {% endfor %}
                                 </span>
@@ -104,7 +105,7 @@
                         Comanda
                     </div>
                     {% if comanda_activa %}
-                    <span class="badge bg-primary fs-6 px-3 py-1">{{ comanda_activa.get_estado_display }}</span>
+                    <span class="badge bg-primary fs-6 px-3 py-1">{{ comanda_activa.estado|estado_display }}</span>
                     {% endif %}
                 </div>
                 <div class="detalle-card-body p-0">
@@ -114,7 +115,7 @@
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                         </svg>
-                        Mozo: <strong>{{ comanda_activa.mozo.get_full_name|default:comanda_activa.mozo.username }}</strong>
+                        Mozo: <strong>{{ comanda_activa.nombre_mozo }}</strong>
                     </div>
                     <div class="comanda-table-wrapper">
                         <table class="comanda-table">
@@ -128,11 +129,11 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for linea in comanda_activa.lineas.all %}
+                                {% for linea in comanda_activa.lineas %}
                                 <tr class="comanda-row">
-                                    <td class="comanda-plato">{{ linea.plato.nombre }}</td>
+                                    <td class="comanda-plato">{{ linea.nombre_plato }}</td>
                                     <td class="comanda-cant">{{ linea.cantidad }}</td>
-                                    <td class="comanda-precio">S/ {{ linea.plato.precio }}</td>
+                                    <td class="comanda-precio">S/ {{ linea.precio_unitario }}</td>
                                     <td class="comanda-subtotal">S/ {{ linea.subtotal }}</td>
                                     <td class="comanda-estado">
                                         <span class="badge badge-estado
@@ -140,7 +141,7 @@
                                             {% elif linea.estado == 'EN_PREP' %}bg-info text-white
                                             {% elif linea.estado == 'LISTO' %}bg-success
                                             {% else %}bg-secondary{% endif %}">
-                                            {{ linea.get_estado_display }}
+                                            {{ linea.estado|estado_display }}
                                         </span>
                                     </td>
                                 </tr>

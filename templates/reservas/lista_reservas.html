@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}Reservas - Restaurant{% endblock %}
 
 {% block extra_css %}
@@ -35,7 +36,7 @@
                     {% if reserva.union_mesa %}
                         <strong>Unión: {{ reserva.union_mesa }}</strong>
                     {% else %}
-                        <strong>Mesa {{ reserva.mesa.numero }}</strong><br><small class="text-muted" style="color: #a0aec0;">{{ reserva.mesa.get_zona_display }}</small>
+                        <strong>Mesa {{ reserva.mesa_numero }}</strong>
                     {% endif %}
                 </td>
                 <td>{{ reserva.cliente_nombre }}</td>

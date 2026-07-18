@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}KDS - Cocina{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/cocina/kds.css' %}">
@@ -32,8 +33,7 @@
          data-apertura="{{ comanda.fecha_apertura|date:'U' }}">
         <div class="kds-card-header">
             <div class="kds-mesa-info">
-                <span class="kds-mesa-num">Mesa {{ comanda.mesa.numero }}</span>
-                <span class="kds-mesa-zona">{{ comanda.mesa.get_zona_display }}</span>
+                <span class="kds-mesa-num">Mesa {{ comanda.numero_mesa }}</span>
             </div>
             <div class="kds-timer" id="timer-{{ comanda.id }}">
                 <span class="kds-timer-icon">⏱</span>
@@ -41,26 +41,26 @@
             </div>
         </div>
         <div class="kds-card-meta">
-            <span> {{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</span>
+            <span> {{ comanda.nombre_mozo }}</span>
             <span class="kds-comanda-estado badge {% if comanda.estado == 'EN_PREPARACION' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
-                {{ comanda.get_estado_display }}
+                {{ comanda.estado|estado_display }}
             </span>
         </div>
         <div class="kds-lineas">
-            {% for linea in comanda.lineas.all %}
+            {% for linea in comanda.lineas %}
             <div class="kds-linea {% if linea.estado == 'LISTO' %}kds-linea-listo{% elif linea.estado == 'EN_PREP' %}kds-linea-prep{% else %}kds-linea-pendiente{% endif %}">
                 <div class="kds-linea-info">
                     <div class="kds-linea-nombre">
-                        <strong>{{ linea.cantidad }}x {{ linea.plato.nombre }}</strong>
+                        <strong>{{ linea.cantidad }}x {{ linea.nombre_plato }}</strong>
                         {% if linea.observacion %}
                         <span class="kds-obs">{{ linea.observacion }}</span>
                         {% endif %}
                     </div>
                     <div class="kds-linea-meta">
                         <span class="badge {% if linea.estado == 'PENDIENTE' %}bg-warning text-dark{% elif linea.estado == 'EN_PREP' %}bg-primary{% else %}bg-success{% endif %}">
-                            {{ linea.get_estado_display }}
+                            {{ linea.estado|estado_display }}
                         </span>
-                        <small class="text-muted">{{ linea.plato.tiempo_preparacion_min }} min</small>
+                        <small class="text-muted">{{ linea.tiempo_preparacion_min }} min</small>
                     </div>
                 </div>
                 <div class="kds-linea-actions">

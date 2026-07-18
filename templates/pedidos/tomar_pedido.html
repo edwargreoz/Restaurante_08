@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}Tomar Pedido - Mesa {{ mesa.numero }}{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/mesas/mesas.css' %}">
@@ -18,14 +19,14 @@
             <div class="card-body">
                 <p><strong>Número:</strong> {{ mesa.numero }}</p>
                 <p><strong>Capacidad:</strong> {{ mesa.capacidad }} personas</p>
-                <p><strong>Zona:</strong> {{ mesa.get_zona_display }}</p>
+                <p><strong>Zona:</strong> {{ mesa.zona|zona_display }}</p>
                 <p><strong>Estado:</strong>
                     <span class="badge
                         {% if mesa.estado == 'LIBRE' %}bg-success
                         {% elif mesa.estado == 'OCUPADA' %}bg-danger
                         {% elif mesa.estado == 'RESERVADA' %}bg-warning text-dark
                         {% else %}bg-secondary{% endif %}">
-                        {{ mesa.get_estado_display }}
+                        {{ mesa.estado|estado_display }}
                     </span>
                 </p>
             </div>
@@ -36,8 +37,8 @@
     <div class="card mb-3">
         <div class="card-header">Comanda Actual</div>
             <div class="card-body">
-                <p><strong>Mozo:</strong> {{ comanda.mozo.get_full_name|default:comanda.mozo.username }}</p>
-                <p><strong>Estado:</strong> <span class="badge bg-primary">{{ comanda.get_estado_display }}</span></p>
+                <p><strong>Mozo:</strong> {{ comanda.nombre_mozo }}</p>
+                <p><strong>Estado:</strong> <span class="badge bg-primary">{{ comanda.estado|estado_display }}</span></p>
                 <table class="table table-comanda">
                     <thead>
                         <tr>
@@ -49,9 +50,9 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for linea in comanda.lineas.all %}
+                        {% for linea in comanda.lineas %}
                         <tr>
-                            <td class="col-plato">{{ linea.plato.nombre }}</td>
+                            <td class="col-plato">{{ linea.nombre_plato }}</td>
                             <td class="col-cant">{{ linea.cantidad }}</td>
                             <td class="col-subtotal">S/ {{ linea.subtotal }}</td>
                             <td class="col-estado">
@@ -60,7 +61,7 @@
                                     {% elif linea.estado == 'EN_PREP' %}bg-info text-white
                                     {% elif linea.estado == 'LISTO' %}bg-success
                                     {% else %}bg-secondary{% endif %}">
-                                    {{ linea.get_estado_display }}
+                                    {{ linea.estado|estado_display }}
                                 </span>
                             </td>
                             <td>

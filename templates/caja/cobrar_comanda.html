@@ -18,7 +18,7 @@
     <div class="col-md-7">
         <div class="card mb-4">
             <div class="card-header">
-                Mesa {{ comanda.mesa.numero }} — Mozo: {{ comanda.mozo.get_full_name|default:comanda.mozo.username }}
+                Mesa {{ comanda.numero_mesa }} — Mozo: {{ comanda.nombre_mozo }}
             </div>
             <div class="table-wrapper">
                 <table class="table">
@@ -26,11 +26,11 @@
                         <tr><th>Plato</th><th>Cant.</th><th>P.Unit</th><th>Subtotal</th></tr>
                     </thead>
                     <tbody>
-                        {% for linea in comanda.lineas.all %}
+                        {% for linea in comanda.lineas %}
                         <tr>
-                            <td>{{ linea.plato.nombre }}</td>
+                            <td>{{ linea.nombre_plato }}</td>
                             <td>{{ linea.cantidad }}</td>
-                            <td>S/ {{ linea.plato.precio|floatformat:2 }}</td>
+                            <td>S/ {{ linea.precio_unitario|floatformat:2 }}</td>
                             <td>S/ {{ linea.subtotal|floatformat:2 }}</td>
                         </tr>
                         {% endfor %}

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}Reporte de Ventas{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/reportes/reportes_turno.css' %}">
@@ -23,7 +24,7 @@
                     <option value="">--- Todos los turnos ---</option>
                     {% for c in cajas %}
                     <option value="{{ c.id }}" {% if request.GET.caja_id|stringformat:"s" == c.id|stringformat:"s" %}selected{% endif %}>
-                        {{ c.get_estado_display }} · {{ c.turno }} · {{ c.fecha_apertura|date:"d/m/Y" }}
+                        {{ c.estado|estado_display }} · {{ c.turno }} · {{ c.fecha_apertura|date:"d/m/Y" }}
                     </option>
                     {% endfor %}
                 </select>
@@ -115,8 +116,8 @@
             {% for pago in pagos %}
             <tr>
                 <td>{{ pago.comanda.id }}</td>
-                <td>Mesa {{ pago.comanda.mesa.numero }}</td>
-                <td>{{ pago.comanda.mozo.get_full_name|default:pago.comanda.mozo.username }}</td>
+                <td>Mesa {{ pago.comanda.numero_mesa }}</td>
+                <td>{{ pago.comanda.nombre_mozo }}</td>
                 <td>
                     <span class="badge badge-pago badge-pago-{{ pago.metodo|lower }}">
                         {{ pago.get_metodo_display }}

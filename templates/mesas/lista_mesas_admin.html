@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}Gestión de Mesas{% endblock %}
 
 {% block content %}
@@ -50,7 +51,7 @@
                         <tr>
                             <td class="fw-bold">Mesa {{ mesa.numero }}</td>
                             <td>{{ mesa.capacidad }} personas</td>
-                            <td>{{ mesa.get_zona_display }}</td>
+                            <td>{{ mesa.zona|zona_display }}</td>
                             <td>
                                 {% if mesa.estado == 'LIBRE' %}
                                     <span class="badge bg-success">Libre</span>
@@ -59,7 +60,7 @@
                                 {% elif mesa.estado == 'RESERVADA' %}
                                     <span class="badge bg-primary">Reservada</span>
                                 {% else %}
-                                    <span class="badge bg-warning text-dark">{{ mesa.get_estado_display }}</span>
+                                    <span class="badge bg-warning text-dark">{{ mesa.estado|estado_display }}</span>
                                 {% endif %}
                             </td>
                             <td class="text-center">
