@@ -41,16 +41,16 @@
                 </table>
             </div>
         </div>
-        {% if comanda.pagos.exists %}
+        {% if comanda.pagos %}
         <div class="card">
             <div class="card-header">Pagos registrados</div>
             <div class="table-wrapper">
                 <table class="table">
                     <thead><tr><th>Método</th><th>Monto</th><th>Vuelto</th><th>Ref.</th></tr></thead>
                     <tbody>
-                        {% for pago in comanda.pagos.all %}
+                        {% for pago in comanda.pagos %}
                         <tr>
-                            <td>{{ pago.get_metodo_display }}</td>
+                            <td>{{ pago.metodo|metodo_display }}</td>
                             <td>S/ {{ pago.monto|floatformat:2 }}</td>
                             <td>S/ {{ pago.vuelto|floatformat:2 }}</td>
                             <td>{{ pago.referencia }}</td>

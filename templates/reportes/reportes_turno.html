@@ -120,7 +120,7 @@
                 <td>{{ pago.comanda.nombre_mozo }}</td>
                 <td>
                     <span class="badge badge-pago badge-pago-{{ pago.metodo|lower }}">
-                        {{ pago.get_metodo_display }}
+                        {{ pago.metodo|metodo_display }}
                     </span>
                 </td>
                 <td><strong>S/ {{ pago.monto|floatformat:2 }}</strong></td>

@@ -48,3 +48,15 @@ def zona_display(value):
 @register.filter
 def unidad_display(value):
     return UNIDAD_DISPLAY.get(value, value or '')
+
+METODO_DISPLAY = {
+    'EFECTIVO': 'Efectivo',
+    'TARJETA': 'Tarjeta',
+    'YAPE': 'Yape',
+    'PLIN': 'Plin',
+    'TRANSFERENCIA': 'Transferencia',
+}
+
+@register.filter
+def metodo_display(value):
+    return METODO_DISPLAY.get(value, value or '')
