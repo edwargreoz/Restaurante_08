@@ -25,9 +25,11 @@ def gestion_insumos(request):
     import json
     container = get_container()
     insumos = container.insumo_service.listar_insumos()
+    catalogo = container.presentacion_insumo_service.listar_catalogo()
+
     presentaciones_por_insumo = {}
     for insumo in insumos:
-        presentaciones = container.presentacion_insumo_service.listar_por_insumo(insumo.id)
+        vinculadas = container.presentacion_insumo_service.listar_por_insumo(insumo.id)
         presentaciones_por_insumo[insumo.id] = [
             {
                 'id': p.id,
@@ -35,12 +37,25 @@ def gestion_insumos(request):
                 'cantidad': float(p.cantidad),
                 'unidad_medida': p.unidad_medida,
                 'costo_compra': float(p.costo_compra),
+                'tipo': 'vinculada',
             }
-            for p in presentaciones
+            for p in vinculadas
         ]
+
+    compatible_catalogo = []
+    for p in catalogo:
+        compatible_catalogo.append({
+            'id': p.id,
+            'nombre': p.nombre,
+            'cantidad': float(p.cantidad),
+            'unidad_medida': p.unidad_medida,
+            'costo_compra': float(p.costo_compra),
+        })
+
     return render(request, 'inventario/gestion_insumos.html', {
         'insumos': insumos,
         'presentaciones_por_insumo_json': json.dumps(presentaciones_por_insumo),
+        'catalogo_json': json.dumps(compatible_catalogo),
     })
 
 @login_required
@@ -328,6 +343,43 @@ def registrar_compra_presentacion(request, presentacion_id):
             return redirect('gestion_insumos')
     except RecursoNoEncontrado:
         messages.error(request, 'Presentacion no encontrada')
+    return redirect('gestion_insumos')
+
+
+@login_required
+@user_passes_test(es_admin)
+def compra_rapida(request):
+    from decimal import Decimal
+    container = get_container()
+    if request.method != 'POST':
+        return redirect('gestion_insumos')
+    try:
+        insumo_id = int(request.POST.get('insumo_id', 0))
+        presentacion_id = int(request.POST.get('presentacion_id', 0))
+        cantidad_paquetes = int(request.POST.get('cantidad_paquetes', 1))
+        costo_total = Decimal(request.POST.get('costo_total', '0'))
+
+        if not insumo_id or not presentacion_id:
+            messages.error(request, 'Faltan datos para la compra')
+            return redirect('gestion_insumos')
+
+        p = container.presentacion_insumo_service.obtener_por_id(presentacion_id)
+        if p.insumo_id is None:
+            container.presentacion_insumo_service.vincular_a_insumo(
+                presentacion_id=presentacion_id,
+                insumo_id=insumo_id,
+            )
+
+        container.presentacion_insumo_service.registrar_compra(
+            presentacion_id=presentacion_id,
+            cantidad_paquetes=cantidad_paquetes,
+            costo_total=costo_total,
+            usuario=request.user,
+        )
+        insumo = container.insumo_service.obtener_por_id(insumo_id)
+        messages.success(request, f'Compra registrada: {p.nombre} -> {insumo.nombre}')
+    except (RecursoNoEncontrado, ReglaNegocioViolada) as e:
+        messages.error(request, str(e))
     return redirect('gestion_insumos')
 
 

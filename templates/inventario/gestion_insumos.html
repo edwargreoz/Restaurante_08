@@ -5,11 +5,18 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/inventario/gestion_insumos.css' %}">
 <style>
-    .btn-presentaciones { font-size: 0.78rem; padding: 0.2rem 0.6rem; }
-    .btn-comprar { background: #198754; color: #fff; border: none; font-size: 0.78rem; padding: 0.25rem 0.7rem; border-radius: 4px; cursor: pointer; }
+    .gestion-acciones { white-space: nowrap; }
+    .gestion-acciones .btn-comprar,
+    .gestion-acciones .btn-vinculadas,
+    .gestion-acciones .btn-eliminar-inline { display: inline-block; margin-right: 3px; margin-bottom: 2px; font-size: 0.75rem; padding: 0.2rem 0.5rem; }
+    .btn-comprar { background: #198754; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
     .btn-comprar:hover { background: #157347; }
-    .compra-modal-preview { background: #e9f7ef; border: 1px solid #b7e4c7; border-radius: 6px; padding: 0.75rem; margin-top: 0.75rem; font-size: 0.88rem; display: none; }
-    .compra-modal-sin-pres { color: #888; font-style: italic; }
+    .btn-vinculadas { background: #0d6efd; color: #fff; border: none; border-radius: 4px; text-decoration: none; }
+    .btn-vinculadas:hover { background: #0b5ed7; color: #fff; }
+    .btn-eliminar-inline { background: #dc3545; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-eliminar-inline:hover { background: #bb2d3b; }
+    .compra-modal-preview { background: #e9f7ef; border: 1px solid #b7e4c7; border-radius: 6px; padding: 0.6rem; margin-top: 0.5rem; font-size: 0.85rem; display: none; }
+    .compra-badge-catalogo { background: #ffc107; color: #000; font-size: 0.7rem; padding: 0.1rem 0.4rem; border-radius: 3px; margin-left: 0.4rem; }
 </style>
 {% endblock %}
 {% block content %}
@@ -17,9 +24,9 @@
     <h1>{% if editar %}Editar Insumo{% else %}Gestion de Insumos{% endif %}</h1>
     {% if not editar %}
     <div>
-        <a href="{% url 'lista_insumos' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Ver Inventario</a>
-        <a href="{% url 'unidades_cocina' %}" class="btn btn-info" style="width:auto;padding:0.6rem 1.2rem;">Unidades Cocina</a>
-        <a href="{% url 'catalogo_presentaciones' %}" class="btn btn-outline-primary" style="width:auto;padding:0.6rem 1.2rem;">Catalogo Presentaciones</a>
+        <a href="{% url 'lista_insumos' %}" class="btn btn-secondary btn-sm">Ver Inventario</a>
+        <a href="{% url 'unidades_cocina' %}" class="btn btn-info btn-sm">Unidades Cocina</a>
+        <a href="{% url 'catalogo_presentaciones' %}" class="btn btn-outline-primary btn-sm">Catalogo</a>
     </div>
     {% endif %}
 </div>
@@ -49,7 +56,6 @@
                             <option value="ML" {% if u == 'ML' %}selected{% endif %}>Mililitro</option>
                             {% endwith %}
                         </select>
-                        <small class="text-muted">Esta es la unidad base con la que se mide en cocina y almacen.</small>
                     </div>
                     <div class="form-group">
                         <label for="stock_actual">Stock actual</label>
@@ -57,7 +63,7 @@
                                value="{{ editar.stock_actual|default:'0' }}" required>
                     </div>
                     <div class="form-group">
-                        <label for="stock_minimo">Stock minimo (alerta)</label>
+                        <label for="stock_minimo">Stock minimo</label>
                         <input type="number" name="stock_minimo" id="stock_minimo" step="0.01" min="0"
                                value="{{ editar.stock_minimo|default:'0' }}" required>
                     </div>
@@ -80,7 +86,7 @@
         <div class="table-wrapper">
             <table class="table">
                 <thead>
-                    <tr><th>Insumo</th><th>Unidad</th><th>Stock</th><th>Min</th><th>Costo</th><th>Acciones</th></tr>
+                    <tr><th>Insumo</th><th>Unidad</th><th>Stock</th><th>Costo</th><th>Acciones</th></tr>
                 </thead>
                 <tbody>
                     {% for insumo in insumos %}
@@ -88,24 +94,24 @@
                         <td><strong>{{ insumo.nombre }}</strong></td>
                         <td>{{ insumo.unidad|unidad_display }}</td>
                         <td>{{ insumo.stock_actual|floatformat:2 }}</td>
-                        <td>{{ insumo.stock_minimo|floatformat:2 }}</td>
                         <td>S/ {{ insumo.costo_unitario|floatformat:2 }}</td>
                         <td class="gestion-acciones">
                             <button type="button" class="btn-comprar"
                                     data-insumo-id="{{ insumo.id }}"
                                     data-insumo-nombre="{{ insumo.nombre }}"
+                                    data-insumo-unidad="{{ insumo.unidad }}"
                                     onclick="abrirModalCompra(this)">Comprar</button>
-                            <a href="{% url 'editar_insumo' insumo.id %}" class="table-link">Editar</a>
-                            <a href="{% url 'presentaciones_insumo' insumo.id %}" class="btn btn-sm btn-outline-primary btn-presentaciones">Presentaciones</a>
+                            <a href="{% url 'presentaciones_insumo' insumo.id %}" class="btn-vinculadas">Presentaciones</a>
+                            <a href="{% url 'editar_insumo' insumo.id %}" class="btn-vinculadas" style="background:#6c757d;">Editar</a>
                             <form method="POST" action="{% url 'eliminar_insumo' insumo.id %}" style="display:inline;">
                                 {% csrf_token %}
-                                <button type="submit" class="btn-eliminar"
-                                        onclick="return confirm('Eliminar {{ insumo.nombre }}?')">Eliminar</button>
+                                <button type="submit" class="btn-eliminar-inline"
+                                        onclick="return confirm('Eliminar {{ insumo.nombre }}?')">X</button>
                             </form>
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="6" class="empty-row">No hay insumos registrados</td></tr>
+                    <tr><td colspan="5" class="empty-row">No hay insumos registrados</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -121,25 +127,20 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div id="compraSinPresentaciones" class="compra-modal-sin-pres" style="display:none;">
-                    Este insumo no tiene presentaciones vinculadas.
-                    <a href="#" id="compraLinkPresentaciones">Crear una presentacion aqui.</a>
-                </div>
-                <form id="formCompra" method="POST" action="" style="display:none;">
+                <form id="formCompra" method="POST" action="{% url 'compra_rapida' %}">
                     {% csrf_token %}
-                    <input type="hidden" name="next" value="{% url 'gestion_insumos' %}">
-                    <input type="hidden" name="cantidad_paquetes" id="compraHiddenPaq" value="0">
-                    <input type="hidden" name="costo_total" id="compraHiddenCosto" value="0">
+                    <input type="hidden" name="insumo_id" id="compraInsumoId" value="">
+                    <input type="hidden" name="presentacion_id" id="compraPresentacionId" value="">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Presentacion</label>
-                        <select id="compraSelectPresentacion" class="form-select" required>
+                        <select id="compraSelectPresentacion" class="form-select" required onchange="onSelectPresentacion()">
                             <option value="">Seleccionar presentacion...</option>
                         </select>
                         <small class="text-muted" id="compraInfoPresentacion"></small>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Cantidad de paquetes</label>
-                        <input type="number" id="compraCantidad" class="form-control" min="1" value="1" required>
+                        <input type="number" id="compraCantidad" class="form-control" min="1" value="1" required oninput="actualizarPreviewCompra()">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Costo total (S/)</label>
@@ -150,7 +151,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-success" id="btnConfirmarCompra" onclick="confirmarCompra()">Registrar Compra</button>
+                <button type="button" class="btn btn-success" onclick="confirmarCompra()">Registrar Compra</button>
             </div>
         </div>
     </div>
@@ -161,54 +162,78 @@
 {% block extra_js %}
 <script>
 var presentacionesPorInsumo = {{ presentaciones_por_insumo_json|safe }};
-var currentInsumoId = null;
+var catalogoPresentaciones = {{ catalogo_json|safe }};
+
+var FAMILIAS = { 'KG': 'peso', 'GR': 'peso', 'LT': 'volumen', 'ML': 'volumen', 'UNIDAD': 'unidad' };
+
+function esCompatible(unidadPres, unidadInsumo) {
+    return FAMILIAS[unidadPres] === FAMILIAS[unidadInsumo];
+}
 
 function abrirModalCompra(btn) {
-    currentInsumoId = parseInt(btn.getAttribute('data-insumo-id'));
+    var insumoId = parseInt(btn.getAttribute('data-insumo-id'));
     var nombre = btn.getAttribute('data-insumo-nombre');
+    var unidadInsumo = btn.getAttribute('data-insumo-unidad');
     document.getElementById('compraInsumoNombre').textContent = nombre;
+    document.getElementById('compraInsumoId').value = insumoId;
+    document.getElementById('compraPresentacionId').value = '';
 
-    var pres = presentacionesPorInsumo[currentInsumoId] || [];
+    var vinculadas = presentacionesPorInsumo[insumoId] || [];
     var select = document.getElementById('compraSelectPresentacion');
-    var form = document.getElementById('formCompra');
-    var sinPres = document.getElementById('compraSinPresentaciones');
-    var linkPres = document.getElementById('compraLinkPresentaciones');
-
     select.innerHTML = '<option value="">Seleccionar presentacion...</option>';
     document.getElementById('compraPreview').style.display = 'none';
+    document.getElementById('compraInfoPresentacion').textContent = '';
+    document.getElementById('compraCantidad').value = 1;
+    document.getElementById('compraCosto').value = '0';
 
-    if (pres.length === 0) {
-        form.style.display = 'none';
-        sinPres.style.display = 'block';
-        linkPres.href = '/inventario/presentaciones/' + currentInsumoId + '/';
-        var modal = new bootstrap.Modal(document.getElementById('modalCompra'));
-        modal.show();
-        return;
+    if (vinculadas.length > 0) {
+        var grpVinculadas = document.createElement('optgroup');
+        grpVinculadas.label = 'Vinculadas a este insumo';
+        vinculadas.forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.nombre + ' (' + p.cantidad + ' ' + p.unidad_medida + ') - S/ ' + p.costo_compra.toFixed(2);
+            opt.setAttribute('data-cantidad', p.cantidad);
+            opt.setAttribute('data-unidad', p.unidad_medida);
+            opt.setAttribute('data-costo', p.costo_compra);
+            grpVinculadas.appendChild(opt);
+        });
+        select.appendChild(grpVinculadas);
     }
 
-    sinPres.style.display = 'none';
-    form.style.display = 'block';
-    form.action = '/inventario/presentaciones/compra/0/';
-
-    pres.forEach(function(p) {
-        var opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.nombre + ' (' + p.cantidad + ' ' + p.unidad_medida + ') - S/ ' + p.costo_compra.toFixed(2);
-        opt.setAttribute('data-cantidad', p.cantidad);
-        opt.setAttribute('data-unidad', p.unidad_medida);
-        opt.setAttribute('data-costo', p.costo_compra);
-        select.appendChild(opt);
+    var compatibles = catalogoPresentaciones.filter(function(c) {
+        if (vinculadas.some(function(v) { return v.id === c.id; })) return false;
+        return esCompatible(c.unidad_medida, unidadInsumo);
     });
 
-    select.selectedIndex = 1;
-    actualizarPreviewCompra();
+    if (compatibles.length > 0) {
+        var grpCatalogo = document.createElement('optgroup');
+        grpCatalogo.label = 'Catalogo (se vinculara automaticamente)';
+        compatibles.forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.nombre + ' (' + p.cantidad + ' ' + p.unidad_medida + ') - S/ ' + p.costo_compra.toFixed(2);
+            opt.setAttribute('data-cantidad', p.cantidad);
+            opt.setAttribute('data-unidad', p.unidad_medida);
+            opt.setAttribute('data-costo', p.costo_compra);
+            opt.setAttribute('data-catalogo', 'true');
+            grpCatalogo.appendChild(opt);
+        });
+        select.appendChild(grpCatalogo);
+    }
+
+    if (vinculadas.length > 0) {
+        select.selectedIndex = 1;
+        actualizarPreviewCompra();
+    }
 
     var modal = new bootstrap.Modal(document.getElementById('modalCompra'));
     modal.show();
 }
 
-document.getElementById('compraSelectPresentacion').addEventListener('change', actualizarPreviewCompra);
-document.getElementById('compraCantidad').addEventListener('input', actualizarPreviewCompra);
+function onSelectPresentacion() {
+    actualizarPreviewCompra();
+}
 
 function actualizarPreviewCompra() {
     var select = document.getElementById('compraSelectPresentacion');
@@ -230,7 +255,6 @@ function actualizarPreviewCompra() {
     var totalCosto = costoPaq * paq;
 
     document.getElementById('compraCosto').value = totalCosto.toFixed(2);
-
     info.textContent = cantidad + ' ' + unidad + ' por paquete';
     preview.style.display = 'block';
     preview.innerHTML = 'Se agregaran <strong>' + totalStock + ' ' + unidad + '</strong> al stock (' + paq + ' x ' + cantidad + '). Costo total: <strong>S/ ' + totalCosto.toFixed(2) + '</strong>';
@@ -244,18 +268,12 @@ function confirmarCompra() {
         return;
     }
 
-    var presId = opt.value;
     var paq = parseInt(document.getElementById('compraCantidad').value) || 0;
     var costo = document.getElementById('compraCosto').value;
-
     if (paq < 1) { alert('La cantidad debe ser al menos 1'); return; }
 
-    var form = document.getElementById('formCompra');
-    form.action = '/inventario/presentaciones/compra/' + presId + '/';
-    document.getElementById('compraHiddenPaq').value = paq;
-    document.getElementById('compraHiddenCosto').value = costo;
-
-    form.submit();
+    document.getElementById('compraPresentacionId').value = opt.value;
+    document.getElementById('formCompra').submit();
 }
 </script>
 {% endblock %}

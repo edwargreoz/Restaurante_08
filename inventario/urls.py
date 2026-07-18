@@ -12,6 +12,7 @@ urlpatterns = [
     path('inventario/presentaciones/<int:insumo_id>/', views.presentaciones_insumo, name='presentaciones_insumo'),
     path('inventario/presentaciones/eliminar/<int:presentacion_id>/', views.eliminar_presentacion, name='eliminar_presentacion'),
     path('inventario/presentaciones/compra/<int:presentacion_id>/', views.registrar_compra_presentacion, name='registrar_compra_presentacion'),
+    path('inventario/compra-rapida/', views.compra_rapida, name='compra_rapida'),
     path('inventario/unidades-cocina/', views.unidades_cocina, name='unidades_cocina'),
     path('inventario/unidades-cocina/eliminar/<int:unidad_id>/', views.eliminar_unidad_cocina, name='eliminar_unidad_cocina'),
     path('inventario/catalogo-presentaciones/', views.catalogo_presentaciones, name='catalogo_presentaciones'),
