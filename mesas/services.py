@@ -141,7 +141,7 @@ class MesaService:
             comandas_mesa2 = self.comanda_repo.listar_por_mesa(mesa.id)
             comanda = next((c for c in comandas_mesa2 if c.estado in ['ABIERTA', 'EN_PREPARACION', 'LISTA']), None)
 
-        categorias = categoria_service.listar_con_platos()
+        categorias = categoria_service.listar_categorias()
 
         return {
             'mesa': mesa,
