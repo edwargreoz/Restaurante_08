@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load role_tags %}
+{% block title %}Presentaciones - {{ insumo.nombre }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/inventario/gestion_insumos.css' %}">
+<style>
+    .help-box { background: #f8f9fa; border-left: 3px solid #3498db; padding: 0.8rem 1rem; margin-bottom: 1.2rem; font-size: 0.85rem; color: #555; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Presentaciones de {{ insumo.nombre }}</h1>
+    <div>
+        <a href="{% url 'gestion_insumos' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Volver a Insumos</a>
+    </div>
+</div>
+
+<div class="help-box">
+    <strong>Que es una presentacion?</strong><br>
+    Es la forma en la que este insumo llega al almacen. Por ejemplo: <em>Saco 25kg, Bolsa 5kg, Caja 12 unidades, Lata 350ml</em>.<br>
+    Al registrar una compra, se suma automaticamente el contenido al stock del insumo en su unidad base ({{ insumo.unidad|unidad_display }}).
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header"><strong>Nueva Presentacion</strong></div>
+            <div class="card-body gestion-form">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>Nombre de la presentacion</label>
+                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Saco 25kg, Bolsa 5kg..." required>
+                    </div>
+                    <div class="form-group">
+                        <label>Contenido por paquete</label>
+                        <div class="input-group">
+                            <input type="number" name="cantidad" class="form-control" step="0.01" min="0.01" placeholder="Ej: 25" required>
+                            <select name="unidad_medida" class="form-select" required>
+                                <option value="">Unidad</option>
+                                {% for key, label in unidades %}
+                                <option value="{{ key }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <small class="text-muted">Cuanto contiene cada paquete de esta presentacion.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Costo de compra (S/)</label>
+                        <input type="number" name="costo_compra" class="form-control" step="0.01" min="0" value="0" placeholder="0.00">
+                        <small class="text-muted">Costo por un paquete de esta presentacion.</small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" name="es_principal"> Es la presentacion principal
+                        </label>
+                        <small class="text-muted d-block">Marcar si esta es la forma mas comun de compra.</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Crear Presentacion</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="table-wrapper">
+            <table class="table">
+                <thead>
+                    <tr><th>Presentacion</th><th>Contenido</th><th>Costo</th><th>Principal</th><th>Acciones</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in presentaciones %}
+                    <tr>
+                        <td><strong>{{ p.nombre }}</strong></td>
+                        <td>{{ p.cantidad|floatformat:2 }} {{ p.unidad_medida|unidad_display }}</td>
+                        <td>S/ {{ p.costo_compra|floatformat:2 }}</td>
+                        <td>{% if p.es_principal %}Si{% else %}No{% endif %}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#compraModal{{ p.id }}">
+                                Comprar
+                            </button>
+                            <form method="POST" action="{% url 'eliminar_presentacion' p.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Eliminar {{ p.nombre }}?')">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <div class="modal fade" id="compraModal{{ p.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" action="{% url 'registrar_compra_presentacion' p.id %}">
+                                    {% csrf_token %}
+                                    <div class="modal-header">
+                                        <h5>Registrar Compra: {{ p.nombre }}</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="form-group mb-3">
+                                            <label>Cuantos paquetes compraste?</label>
+                                            <input type="number" name="cantidad_paquetes" class="form-control" min="1" value="1" required>
+                                            <small class="text-muted">Cada paquete contiene {{ p.cantidad }} {{ p.unidad_medida|unidad_display }}.</small>
+                                        </div>
+                                        <div class="form-group mb-3">
+                                            <label>Costo total de la compra (S/)</label>
+                                            <input type="number" name="costo_total" class="form-control" step="0.01" min="0" value="{{ p.costo_compra }}" required>
+                                        </div>
+                                        <div class="alert alert-info mb-0">
+                                            Se agregaran <strong>{{ p.cantidad }} x cantidad de paquetes</strong> = <strong id="totalPreview">{{ p.cantidad }}</strong> {{ p.unidad_medida|unidad_display }} al stock de {{ insumo.nombre }}.
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-primary">Registrar Compra</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <tr><td colspan="5" class="empty-row">No hay presentaciones registradas. Crea una para definir como llega este insumo.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

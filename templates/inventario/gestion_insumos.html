@@ -1,15 +1,22 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load role_tags %}
-{% block title %}Gestión de Insumos{% endblock %}
+{% block title %}Gestion de Insumos{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/inventario/gestion_insumos.css' %}">
+<style>
+    .help-text { font-size: 0.82rem; color: #888; margin-bottom: 1rem; }
+    .btn-presentaciones { font-size: 0.78rem; padding: 0.2rem 0.6rem; }
+</style>
 {% endblock %}
 {% block content %}
 <div class="page-header">
-    <h1>{% if editar %}Editar Insumo{% else %}Gestión de Insumos{% endif %}</h1>
+    <h1>{% if editar %}Editar Insumo{% else %}Gestion de Insumos{% endif %}</h1>
     {% if not editar %}
-    <a href="{% url 'lista_insumos' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Ver Inventario</a>
+    <div>
+        <a href="{% url 'lista_insumos' %}" class="btn btn-secondary" style="width:auto;padding:0.6rem 1.2rem;">Ver Inventario</a>
+        <a href="{% url 'unidades_cocina' %}" class="btn btn-info" style="width:auto;padding:0.6rem 1.2rem;">Unidades Cocina</a>
+    </div>
     {% endif %}
 </div>
 <div class="row">
@@ -24,7 +31,7 @@
                     {% csrf_token %}
                     <div class="form-group">
                         <label for="nombre">Nombre</label>
-                        <input type="text" name="nombre" id="nombre" value="{{ editar.nombre|default:'' }}" required>
+                        <input type="text" name="nombre" id="nombre" value="{{ editar.nombre|default:'' }}" placeholder="Ej: Harina, Aceite, Sal..." required>
                     </div>
                     <div class="form-group">
                         <label for="unidad">Unidad de medida</label>
@@ -38,6 +45,7 @@
                             <option value="ML" {% if u == 'ML' %}selected{% endif %}>Mililitro</option>
                             {% endwith %}
                         </select>
+                        <small class="text-muted">Esta es la unidad base con la que se mide en cocina y almacén.</small>
                     </div>
                     <div class="form-group">
                         <label for="stock_actual">Stock actual</label>
@@ -45,7 +53,7 @@
                                value="{{ editar.stock_actual|default:'' }}" required>
                     </div>
                     <div class="form-group">
-                        <label for="stock_minimo">Stock mínimo (alerta)</label>
+                        <label for="stock_minimo">Stock minimo (alerta)</label>
                         <input type="number" name="stock_minimo" id="stock_minimo" step="0.01" min="0"
                                value="{{ editar.stock_minimo|default:'' }}" required>
                     </div>
@@ -80,10 +88,11 @@
                         <td>S/ {{ insumo.costo_unitario|floatformat:2 }}</td>
                         <td class="gestion-acciones">
                             <a href="{% url 'editar_insumo' insumo.id %}" class="table-link">Editar</a>
+                            <a href="{% url 'presentaciones_insumo' insumo.id %}" class="btn btn-sm btn-outline-primary btn-presentaciones">Presentaciones</a>
                             <form method="POST" action="{% url 'eliminar_insumo' insumo.id %}" style="display:inline;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-eliminar"
-                                        onclick="return confirm('¿Eliminar {{ insumo.nombre }}?')">Eliminar</button>
+                                        onclick="return confirm('Eliminar {{ insumo.nombre }}?')">Eliminar</button>
                             </form>
                         </td>
                     </tr>
@@ -92,6 +101,11 @@
                     {% endfor %}
                 </tbody>
             </table>
+            {% if insumos %}
+            <div class="px-3 pb-2">
+                <small class="text-muted">Haz clic en <strong>Presentaciones</strong> para definir en que empaques llega cada insumo (sacos, cajas, bolsas, etc.) y registrar compras.</small>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>

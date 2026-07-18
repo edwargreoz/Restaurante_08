@@ -1,8 +1,15 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load role_tags %}
 {% block title %}{% if editar %}Editar Receta{% else %}Nueva Receta{% endif %}{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/inventario/crear_receta.css' %}">
+<style>
+    .help-hint { font-size: 0.82rem; color: #888; margin-bottom: 1rem; }
+    .hidden-unit { display: none; }
+    .table th { font-size: 0.85rem; }
+    .table td { vertical-align: middle; }
+</style>
 {% endblock %}
 {% block content %}
 <div class="page-header">
@@ -19,18 +26,20 @@
                     <div class="form-group mb-3">
                         <label for="nombre_receta">Nombre de la Receta</label>
                         <input type="text" name="nombre_receta" id="nombre_receta" class="form-control"
-                               placeholder="Ej: Hamburguesa Clásica"
+                               placeholder="Ej: Lomo Saltado, Arroz con Pollo..."
                                value="{{ editar.nombre|default:'' }}" required>
                     </div>
 
-                    <label class="mb-2">Insumos de la receta</label>
+                    <label class="mb-1">Ingredientes</label>
+                    <p class="help-hint">Define cada ingrediente: selecciona el insumo, indica la cantidad y la unidad de medida.</p>
+
                     <table class="table table-bordered" id="insumosTable">
                         <thead>
                             <tr>
                                 <th style="width:35%">Insumo</th>
                                 <th style="width:20%">Cantidad</th>
-                                <th style="width:20%">Unidad</th>
-                                <th style="width:15%">Acción</th>
+                                <th style="width:30%">Unidad de Cocina</th>
+                                <th style="width:15%">Accion</th>
                             </tr>
                         </thead>
                         <tbody id="insumosBody">
@@ -38,10 +47,11 @@
                                 {% for ri in editar.insumos %}
                                 <tr class="insumo-row">
                                     <td>
-                                        <select name="insumos[]" class="form-control" required>
+                                        <select name="insumos[]" class="form-control insumo-select" required>
                                             <option value="">--- Seleccionar ---</option>
                                             {% for insumo in insumos %}
-                                            <option value="{{ insumo.id }}" {% if ri.insumo_id == insumo.id %}selected{% endif %}>
+                                            <option value="{{ insumo.id }}" data-unidad="{{ insumo.unidad }}"
+                                                    {% if ri.insumo_id == insumo.id %}selected{% endif %}>
                                                 {{ insumo.nombre }}
                                             </option>
                                             {% endfor %}
@@ -52,9 +62,12 @@
                                                step="0.01" min="0" value="{{ ri.cantidad_por_porcion }}" required>
                                     </td>
                                     <td>
-                                        <select name="unidades[]" class="form-control" required>
-                                            {% for key, label in unidades %}
-                                            <option value="{{ key }}" {% if ri.unidad == key %}selected{% endif %}>{{ label }}</option>
+                                        <select name="unidades_cocina[]" class="form-control" required>
+                                            <option value="">--- Seleccionar ---</option>
+                                            {% for uc in unidades_cocina %}
+                                            <option value="{{ uc.id }}" {% if ri.unidad_cocina_id == uc.id %}selected{% endif %}>
+                                                {{ uc.nombre }} ({{ uc.equivalencia_cantidad }} {{ uc.equivalencia_unidad|unidad_display }})
+                                            </option>
                                             {% endfor %}
                                         </select>
                                     </td>
@@ -67,7 +80,7 @@
                         </tbody>
                     </table>
 
-                    <button type="button" class="btn btn-info mb-3" id="addRow">+ Agregar Insumo</button>
+                    <button type="button" class="btn btn-info mb-3" id="addRow">+ Agregar Ingrediente</button>
                     <br>
                     <button type="submit" class="btn btn-primary">
                         {% if editar %}Guardar Cambios{% else %}Crear Receta{% endif %}
@@ -83,37 +96,59 @@
 <script>
     const insumosData = [
         {% for insumo in insumos %}
-        { id: {{ insumo.id }}, nombre: "{{ insumo.nombre|escapejs }}", unidad_key: "{{ insumo.unidad }}" },
+        { id: {{ insumo.id }}, nombre: "{{ insumo.nombre|escapejs }}", unidad: "{{ insumo.unidad }}" },
         {% endfor %}
     ];
-    const unidadOptions = [
-        {% for key, label in unidades %}
-        { key: "{{ key }}", label: "{{ label }}" },
+    const ucOptions = [
+        {% for uc in unidades_cocina %}
+        { id: {{ uc.id }}, label: "{{ uc.nombre|escapejs }} ({{ uc.equivalencia_cantidad }} {{ uc.equivalencia_unidad|unidad_display }})" },
         {% endfor %}
     ];
 
-    function createRow(selectedId, cantidad, selectedUnidad) {
+    function getInsumoById(id) {
+        return insumosData.find(i => i.id === id);
+    }
+
+    function createRow(selectedId, cantidad, selectedUC) {
         let insumoOptions = '<option value="">--- Seleccionar ---</option>';
         for (const ins of insumosData) {
             const sel = (ins.id === selectedId) ? 'selected' : '';
-            insumoOptions += `<option value="${ins.id}" ${sel}>${ins.nombre}</option>`;
+            insumoOptions += `<option value="${ins.id}" data-unidad="${ins.unidad}" ${sel}>${ins.nombre}</option>`;
         }
-        let unitOptions = '';
-        for (const u of unidadOptions) {
-            const sel = (u.key === selectedUnidad) ? 'selected' : '';
-            unitOptions += `<option value="${u.key}" ${sel}>${u.label}</option>`;
+        let ucOpts = '<option value="">--- Seleccionar ---</option>';
+        for (const uc of ucOptions) {
+            const sel = (String(uc.id) === String(selectedUC || '')) ? 'selected' : '';
+            ucOpts += `<option value="${uc.id}" ${sel}>${uc.label}</option>`;
         }
         return `<tr class="insumo-row">
-            <td><select name="insumos[]" class="form-control" required>${insumoOptions}</select></td>
+            <td>
+                <select name="insumos[]" class="form-control insumo-select" required>${insumoOptions}</select>
+                <input type="hidden" name="unidades[]" class="unidad-hidden" value="">
+            </td>
             <td><input type="number" name="cantidades[]" class="form-control" step="0.01" min="0" value="${cantidad || ''}" required></td>
-            <td><select name="unidades[]" class="form-control" required>${unitOptions}</select></td>
+            <td><select name="unidades_cocina[]" class="form-control" required>${ucOpts}</select></td>
             <td><button type="button" class="btn btn-danger btn-sm remove-row">Eliminar</button></td>
         </tr>`;
     }
 
+    function syncUnidad(row) {
+        const select = row.querySelector('.insumo-select');
+        const hidden = row.querySelector('.unidad-hidden');
+        const option = select.options[select.selectedIndex];
+        if (option && option.value) {
+            hidden.value = option.getAttribute('data-unidad') || 'UNIDAD';
+        } else {
+            hidden.value = '';
+        }
+    }
+
     document.getElementById('addRow').addEventListener('click', function() {
         const tbody = document.getElementById('insumosBody');
-        tbody.insertAdjacentHTML('beforeend', createRow(null, null, 'UNIDAD'));
+        tbody.insertAdjacentHTML('beforeend', createRow(null, null, ''));
+        const newRow = tbody.lastElementChild;
+        newRow.querySelector('.insumo-select').addEventListener('change', function() {
+            syncUnidad(newRow);
+        });
     });
 
     document.getElementById('insumosBody').addEventListener('click', function(e) {
@@ -122,12 +157,27 @@
         }
     });
 
+    document.getElementById('insumosBody').addEventListener('change', function(e) {
+        if (e.target.classList.contains('insumo-select')) {
+            syncUnidad(e.target.closest('tr'));
+        }
+    });
+
     document.getElementById('recetaForm').addEventListener('submit', function(e) {
         const rows = document.querySelectorAll('#insumosBody .insumo-row');
         if (rows.length === 0) {
             e.preventDefault();
-            alert('Debe agregar al menos un insumo a la receta.');
+            alert('Debe agregar al menos un ingrediente a la receta.');
+            return;
         }
+        rows.forEach(function(row) { syncUnidad(row); });
+    });
+
+    document.querySelectorAll('#insumosBody .insumo-row').forEach(function(row) {
+        row.querySelector('.insumo-select').addEventListener('change', function() {
+            syncUnidad(row);
+        });
+        syncUnidad(row);
     });
 </script>
 {% endblock %}
