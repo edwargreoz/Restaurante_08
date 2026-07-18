@@ -9,4 +9,5 @@ class RecetaInsumo:
     insumo_id: Optional[int] = None
     cantidad_por_porcion: Decimal = field(default_factory=lambda: Decimal('0'))
     unidad: str = 'UNIDAD'
+    unidad_cocina_id: Optional[int] = None
     activo: bool = True
