@@ -248,8 +248,8 @@ class UnionMesaService:
     def crear(self, mesa_ids: list, comanda_service=None):
         if len(mesa_ids) < 2:
             raise UnionInvalida('Selecciona al menos 2 mesas')
-        if len(mesa_ids) > 3:
-            raise UnionInvalida('Una unión puede tener como máximo 3 mesas')
+        if len(mesa_ids) > 4:
+            raise UnionInvalida('Una unión puede tener como máximo 4 mesas')
 
         mesas = self.mesa_repo.listar_activas_por_ids(mesa_ids)
         if len(mesas) < 2:
@@ -298,8 +298,8 @@ class UnionMesaService:
 
         if mesa_id in union.mesa_ids:
             raise UnionInvalida(f'Mesa {mesa_model.numero} ya está en la unión')
-        if len(union.mesa_ids) >= 3:
-            raise UnionInvalida('Una unión puede tener como máximo 3 mesas')
+        if len(union.mesa_ids) >= 4:
+            raise UnionInvalida('Una unión puede tener como máximo 4 mesas')
         if mesa_model.estado == 'RESERVADA':
             raise UnionInvalida('No puedes agregar una mesa reservada')
 
